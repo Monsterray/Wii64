@@ -11,7 +11,7 @@ Reconnaissance date: 2026-09-14. This document records the source and build base
 | Chosen development baseline | `master` at `9eb19ee06be90ba607e207f8f63743d05cd438d4` (`- Fix texture warping/viewport near issues`, 2026-09-13) |
 | Baseline rationale | Current development tip is two commits beyond `1.4.9`; the latest commit is renderer correctness work and is the right starting point for later measurements. |
 
-The working tree has been placed on a dedicated `reconnaissance` branch in `/private/tmp/wii64-recon`. The user workspace cannot write Git metadata, so the copied workspace contains source and the new planning documents but not `.git` history. No source changes were made for this session.
+The working tree is now a normal Git repository on the dedicated local `reconnaissance` branch, with the imported upstream history preserved. `origin` is configured as `git@github.com:Monsterray/Wii64.git`. No source changes were made for this session.
 
 ## Build baseline
 
