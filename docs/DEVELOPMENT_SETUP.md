@@ -78,6 +78,8 @@ Dolphin’s DSP HLE does not recognize Wii64’s homebrew audio microcode. Launc
 /Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
 ```
 
+For filesystem smoke tests, use Dolphin’s SD-card image, not `usb:`. In Dolphin, open **Config → Wii → SD Card Settings**, insert the default image at `~/Library/Application Support/Dolphin/Load/WiiSD.raw`, allow writes, and create `wii64/roms` and `wii64/saves` in that FAT32 image. Wii64’s SD browser starts at `sd:/wii64/roms`; an empty image will therefore report that path as unavailable even when the library built correctly. Dolphin does not emulate the Wii USB mass-storage device used by this version of Wii64, so validate `usb:` on hardware.
+
 For an automated smoke run, add `--batch`. Dolphin’s log window/console is the place to inspect startup failures; a DOL that depends on real Wii devices or IOS behavior may still boot differently in Dolphin.
 
 Do not place ROMs, BIOS files, save files, or copyrighted captures in this repository. Keep test inputs in a private, legally sourced directory and record only the title/region/revision/CRC in benchmark notes.

@@ -2,3 +2,5 @@
 *.elf
 *.dol
 *.map
+/libogc2/
+/libfat/
