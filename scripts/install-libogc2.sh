@@ -222,6 +222,14 @@ finish() {
 # Do not wrap rsync with pv: use rsync --info=progress2 instead.
 # ──────────────────────────────────────────────────────────────────────────
 
+if [[ ! -t 0 || ! -t 1 ]]; then
+  printf '%s\n' "Run this wizard from an interactive Terminal: $0" >&2
+  exit 1
+fi
+if ! tput clear >/dev/null 2>&1; then
+  export TERM=xterm
+fi
+
 TOTAL_STAGES=1
 
 banner "Install libogc2 for Wii64"
