@@ -74,23 +74,37 @@ sudo dkp-pacman -Syu
 sudo dkp-pacman -S wii-dev ppc-zlib
 ```
 
-`libogc2` is not available in the standard configured repository, so build the checked-out dependency from source:
+`libogc2` and its matching legacy `libfat` are not available as a compatible pair in the standard configured repository. Build them from source in a directory without spaces (the legacy libfat makefiles are not space-safe):
 
 ```sh
+export DEVKITPRO=/opt/devkitpro
+export DEVKITPPC="$DEVKITPRO/devkitPPC"
+export PATH="$DEVKITPRO/tools/bin:$DEVKITPPC/bin:$PATH"
+
+mkdir -p "$HOME/devkitpro-src"
+cd "$HOME/devkitpro-src"
+git clone https://github.com/extremscorner/libogc2.git
+git clone https://github.com/extremscorner/libfat.git
+
 cd libogc2
-make
+make wii
 sudo -E make install
-cd ..
+
+cd ../libfat
+make -C libogc2 PLATFORM=wii BUILD=wii_release
+sudo -E make -C libogc2 install
+
+cd "/path/to/Wii64"
 make -f Makefile.glN64_wii -j"$(sysctl -n hw.ncpu)"
 ```
 
 This produces `wii64-glN64.dol`. To launch it in Dolphin:
 
 ```sh
-/Applications/Dolphin.app/Contents/MacOS/Dolphin --exec="$PWD/wii64-glN64.dol"
+/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
 ```
 
-The package and install commands require an interactive administrator password. See [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) and [`scripts/install-libogc2.sh`](scripts/install-libogc2.sh) for the complete macOS setup.
+The package and install commands require an interactive administrator password. See [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) for the complete macOS setup.
 
 ## ADVANCED USAGE
 ### GameCube Version(s)

@@ -15,24 +15,30 @@ The machine already has Apple Command Line Tools, Homebrew, and Dolphin `2606a` 
    sudo dkp-pacman -S wii-dev ppc-zlib
    ```
 
-From the repository root in Terminal, the guided system-install step is:
+Wii64’s makefiles explicitly use `$(DEVKITPRO)/libogc2/wii/{include,lib}`. `libogc2` is not present in the standard devkitPro repositories used here. It must be paired with the legacy libfat source: the newer package is built for standard libogc and references an ABI symbol that libogc2 intentionally does not provide.
 
-```sh
-./scripts/install-libogc2.sh
-```
-
-Run it from Terminal rather than opening the script from Finder, so its prompts and administrator-password request remain visible.
-
-Wii64’s makefiles explicitly use `$(DEVKITPRO)/libogc2/wii/{include,lib}`. `libogc2` is not present in the standard devkitPro repositories used here, so build and install it from the checked-out source:
+Build the two sources in a directory with no spaces. Wii64 itself may remain in a path with spaces; this restriction applies only to the legacy libfat build:
 
    ```sh
+   export DEVKITPRO=/opt/devkitpro
+   export DEVKITPPC="$DEVKITPRO/devkitPPC"
+   export PATH="$DEVKITPRO/tools/bin:$DEVKITPPC/bin:$PATH"
+
+   mkdir -p "$HOME/devkitpro-src"
+   cd "$HOME/devkitpro-src"
+   git clone https://github.com/extremscorner/libogc2.git
+   git clone https://github.com/extremscorner/libfat.git
+
    cd libogc2
-   make
+   make wii
    sudo -E make install
-   cd ..
+
+   cd ../libfat
+   make -C libogc2 PLATFORM=wii BUILD=wii_release
+   sudo -E make -C libogc2 install
    ```
 
-The local `libogc2/` checkout contains a path-space fix on branch `fix-spaced-paths` at commit `bf4e1e9`. It covers GNU Make’s `include`/VPATH parsing, recursive `-C`/`-f` calls, shell path quoting, DSP prerequisites, and install/clean destinations. Both Wii and GameCube dry-runs pass from this spaced workspace on macOS GNU Make 3.81.
+The local `libogc2/` checkout contains a path-space fix on branch `fix-spaced-paths` at commit `bf4e1e9`. It covers GNU Make’s `include`/VPATH parsing, recursive `-C`/`-f` calls, shell path quoting, DSP prerequisites, and install/clean destinations. Both Wii and GameCube builds pass from this spaced workspace on macOS GNU Make 3.81.
 
 ## Verify the toolchain
 
@@ -43,6 +49,8 @@ command -v powerpc-eabi-g++
 command -v elf2dol
 test -f "$DEVKITPRO/libogc2/wii/include/ogcsys.h"
 test -f "$DEVKITPRO/libogc2/wii/lib/libogc.a"
+test -f "$DEVKITPRO/libogc2/wii/include/fat.h"
+test -f "$DEVKITPRO/libogc2/wii/lib/libfat.a"
 test -f "$DEVKITPRO/portlibs/ppc/include/zlib.h"
 ```
 
@@ -64,10 +72,10 @@ Use `make -f Makefile.glN64_wii clean` between toolchain/configuration experimen
 
 ## Launch in Dolphin
 
-Dolphin accepts DOL files through `--exec`:
+Dolphin’s DSP HLE does not recognize Wii64’s homebrew audio microcode. Launch with DSP LLE for this target:
 
 ```sh
-/Applications/Dolphin.app/Contents/MacOS/Dolphin --exec="$PWD/wii64-glN64.dol"
+/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
 ```
 
 For an automated smoke run, add `--batch`. Dolphin’s log window/console is the place to inspect startup failures; a DOL that depends on real Wii devices or IOS behavior may still boot differently in Dolphin.
@@ -76,4 +84,4 @@ Do not place ROMs, BIOS files, save files, or copyrighted captures in this repos
 
 ## Current state
 
-The repository is on local branch `reconnaissance`, based on Wii64 `9eb19ee…`, with `origin` set to `git@github.com:Monsterray/Wii64.git`. Dolphin and the base devkitPPC toolchain are installed. The remaining system-wide step is installing `ppc-zlib` and the locally built `libogc2`; [scripts/install-libogc2.sh](../scripts/install-libogc2.sh) guides that administrator-authorized step.
+The repository is on local branch `reconnaissance`, based on Wii64 `9eb19ee…`, with `origin` set to `git@github.com:Monsterray/Wii64.git`. Dolphin and the base devkitPPC toolchain are installed. The remaining system-wide step is installing the locally built compatible `libfat.a` alongside libogc2.

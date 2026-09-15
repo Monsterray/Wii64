@@ -346,12 +346,12 @@ int main(int argc, const char* argv[]) {
 	nativeOutput	 = NATIVEOUT_DISABLE;
 
 #ifdef HW_RVL
-	if (argc > 1)
+	if (argv && argc > 1 && argv[1])
         Autoboot::setPath(argv[1]);
-	load_config(&argv[0][0]);
+	load_config(argv && argc > 0 && argv[0] ? argv[0] : "sd");
 	// Handle options passed in through arguments
 	int i;
-	for(i=1; i<argc; ++i){
+	for(i=1; argv && i<argc; ++i){
 		handleConfigPair((char*)argv[i]);
 	}
 #else
