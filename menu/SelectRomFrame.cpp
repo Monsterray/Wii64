@@ -606,6 +606,16 @@ static int dir_comparator(const void* _x, const void* _y){
 
 void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 {
+	// The legacy UI reported an empty ROM directory as an open failure, which
+	// makes a working SD card indistinguishable from a failed mount.
+#ifdef HW_RVL
+	if ((dir->name[0] == 's' || dir->name[0] == 'u') && !romFile_init(dir)) {
+		menu::MessageBox::getInstance().setMessage(
+			dir->name[0] == 's' ? "Could not mount the SD card" : "Could not mount USB storage");
+		return;
+	}
+#endif
+
 	// Free the old menu stuff
 //	if(menu_items){  free(menu_items);  menu_items  = NULL; }
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
@@ -659,6 +669,9 @@ void selectRomFrame_Error(fileBrowser_file* dir, int error_code)
 	}
 	else if(error_code == NO_DISC) {
   	sprintf(feedback_string,"NO Disc Inserted");
+	}
+	else if(error_code == 0) {
+		sprintf(feedback_string,"No ROM files found in \"%s\"",&dir->name[0]);
 	}
 	//set first entry to read 'error' and return to main menu
 	else

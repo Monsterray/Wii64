@@ -78,7 +78,7 @@ Dolphin’s DSP HLE does not recognize Wii64’s homebrew audio microcode. Launc
 /Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
 ```
 
-For filesystem smoke tests, use Dolphin’s SD-card image, not `usb:`. In Dolphin, open **Config → Wii → SD Card Settings**, insert the default image at `~/Library/Application Support/Dolphin/Load/WiiSD.raw`, allow writes, and create `wii64/roms` and `wii64/saves` in that FAT32 image. Wii64’s SD browser starts at `sd:/wii64/roms`; an empty image will therefore report that path as unavailable even when the library built correctly. Dolphin does not emulate the Wii USB mass-storage device used by this version of Wii64, so validate `usb:` on hardware.
+For filesystem smoke tests, use Dolphin’s SD card, not `usb:`. Prefer Dolphin’s folder sync: in **Config → Wii → SD Card Settings**, enable **Automatically sync with folder** and use `~/Library/Application Support/Dolphin/Load/WiiSDSync/`. Create `wii64/roms` and `wii64/saves` there; Wii64 starts at `sd:/wii64/roms`. This keeps test ROMs outside the repository and avoids manually mounting `WiiSD.raw`. An empty ROM directory is not a mount failure. Dolphin does not emulate the Wii USB mass-storage device used by this version of Wii64, so validate `usb:` on hardware.
 
 For an automated smoke run, add `--batch`. Dolphin’s log window/console is the place to inspect startup failures; a DOL that depends on real Wii devices or IOS behavior may still boot differently in Dolphin.
 
