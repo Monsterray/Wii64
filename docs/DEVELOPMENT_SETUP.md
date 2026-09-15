@@ -15,6 +15,14 @@ The machine already has Apple Command Line Tools, Homebrew, and Dolphin `2606a` 
    sudo dkp-pacman -S wii-dev ppc-zlib
    ```
 
+From the repository root in Terminal, the guided system-install step is:
+
+```sh
+./scripts/install-libogc2.sh
+```
+
+Run it from Terminal rather than opening the script from Finder, so its prompts and administrator-password request remain visible.
+
 Wii64’s makefiles explicitly use `$(DEVKITPRO)/libogc2/wii/{include,lib}`. `libogc2` is not present in the standard devkitPro repositories used here, so build and install it from the checked-out source:
 
    ```sh

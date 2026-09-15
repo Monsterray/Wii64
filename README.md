@@ -65,6 +65,33 @@
      saves from the selected device on ROM load and save when returning to the menu or
      turning off the console
 
+## DEVELOPMENT BUILD
+
+Install the official devkitPro toolchain, then update and install the Wii dependencies:
+
+```sh
+sudo dkp-pacman -Syu
+sudo dkp-pacman -S wii-dev ppc-zlib
+```
+
+`libogc2` is not available in the standard configured repository, so build the checked-out dependency from source:
+
+```sh
+cd libogc2
+make
+sudo -E make install
+cd ..
+make -f Makefile.glN64_wii -j"$(sysctl -n hw.ncpu)"
+```
+
+This produces `wii64-glN64.dol`. To launch it in Dolphin:
+
+```sh
+/Applications/Dolphin.app/Contents/MacOS/Dolphin --exec="$PWD/wii64-glN64.dol"
+```
+
+The package and install commands require an interactive administrator password. See [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) and [`scripts/install-libogc2.sh`](scripts/install-libogc2.sh) for the complete macOS setup.
+
 ## ADVANCED USAGE
 ### GameCube Version(s)
 Wii64 also exists as Cube64, a version of the emulator with the same UI and features albeit with tighter memory restrictions and less CPU power availble. This version has significantly less memory available and requires paging of ROM data from your storage medium into a small ARAM cache and then into main memory, this is denoted by every time you see a cartridge icon in the top right hand corner of the screen. GameCube builds don't have boxart support and the mini menu.
