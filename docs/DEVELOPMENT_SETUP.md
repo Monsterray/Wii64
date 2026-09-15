@@ -17,6 +17,8 @@ The machine already has Apple Command Line Tools, Homebrew, and Dolphin `2606a` 
 
 Wii64’s makefiles explicitly use `$(DEVKITPRO)/libogc2/wii/{include,lib}`. If `libogc2` is not available from the configured pacman repositories, use the [libogc2 source instructions](https://github.com/extremscorner/libogc2#installing) after installing `devkitPPC` and its build dependencies.
 
+The local `libogc2/` checkout contains a path-space fix on branch `fix-spaced-paths` at commit `bf4e1e9`. It covers GNU Make’s `include`/VPATH parsing, recursive `-C`/`-f` calls, shell path quoting, DSP prerequisites, and install/clean destinations. Both Wii and GameCube dry-runs pass from this spaced workspace on macOS GNU Make 3.81.
+
 ## Verify the toolchain
 
 ```sh
