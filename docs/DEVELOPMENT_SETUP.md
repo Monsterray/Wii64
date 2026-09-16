@@ -82,6 +82,18 @@ For filesystem smoke tests, use Dolphin’s SD card, not `usb:`. Prefer Dolphin�
 
 For an automated smoke run, add `--batch`. Dolphin’s log window/console is the place to inspect startup failures; a DOL that depends on real Wii devices or IOS behavior may still boot differently in Dolphin.
 
+## Automated Dolphin smoke test
+
+The first automated check is intentionally narrow: it autoboots a private ROM, runs it for a fixed number of N64 video interrupts, and writes a pass record through Dolphin’s SD folder sync. It does not measure real-Wii performance or prove visual correctness.
+
+Keep Dolphin closed, then run:
+
+```sh
+make -f Makefile.glN64_wii test-dolphin CASE=mario-kart-64
+```
+
+The selected ROM must be present under `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms/`. Cases live in `tests/dolphin/cases/`; each run prints its temporary artifact directory under `/private/tmp/`. The target creates an AUTOTEST-only DOL, so ordinary builds do not read `sd:/wii64/autotest/current.ini` or stop after a fixed VI count.
+
 Do not place ROMs, BIOS files, save files, or copyrighted captures in this repository. Keep test inputs in a private, legally sourced directory and record only the title/region/revision/CRC in benchmark notes.
 
 ## Current state

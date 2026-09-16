@@ -8,14 +8,18 @@ LIBPATHS 	+= -L$(DEVKITPRO)/libogc2/wii/lib
 INCLUDE 	+= -I$(DEVKITPRO)/libogc2/wii/include
 
 OBJ		+= \
-		vm/dsihandler.o \
-		vm/wii_vm.o \
-		main/wii.o \
-		main/Autoboot.o
+	vm/dsihandler.o \
+	vm/wii_vm.o \
+	main/wii.o \
+	main/Autoboot.o
+
+ifeq ($(AUTOTEST),1)
+CXXFLAGS	+= -DAUTOTEST
+OBJ		+= main/Autotest.o
+endif
 
 OBJ_INPUT	+= \
 		gc_input/controller-Classic.o \
 		gc_input/controller-WiimoteNunchuk.o
 
 LIB		+= -lwiiuse -lbte -lz
-

@@ -47,6 +47,9 @@ extern void Func_SetPlayGame();
 
 #ifdef HW_RVL
 #include "../main/Autoboot.h"
+#ifdef AUTOTEST
+#include "../main/Autotest.h"
+#endif
 #define NUM_FRAME_BUTTONS 3
 #else
 #define NUM_FRAME_BUTTONS 2
@@ -102,7 +105,15 @@ void setupFatDevice(fileBrowser_file* topLevel)
 
 LoadRomFrame::LoadRomFrame()
 {
-#ifdef HW_RVL	
+#ifdef HW_RVL
+	// Dolphin cannot pass a Wii DOL argument.  AUTOTEST supplies the same
+	// existing autoboot path from a private SD control file instead.
+#ifdef AUTOTEST
+	if (!Autoboot::hasPath()) {
+		setupFatDevice(&topLevel_libfat_Default);
+		autotest_load();
+	}
+#endif
 	// argv is only setup if we detect argv[0] sd:/ or usb:/
 	// Yes this happens early, before we've actually run the menu for any frames.
 	if (Autoboot::hasPath())
@@ -116,7 +127,10 @@ LoadRomFrame::LoadRomFrame()
 		
 		setupFatDevice(strncmp(path, "sd:/", 4) == 0 ? &topLevel_libfat_Default : &topLevel_libfat_USB);
         int ret = loadROM(autoBoot);
-		menu::Gui::getInstance().draw();	
+#ifdef AUTOTEST
+		autotest_load_result(ret);
+#endif
+		menu::Gui::getInstance().draw();
 
         if (ret)
         {

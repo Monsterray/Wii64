@@ -7,3 +7,6 @@ include Makefile.glN64
 include Makefile.wii
 include Makefile.base
 
+.PHONY: test-dolphin
+test-dolphin:
+	./tools/test-dolphin.sh "$(CASE)"

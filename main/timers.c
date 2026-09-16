@@ -11,6 +11,9 @@
 #include "../r4300/r4300.h"
 #include "../gui/DEBUG.h"
 #include "gamehacks.h"
+#ifdef AUTOTEST
+#include "Autotest.h"
+#endif
 
 timers Timers = {0.0, 0.0, 0, 1, 0, 100};
 float VILimit = 60.0;
@@ -124,6 +127,9 @@ void new_vi(void) {
 	start_section(IDLE_SECTION);
 //	if ( (!Config.showVIS) && (!Config.limitFps) ) return;
 	VI_Counter++;
+#ifdef AUTOTEST
+	autotest_tick();
+#endif
 
 	CurrentFPSTime = ticks_to_microsecs(gettick());
 
