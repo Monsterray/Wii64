@@ -712,12 +712,14 @@ void selectRomFrame_FillPage()
 				//			rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				//load boxart
 				BOXART_Init();
+				#ifdef SHOW_DEBUG
 				bool found = BOXART_LoadTexture(rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1,(char*) fileTextures[i]);
-#ifdef SHOW_DEBUG
 				if(!found) {
 					print_gecko("Boxart miss %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].Name, rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				}
-#endif
+				#else
+				BOXART_LoadTexture(rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1,(char*) fileTextures[i]);
+				#endif
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[i+(current_page*NUM_FILE_SLOTS)].Country_code == 0x4A);
 			}
