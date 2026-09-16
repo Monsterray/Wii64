@@ -72,10 +72,10 @@ Use `make -f Makefile.glN64_wii clean` between toolchain/configuration experimen
 
 ## Launch in Dolphin
 
-Dolphin’s DSP HLE does not recognize Wii64’s homebrew audio microcode. Launch with DSP LLE for this target:
+Dolphin’s DSP HLE does not recognize Wii64’s homebrew audio microcode. Enable Dolphin’s PPC MMU for Wii64: without it, Mario Party 1 reports an invalid write that disappears with normal address translation. Launch with both settings:
 
 ```sh
-/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
+/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --config Main.Core.MMU=True --exec="$PWD/wii64-glN64.dol"
 ```
 
 For filesystem smoke tests, use Dolphin’s SD card, not `usb:`. Prefer Dolphin’s folder sync: in **Config → Wii → SD Card Settings**, enable **Automatically sync with folder** and use `~/Library/Application Support/Dolphin/Load/WiiSDSync/`. Create `wii64/roms` and `wii64/saves` there; Wii64 starts at `sd:/wii64/roms`. This keeps test ROMs outside the repository and avoids manually mounting `WiiSD.raw`. An empty ROM directory is not a mount failure. Dolphin does not emulate the Wii USB mass-storage device used by this version of Wii64, so validate `usb:` on hardware.

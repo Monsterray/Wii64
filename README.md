@@ -77,10 +77,10 @@ make -f Makefile.glN64_wii -j"$(sysctl -n hw.ncpu)"
 
 This creates `wii64-glN64.dol`. Build the Rice renderer with `Makefile.Rice_wii`; it creates `wii64-Rice.dol`.
 
-Run a Wii DOL in Dolphin with DSP LLE:
+Run a Wii DOL in Dolphin with DSP LLE and the PPC MMU:
 
 ```sh
-/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
+/Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --config Main.Core.MMU=True --exec="$PWD/wii64-glN64.dol"
 ```
 
 For Dolphin SD tests, use folder sync at `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/`.

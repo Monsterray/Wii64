@@ -22,6 +22,7 @@ Subsystem labels are hypotheses to verify with counters and traces, not claims t
 |---|---|---|---|
 | Smoke | Super Mario 64 | Baseline CPU/RSP/graphics path | Boot, input, stable VI/s |
 | Smoke | Mario Kart 64 | CPU, display lists, VI pacing | Multiplayer/menu transitions |
+| Smoke | Mario Party 1 | Dynarec cache churn, CPU/timing | Run Dolphin with PPC MMU enabled; boot a board, return to the menu |
 | Broad | The Legend of Zelda: Ocarina of Time | Framebuffer textures, timing, F3DZEX2 | Pause/menu, transitions |
 | Broad | The Legend of Zelda: Majora’s Mask | Framebuffer/memory/timing | VM/ROM reads, transitions |
 | Broad | GoldenEye 007 | F3DGOLDEN, CPU, textures | Heavy scene changes |
