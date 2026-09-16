@@ -67,44 +67,23 @@
 
 ## DEVELOPMENT BUILD
 
-Install the official devkitPro toolchain, then update and install the Wii dependencies:
+See [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) for the supported Intel macOS setup.
+
+Build a Wii DOL:
 
 ```sh
-sudo dkp-pacman -Syu
-sudo dkp-pacman -S wii-dev ppc-zlib
-```
-
-`libogc2` and its matching legacy `libfat` are not available as a compatible pair in the standard configured repository. Build them from source in a directory without spaces (the legacy libfat makefiles are not space-safe):
-
-```sh
-export DEVKITPRO=/opt/devkitpro
-export DEVKITPPC="$DEVKITPRO/devkitPPC"
-export PATH="$DEVKITPRO/tools/bin:$DEVKITPPC/bin:$PATH"
-
-mkdir -p "$HOME/devkitpro-src"
-cd "$HOME/devkitpro-src"
-git clone https://github.com/extremscorner/libogc2.git
-git clone https://github.com/extremscorner/libfat.git
-
-cd libogc2
-make wii
-sudo -E make install
-
-cd ../libfat
-make -C libogc2 PLATFORM=wii BUILD=wii_release
-sudo -E make -C libogc2 install
-
-cd "/path/to/Wii64"
 make -f Makefile.glN64_wii -j"$(sysctl -n hw.ncpu)"
 ```
 
-This produces `wii64-glN64.dol`. To launch it in Dolphin:
+This creates `wii64-glN64.dol`. Build the Rice renderer with `Makefile.Rice_wii`; it creates `wii64-Rice.dol`.
+
+Run a Wii DOL in Dolphin with DSP LLE:
 
 ```sh
 /Applications/Dolphin.app/Contents/MacOS/Dolphin --audio_emulation LLE --exec="$PWD/wii64-glN64.dol"
 ```
 
-The package and install commands require an interactive administrator password. See [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) for the complete macOS setup.
+For Dolphin SD tests, use folder sync at `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/`.
 
 ## ADVANCED USAGE
 ### GameCube Version(s)

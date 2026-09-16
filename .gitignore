@@ -2,5 +2,6 @@
 *.elf
 *.dol
 *.map
+.DS_Store
 /libogc2/
 /libfat/
