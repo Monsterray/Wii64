@@ -644,6 +644,15 @@ void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 	current_page = 0;
 	max_page = (int)ceil((float)num_entries/NUM_FILE_SLOTS);
 	selectRomFrame_FillPage();
+
+	// fadeMessage()'s decay only runs from drawMessageBox(), called once per
+	// rendered frame -- but the scan above is synchronous with no draw() calls
+	// during it, so the fade timer can't even start until indexing is already
+	// done, then takes ~100 more frames (~2s) to actually disappear. Indexing
+	// just finished and the page above is filled, so dismiss it now instead of
+	// leaving a "Searching for ROMs" message on screen after there's nothing
+	// left to search for.
+	menu::MessageBox::getInstance().deactivate();
 }
 
 void selectRomFrame_Error(fileBrowser_file* dir, int error_code)
