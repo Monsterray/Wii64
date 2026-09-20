@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <malloc.h>
 #ifdef DEBUGON
 # include <debug.h>
@@ -189,6 +190,24 @@ void (*fBGetFrameBufferInfo)(void *p) = NULL;
 // Read PAD format from Classic if available
 u16 readWPAD(void);
 
+/* Nothing in Wii64 ever created its own directories, so on a fresh card every
+   config and save write failed ("Error saving settings.cfg to SD") and the ROM
+   browser reported an error, with no hint that the cause was a missing folder.
+   Create the tree once at startup instead. mkdir failing because a directory is
+   already there is the normal case, so nothing is reported either way -- the
+   callers that use these paths already report their own failures. */
+static void ensure_wii64_dirs(const char *prefix) {
+	char path[32];
+	size_t len = strlen(prefix);		// prefix is "sd:/wii64/" -- drop the trailing '/'
+	if(len == 0 || len >= sizeof(path)) return;
+	snprintf(path, sizeof(path), "%.*s", (int)(len-1), prefix);
+	mkdir(path, 0777);
+	snprintf(path, sizeof(path), "%sroms", prefix);
+	mkdir(path, 0777);
+	snprintf(path, sizeof(path), "%ssaves", prefix);
+	mkdir(path, 0777);
+}
+
 void load_config(const char *loaded_path) {
 	//config stuff
 	fileBrowser_file configFile_file;
@@ -219,6 +238,7 @@ void load_config(const char *loaded_path) {
 #endif
 	}
 	if(configFile_init(&configFile_file)) {                	//only if device initialized ok
+		ensure_wii64_dirs(prefix);
 		sprintf(configFile_file.name, "%s%s", prefix, "settings.cfg");
 		FILE* f = fopen( configFile_file.name, "r" );  //attempt to open file
 		if(f) {        //open ok, read it
