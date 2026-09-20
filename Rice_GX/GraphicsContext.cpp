@@ -134,14 +134,14 @@ void CGraphicsContext::InitDeviceParameters(void)
 {
     // Initialize common device parameters
 
-    int i=0, j;
-    int numOfFrequency=0, numOfColorDepth = 0;
     CGraphicsContext::m_numOfResolutions=0;
     memset(&CGraphicsContext::m_FullScreenRefreshRates,0,40*sizeof(UINT));
     memset(&CGraphicsContext::m_FullScreenResolutions, 0, 40*2*sizeof(int));
     memset(&CGraphicsContext::m_ColorBufferDepths, 0, 4*sizeof(UINT));
 
 #ifndef __GX__
+   int i=0, j;
+   int numOfFrequency=0, numOfColorDepth = 0;
    if(SDL_InitSubSystem(SDL_INIT_VIDEO) == -1)
      printf("(EE) Error initializing SDL video subsystem: %s\n", SDL_GetError());
    

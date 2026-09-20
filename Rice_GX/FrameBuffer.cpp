@@ -89,7 +89,8 @@ void FrameBufferManager::Initialize()
     status.bHandleN64RenderTexture = false;
     status.bN64FrameBufferIsUsed = false;
 
-    memset(&gRenderTextureInfos[0], 0, sizeof(RenderTextureInfo)*numOfTxtBufInfos);
+    for( int i=0; i<numOfTxtBufInfos; i++ )
+        gRenderTextureInfos[i] = RenderTextureInfo();
 }
 // ===========================================================================
 
@@ -286,12 +287,9 @@ bool FrameBufferManager::IsDIaRenderTexture()
 
     //if( g_CI.dwWidth )
 
-    bool foundSetScissor=false;
     bool foundFillRect=false;
     bool foundSetFillColor=false;
     bool foundSetCImg=false;
-    bool foundTxtRect=false;
-    int height;
     uint32 newFillColor = 0;
 
     uint32 dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
@@ -302,15 +300,10 @@ bool FrameBufferManager::IsDIaRenderTexture()
         uint32 w1 = *(uint32 *)(g_pRDRAMu8 + dwPC + 4 + i*8);
 
         if( (w0>>24) == RDP_SETSCISSOR )
-        {
-            height   = ((w1>>0 )&0xFFF)/4;
-            foundSetScissor = true;
             continue;
-        }
 
         if( (w0>>24) == RDP_SETFILLCOLOR )
         {
-            height   = ((w1>>0 )&0xFFF)/4;
             foundSetFillColor = true;
             newFillColor = w1;
             continue;
@@ -321,20 +314,17 @@ bool FrameBufferManager::IsDIaRenderTexture()
             uint32 x0   = ((w1>>12)&0xFFF)/4;
             uint32 y0   = ((w1>>0 )&0xFFF)/4;
             uint32 x1   = ((w0>>12)&0xFFF)/4;
-            uint32 y1   = ((w0>>0 )&0xFFF)/4;
 
             if( x0 == 0 && y0 == 0 )
             {
                 if( x1 == g_CI.dwWidth )
                 {
-                    height = y1;
                     foundFillRect = true;
                     continue;
                 }
 
                 if(x1 == (unsigned int)(g_CI.dwWidth-1))
                 {
-                    height = y1+1;
                     foundFillRect = true;
                     continue;
                 }
@@ -343,7 +333,6 @@ bool FrameBufferManager::IsDIaRenderTexture()
 
         if( (w0>>24) == RDP_TEXRECT )
         {
-            foundTxtRect = true;
             break;
         }
 
@@ -384,13 +373,6 @@ bool FrameBufferManager::IsDIaRenderTexture()
         return false;
     }
     else
-        return true;
-
-
-    if( !foundSetCImg )
-        return true;
-
-    if( foundSetScissor )
         return true;
 }
 
@@ -1335,7 +1317,7 @@ OK, heres the drill!
 
     // Need to set all variables for gRenderTextureInfos[idxToUse]
     CRenderTexture *pRenderTexture = gRenderTextureInfos[idxToUse].pRenderTexture;
-    memcpy(&gRenderTextureInfos[idxToUse], &tempRenderTextureInfo, sizeof(RenderTextureInfo) );
+    gRenderTextureInfos[idxToUse] = tempRenderTextureInfo;
     gRenderTextureInfos[idxToUse].pRenderTexture = pRenderTexture;
     gRenderTextureInfos[idxToUse].isUsed = true;
     gRenderTextureInfos[idxToUse].txtEntry.pTexture = pRenderTexture->m_pTexture;
@@ -1612,7 +1594,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
 
         // Need to set all variables for gRenderTextureInfos[idxToUse]
         CRenderTexture *pRenderTexture = gRenderTextureInfos[idxToUse].pRenderTexture;
-        memcpy(&gRenderTextureInfos[idxToUse], &newRenderTextureInfo, sizeof(RenderTextureInfo) );
+        gRenderTextureInfos[idxToUse] = newRenderTextureInfo;
         gRenderTextureInfos[idxToUse].pRenderTexture = pRenderTexture;
         gRenderTextureInfos[idxToUse].isUsed = true;
         gRenderTextureInfos[idxToUse].txtEntry.pTexture = pRenderTexture->m_pTexture;

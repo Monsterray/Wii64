@@ -60,6 +60,10 @@ public:
         *((COLOR*)this) = DWORD(rgba);
     }
 
+    // Explicit to match operator= below (both just copy the 4 raw bytes) and
+    // avoid -Wdeprecated-copy for having one without the other.
+    IColor(const IColor&) = default;
+
     inline IColor operator = (const IColor &sec) const
     {
         *((COLOR*)this) = *((COLOR*)&sec);

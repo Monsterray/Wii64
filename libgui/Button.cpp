@@ -284,7 +284,7 @@ void Button::drawComponent(Graphics& gfx)
 
 	if (buttonText)
 	{
-		int strWidth, strHeight;
+		int strHeight;
 		unsigned long CurrentTime;
 		float scrollWidth, time_sec, scrollOffset;
 		gfx.enableScissor(x + labelScissor, y, width - 2*labelScissor, height);
@@ -296,7 +296,6 @@ void Button::drawComponent(Graphics& gfx)
 				IplFont::getInstance().drawString((int) (x+width/2), (int) (y+height/2), *buttonText, fontSize, true);
 				break;
 			case LABEL_LEFT:
-				strWidth = IplFont::getInstance().getStringWidth(*buttonText, fontSize);
 				strHeight = IplFont::getInstance().getStringHeight(*buttonText, fontSize);
 				IplFont::getInstance().drawString((int) (x+labelScissor), (int) (y+(height-strHeight)/2), *buttonText, fontSize, false);
 				break;
@@ -324,7 +323,6 @@ void Button::drawComponent(Graphics& gfx)
 				}
 				else
 				{
-				strWidth = IplFont::getInstance().getStringWidth(*buttonText, fontSize);
 				strHeight = IplFont::getInstance().getStringHeight(*buttonText, fontSize);
 				IplFont::getInstance().drawString((int) (x+labelScissor), (int) (y+(height-strHeight)/2), *buttonText, fontSize, false);
 				}

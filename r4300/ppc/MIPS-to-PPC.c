@@ -54,10 +54,12 @@ static void genJumpTo(unsigned int loc, unsigned int type);
 static void genUpdateCount(int checkCount);
 static void genCheckFP(void);
 static void genCallDynaMem(memType type, int count, int reverse, int _rs, int _rt, short immed);
+#ifdef LAZY_GEN_CALLS
 static void emit_update_count_lazy(int checkCount);
 static void emit_genCheckFp_lazy(void);
+#endif
 void RecompCache_Update(PowerPC_func*);
-static int inline mips_is_jump(MIPS_instr);
+static inline int mips_is_jump(MIPS_instr);
 void jump_to(unsigned int);
 void check_interupt();
 extern unsigned long count_per_op;

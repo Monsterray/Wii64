@@ -386,60 +386,6 @@ void gDPUpdateColorImage(void)
     }
 }
 
-#if 0
-void gDPUpdateColorImage()
-{
-	return;
-	if ((gDP.colorImage.size == G_IM_SIZ_16b) && (gDP.colorImage.format == G_IM_FMT_RGBA))
-	{
-		u16 *frameBuffer = (u16*)malloc( (unsigned int)(gDP.colorImage.width * OGL.scaleX * gDP.colorImage.height * OGL.scaleY * 2) );
-		u16 *colorImage = (u16*)&RDRAM[gDP.colorImage.address];
-		u32 frameX, frameY;
-		u32 i = 0;
-
-		glReadBuffer( GL_BACK );
-		glReadPixels( 0, (int)(OGL.height - gDP.colorImage.height * OGL.scaleY + OGL.heightOffset), (int)(gDP.colorImage.width * OGL.scaleX), (int)(gDP.colorImage.height * OGL.scaleY), GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1_EXT, frameBuffer );
-
-		for (u32 y = 0; y < gDP.colorImage.height; y++)
-		{
-			frameY = (unsigned long)((gDP.colorImage.height - 1) * OGL.scaleY - y * OGL.scaleY);
-			for (u32 x = 0; x < gDP.colorImage.width; x++)
-			{
-				frameX = (unsigned long)(x * OGL.scaleX);
-				colorImage[i^1] = frameBuffer[(u32)(gDP.colorImage.width * OGL.scaleX) * frameY + frameX];
-
-				i++;
-			}
-		}
-
-		free( frameBuffer );
-	}
-	else if ((gDP.colorImage.size == G_IM_SIZ_8b) && (gDP.colorImage.format == G_IM_FMT_I))
-	{
-		u8 *frameBuffer = (u8*)malloc( (unsigned int)(gDP.colorImage.width * OGL.scaleX * gDP.colorImage.height * OGL.scaleY) );
-		u8 *colorImage = (u8*)&RDRAM[gDP.colorImage.address];
-		u32 frameX, frameY;
-		u32 i = 0;
-
-		glReadPixels( 0, (int)(OGL.height - gDP.colorImage.height * OGL.scaleY + OGL.heightOffset), (int)(gDP.colorImage.width * OGL.scaleX), (int)(gDP.colorImage.height * OGL.scaleY), GL_LUMINANCE, GL_UNSIGNED_BYTE, frameBuffer );
-
-		for (u32 y = 0; y < gDP.colorImage.height; y++)
-		{
-			frameY = (unsigned long)((gDP.colorImage.height - 1) * OGL.scaleY - y * OGL.scaleY);
-			for (u32 x = 0; x < gDP.colorImage.width; x++)
-			{
-				frameX = (unsigned long)(x * OGL.scaleX);
-				colorImage[i^3] = frameBuffer[(u32)(gDP.colorImage.width * OGL.scaleX) * frameY + frameX];
-
-				i++;
-			}
-		}
-
-		free( frameBuffer );
-	}
-}
-#endif
-
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
 	if (enablegDPUpdateColorImage &&

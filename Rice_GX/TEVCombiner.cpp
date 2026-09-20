@@ -934,15 +934,6 @@ void CTEVColorCombiner::GenerateCombinerSetting(int index)
 		}
 	}
 
-#if 0 //def SHOW_DEBUG
-//	if( m_pDecodedMux->m_dwMux0 == 0x0026a004 && m_pDecodedMux->m_dwMux1 == 0x1f1093fb )
-	if( m_pDecodedMux->m_dwMux0 == 0x00272c04 && m_pDecodedMux->m_dwMux1 == 0x1f1093ff )
-	{
-		sprintf(txtbuffer,"\r\nGenCombSetng: detected Mux0 0x%8x, Mux1 0x%8x, pTex0 0x%8x, pTex1 0x%8x\r\n", m_pDecodedMux->m_dwMux0, m_pDecodedMux->m_dwMux1, pTexture, pTexture1);
-		DEBUG_print(txtbuffer,DBG_USBGECKO);
-	}
-#endif //SHOW_DEBUG
-	
 	GX_SetNumTevStages(res.numOfUnits);
 //	GX_SetNumTevStages(res.numOfUnits+1);
 	GX_SetNumChans (1);
@@ -953,22 +944,6 @@ void CTEVColorCombiner::GenerateCombinerSetting(int index)
 	for( int i=0; i<res.numOfUnits; i++ )
 	{
 		GX_SetTevOrder (GX_TEVSTAGE0+i, res.units[i].order.texcoord, res.units[i].order.texmap, res.units[i].order.color);
-#if 0 //for debugging
-		if( m_pDecodedMux->m_dwMux0 == 0x00267e60 && m_pDecodedMux->m_dwMux1 == 0x350cf37f && i==res.numOfUnits-1) //OOT Intro Index1
-		{
-//			GX_SetTevOrder (GX_TEVSTAGE0+i, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-//			GX_SetTevColorIn(GX_TEVSTAGE0+i, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ONE);
-//			GX_SetTevAlphaIn(GX_TEVSTAGE0+i, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA); //GX_CA_RASA, GX_CA_KONST
-//			GX_SetTevKAlphaSel(GX_TEVSTAGE0+i, GX_TEV_KASEL_K0_A);
-		}
-		else
-		{
-//			GX_SetTevOrder (GX_TEVSTAGE0+i, res.units[i].order.texcoord, res.units[i].order.texmap, res.units[i].order.color);
-//			GX_SetTevColorIn(GX_TEVSTAGE0+i, res.units[i].rgbIn.a, res.units[i].rgbIn.b, res.units[i].rgbIn.c, res.units[i].rgbIn.d);
-//			GX_SetTevAlphaIn(GX_TEVSTAGE0+i, res.units[i].alphaIn.a, res.units[i].alphaIn.b, res.units[i].alphaIn.c, res.units[i].alphaIn.d);
-//			GX_SetTevKAlphaSel(GX_TEVSTAGE0+i, res.units[i].Kalpha);
-		}
-#endif
 		GX_SetTevColorIn(GX_TEVSTAGE0+i, res.units[i].rgbIn.a, res.units[i].rgbIn.b, res.units[i].rgbIn.c, res.units[i].rgbIn.d);
 		GX_SetTevAlphaIn(GX_TEVSTAGE0+i, res.units[i].alphaIn.a, res.units[i].alphaIn.b, res.units[i].alphaIn.c, res.units[i].alphaIn.d);
 		GX_SetTevColorOp(GX_TEVSTAGE0+i, res.units[i].rgbOp.tevop, res.units[i].rgbOp.tevbias, 
@@ -979,44 +954,6 @@ void CTEVColorCombiner::GenerateCombinerSetting(int index)
 		GX_SetTevKAlphaSel(GX_TEVSTAGE0+i, res.units[i].Kalpha);
 	}
 
-	if( 0 ) //m_pDecodedMux->m_dwMux0 == 0x00267e60 && m_pDecodedMux->m_dwMux1 == 0x350cf37f ) //OOT Intro Index1
-	{
-//		GX_SetTevColorIn(GX_TEVSTAGE0+res.numOfUnits-1, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_C2);
-		GX_SetTevColorIn(GX_TEVSTAGE0+res.numOfUnits-1, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ONE);
-	}
-
-	//Configure final stage for Ztexture
-//	GX_SetTevOp ((u8) res.numOfUnits, GX_PASSCLR);
-//	GX_SetTevOrder ((u8) res.numOfUnits, GX_TEXMAP2, GX_TEXMAP2, GX_COLORNULL);
-
-/*	GX_SetTevOp(GX_TEVSTAGE0,GX_REPLACE);//GXTevMode);
-//	if( pTexture )
-	//	GX_LoadTexObj(&pTexture->GXtex, 0); // t = 0 is GX_TEXMAP0 and t = 1 is GX_TEXMAP1
-
-	GX_SetNumTevStages(1);
-	GX_SetNumChans (1);
-	GX_SetNumTexGens (1);
-	GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-*/
-#ifndef __GX__
-    for( int i=0; i<res.numOfUnits; i++ )
-    {
-        glActiveTexture(GL_TEXTURE0_ARB+i);
-        m_pOGLRender->EnableTexUnit(i,TRUE);
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
-        ApplyFor1Unit(res.units[i]);
-    }
-
-    if( res.numOfUnits < m_maxTexUnits )
-    {
-        for( int i=res.numOfUnits; i<m_maxTexUnits; i++ )
-        {
-            glActiveTexture(GL_TEXTURE0_ARB+i);
-            m_pOGLRender->DisBindTexture(0, i);
-            m_pOGLRender->EnableTexUnit(i,FALSE);
-        }
-    }
-#endif //!__GX__
 }
 
 void CTEVColorCombiner::GenerateCombinerSettingConstants(int index)
@@ -1037,10 +974,6 @@ void CTEVColorCombiner::GenerateCombinerSettingConstants(int index)
 		GXcol.b = (u8) (dwColor&0xFF);
 		GXcol.a = (u8) (dwColor>>24);
 		GX_SetTevKColor(GX_KCOLOR0, GXcol);
-#if 0//def SHOW_DEBUG
-		sprintf(txtbuffer,"\r\nGenCombConst: prim (%d,%d,%d,%d)\r\n",GXcol.r,GXcol.g,GXcol.b,GXcol.a);
-		DEBUG_print(txtbuffer,DBG_USBGECKO);
-#endif
 	}
 	if( res.envIsUsed )
 	{

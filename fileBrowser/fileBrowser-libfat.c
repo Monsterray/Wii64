@@ -41,27 +41,20 @@ extern int stop;
 #ifdef HW_RVL
 #include <sdcard/wiisd_io.h>
 #include <ogc/usbstorage.h>
-DISC_INTERFACE* frontsd = &__io_wiisd;
-DISC_INTERFACE* usb = &__io_usbstorage;
-DISC_INTERFACE* carda = &__io_gcsda;
-DISC_INTERFACE* cardb = &__io_gcsdb;
+const DISC_INTERFACE* frontsd = &__io_wiisd;
+const DISC_INTERFACE* usb = &__io_usbstorage;
+const DISC_INTERFACE* carda = &__io_gcsda;
+const DISC_INTERFACE* cardb = &__io_gcsdb;
 
 #else
-DISC_INTERFACE* carda = &__io_gcsda;
-DISC_INTERFACE* cardb = &__io_gcsdb;
-DISC_INTERFACE* sd2sp2 = &__io_gcsd2;
+const DISC_INTERFACE* carda = &__io_gcsda;
+const DISC_INTERFACE* cardb = &__io_gcsdb;
+const DISC_INTERFACE* sd2sp2 = &__io_gcsd2;
 #endif
 
 #define FRONTSD 1
 #define CARD_A  2
 #define CARD_B  3
-#ifdef HW_RVL
-
-static char sdMounted  = 0;
-static char sdNeedsUnmount  = 0;
-static char usbMounted = 0;
-static char usbNeedsUnmount = 0;
-#endif
 
 fileBrowser_file topLevel_libfat_Default =
 	{ "sd:/wii64/roms", // file name
@@ -112,7 +105,10 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 		memset(direntry, 0, sizeof(fileBrowser_file));
 		sprintf(direntry->name, "%s/%s", file->name, entry->d_name);
 		direntry->offset = 0;
-		direntry->size   = entry->d_stat.st_size;
+		{
+			struct stat st;
+			direntry->size = (stat(direntry->name, &st) == 0) ? st.st_size : 0;
+		}
 		direntry->attr   = (entry->d_type == DT_DIR) ?
 							FILE_BROWSER_ATTR_DIR : 0;
 		
@@ -133,8 +129,8 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 			}
 			if(n64only) {
 				const char *ext = strrchr(direntry->name, '.');
-				if(!(strcasecmp(ext, ".v64") || strcasecmp(ext, ".z64") ||
-					 strcasecmp(ext, ".n64") || strcasecmp(ext, ".bin")))
+				if(!ext || (strcasecmp(ext, ".v64") && strcasecmp(ext, ".z64") &&
+					 strcasecmp(ext, ".n64") && strcasecmp(ext, ".bin")))
 					continue;
 			}
 			

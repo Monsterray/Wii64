@@ -20,6 +20,7 @@
 #endif
 
 struct PixelIterator {
+	virtual ~PixelIterator() {}
 	virtual void operator ++ () = 0;
 	virtual void operator += (int) = 0;
 	virtual u32 operator [] (int) = 0;

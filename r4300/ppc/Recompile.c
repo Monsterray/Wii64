@@ -461,7 +461,7 @@ static int pass0(PowerPC_block* ppc_block){
 			unsigned int li = MIPS_GET_LI(*src);
 			src+=2; ++pc;
 			if(!is_j_out(li, 1)){
-				assert( ((li&0x3FF) >= 0) && ((li&0x3FF) < 1024) );
+				assert( (li&0x3FF) < 1024 );
 				isJmpDst[ li & 0x3FF ] = 1;
 			}
 			--src;

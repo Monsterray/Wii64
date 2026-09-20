@@ -2205,7 +2205,7 @@ typedef struct TmemInfoEntry{
 } TmemInfoEntry;
 
 const int tmenMaxEntry=20;
-TmemInfoEntry tmenEntryBuffer[20]={{0}};
+TmemInfoEntry tmenEntryBuffer[20]={{0,0,0,NULL}};
 TmemInfoEntry *g_pTMEMInfo=NULL;
 TmemInfoEntry *g_pTMEMFreeList=tmenEntryBuffer;
 

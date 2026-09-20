@@ -236,7 +236,8 @@ controller_t controller_DRC =
 	    .analog    = &analog_sources[0],
 	    .exit      = &menu_combos[2],
 	    .invertedY = 0,
-	  }
+	  },
+	  {{0}}, {{0}}
 	 };
 
 static void refreshAvailable(void){

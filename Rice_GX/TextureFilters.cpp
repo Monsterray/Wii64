@@ -632,8 +632,6 @@ void EnhanceTexture(TxtrCacheEntry *pEntry)
         return;
     }
 
-    uint32 realwidth = srcInfo.dwWidth;
-    uint32 realheight = srcInfo.dwHeight;
     uint32 nWidth = srcInfo.dwCreatedWidth;
     uint32 nHeight = srcInfo.dwCreatedHeight;
 
@@ -664,6 +662,8 @@ void EnhanceTexture(TxtrCacheEntry *pEntry)
     }
 
 #ifndef __GX__
+    uint32 realwidth = srcInfo.dwWidth;
+    uint32 realheight = srcInfo.dwHeight;
     CTexture* pSurfaceHandler = NULL;
     if( options.textureEnhancement == TEXTURE_HQ4X_ENHANCEMENT )
     {
@@ -2127,9 +2127,6 @@ void LoadHiresTexture( TxtrCacheEntry &entry )
 	DEBUG_print(txtbuffer,DBG_USBGECKO);
 #endif
 
-    bool bResRGBA=false, bResA=false;
-    bool bCI = ((gRDP.otherMode.text_tlut>=2 || entry.ti.Format == TXT_FMT_CI || entry.ti.Format == TXT_FMT_RGBA) && entry.ti.Size <= TXT_SIZE_8b );
-
 	int width = archiveEntryInfo.width;
 	int height = archiveEntryInfo.height;
 
@@ -2175,7 +2172,10 @@ void LoadHiresTexture( TxtrCacheEntry &entry )
     if( entry.pEnhancedTexture && entry.pEnhancedTexture->StartUpdate(&info) )
     {
 		unsigned int stride = info.lPitch * 4; // 4 lines in GX tile
-		bool readOK = ArchiveReader::getInstance().readTexture( info.lpSurface, archiveEntry, archiveEntryInfo, stride);
+#ifdef SHOW_DEBUG
+		bool readOK =
+#endif
+		ArchiveReader::getInstance().readTexture( info.lpSurface, archiveEntry, archiveEntryInfo, stride);
 #ifdef SHOW_DEBUG
 		if (readOK)
 			sprintf(txtbuffer,"readTexture success\r\n");

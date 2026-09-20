@@ -970,15 +970,16 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 	u8 *swapped;
 	GLuint			glInternalFormat;
 	GLenum			glType;
+	u32 numBytes;
+	u16 clampSClamp;
+	u16 clampTClamp;
 #else // !__GX__
 	u32	GXsize, k, l;
 #endif // __GX__
 
 	u8 *src;
-	u32 numBytes, bpl;
+	u32 bpl;
 	u32 x, y, /*i,*/ j, tx, ty;
-	u16 clampSClamp;
-	u16 clampTClamp;
 	GetTexelFunc	GetTexel;
 
 #ifndef __GX__
@@ -1092,10 +1093,6 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 //	texInfo->textureBytes = (texInfo->realWidth * texInfo->realHeight) * GXsize;
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
-	numBytes = bpl * gSP.bgImage.height;
-//	swapped = (u8*)malloc( numBytes );
-//	UnswapCopy( &RDRAM[gSP.bgImage.address], swapped, numBytes );
-//	dest = (u32*)malloc( texInfo->textureBytes );
 
 	if (texInfo->textureBytes > 0)
 	{
@@ -1117,8 +1114,6 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 
 	const u32 wrapS = (texInfo->width  > 0) ? texInfo->width  : 1;
 	const u32 wrapT = (texInfo->height > 0) ? texInfo->height : 1;
-	clampSClamp = texInfo->width - 1;
-	clampTClamp = texInfo->height - 1;
 
 	if (!cache.enable2xSaI)
 	{

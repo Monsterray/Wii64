@@ -122,6 +122,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             case RSP_MV_WORD_OFFSET_CLIP_RPX:
             case RSP_MV_WORD_OFFSET_CLIP_RPY:
                 CRender::g_pRender->SetClipRatio(gfx->gbi2moveword.offset, gfx->gbi2moveword.value);
+                break;
             default:
                 LOG_UCODE("     RSP_MOVE_WORD_CLIP  ?   : 0x%08x", gfx->words.w1);
                 break;
@@ -815,6 +816,7 @@ void RSP_GBI2_MoveMem(Gfx *gfx)
             RSP_S2DEX_OBJ_MOVEMEM(gfx);
             break;
         }
+        /* fallthrough */
     default:
         LOG_UCODE("ZeldaMoveMem Type: Unknown");
         RSP_RDP_NOIMPL("Unknown ZeldaMoveMem Type, type=0x%X, Addr=%08X", type, addr);

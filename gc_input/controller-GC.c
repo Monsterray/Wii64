@@ -207,7 +207,8 @@ controller_t controller_GC =
 	    .analog    = &analog_sources[0],
 	    .exit      = &menu_combos[0],
 	    .invertedY = 0,
-	  }
+	  },
+	  {{0}}, {{0}}
 	 };
 
 static void refreshAvailable(void){

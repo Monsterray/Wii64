@@ -90,11 +90,11 @@ CTextureManager::CTextureManager() :
     for (uint32 i = 0; i < m_numOfCachedTxtrList; i++)
         m_pCacheTxtrList[i] = NULL;
 
-    memset(&m_blackTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_PrimColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_EnvColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_LODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_PrimLODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
+    m_blackTextureEntry = TxtrCacheEntry();
+    m_PrimColorTextureEntry = TxtrCacheEntry();
+    m_EnvColorTextureEntry = TxtrCacheEntry();
+    m_LODFracTextureEntry = TxtrCacheEntry();
+    m_PrimLODFracTextureEntry = TxtrCacheEntry();
 
 }
 
@@ -147,11 +147,18 @@ bool CTextureManager::CleanUp()
     if( m_EnvColorTextureEntry.pTexture )   delete m_EnvColorTextureEntry.pTexture;
     if( m_LODFracTextureEntry.pTexture )    delete m_LODFracTextureEntry.pTexture;
     if( m_PrimLODFracTextureEntry.pTexture )    delete m_PrimLODFracTextureEntry.pTexture;
-    memset(&m_blackTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_PrimColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_EnvColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_LODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
-    memset(&m_PrimLODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
+    // Every other teardown path in this file deletes pEnhancedTexture alongside
+    // pTexture; these five special entries were missing it.
+    SAFE_DELETE(m_blackTextureEntry.pEnhancedTexture);
+    SAFE_DELETE(m_PrimColorTextureEntry.pEnhancedTexture);
+    SAFE_DELETE(m_EnvColorTextureEntry.pEnhancedTexture);
+    SAFE_DELETE(m_LODFracTextureEntry.pEnhancedTexture);
+    SAFE_DELETE(m_PrimLODFracTextureEntry.pEnhancedTexture);
+    m_blackTextureEntry = TxtrCacheEntry();
+    m_PrimColorTextureEntry = TxtrCacheEntry();
+    m_EnvColorTextureEntry = TxtrCacheEntry();
+    m_LODFracTextureEntry = TxtrCacheEntry();
+    m_PrimLODFracTextureEntry = TxtrCacheEntry();
 
     return true;
 }

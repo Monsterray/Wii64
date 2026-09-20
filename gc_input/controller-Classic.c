@@ -148,51 +148,6 @@ static int available(int Control) {
 }
 
 #define DEFAULT_MAX_MAG 0.667f
-typedef struct maxMagEntry_t {
-	struct bd_addr bdaddr;
-	float maxLMag;
-	float maxRMag;
-} maxMagEntry;
-
-static maxMagEntry* maxMagTable = NULL;
-static int maxMagTableSize = 0;
-
-static void SetMaxMag(const struct bd_addr *bdaddr, float magL, float magR, float* maxLMag, float* maxRMag)
-{
-	int i;
-	int match_ind = -1;
-	//Find bdaddr in table
-	if (maxMagTable)
-	{
-		for (i = 0; i<maxMagTableSize; i++)
-		{
-			if (bd_addr_cmp(bdaddr, &maxMagTable[i].bdaddr)) //Found a match!
-			{
-				match_ind = i;
-				break;
-				maxMagTable[maxMagTableSize-1].maxLMag = magL > DEFAULT_MAX_MAG ? magL : DEFAULT_MAX_MAG;
-				maxMagTable[maxMagTableSize-1].maxRMag = magR > DEFAULT_MAX_MAG ? magR : DEFAULT_MAX_MAG;
-				*maxLMag = maxMagTable[maxMagTableSize-1].maxLMag;
-				*maxRMag = maxMagTable[maxMagTableSize-1].maxRMag;
-			}
-		}
-	}
-	if (match_ind < 0) //Make new entry in table
-	{ 
-		maxMagTableSize++;
-		maxMagTable = realloc(maxMagTable, sizeof(maxMagEntry)*maxMagTableSize);
-		if (maxMagTable==NULL) return;
-		match_ind = maxMagTableSize-1;
-		maxMagTable[match_ind].bdaddr = *bdaddr;
-		maxMagTable[match_ind].maxLMag = DEFAULT_MAX_MAG;
-		maxMagTable[match_ind].maxRMag = DEFAULT_MAX_MAG;
-	}
-	//Compare and Update Table Entry
-	maxMagTable[match_ind].maxLMag = magL > maxMagTable[match_ind].maxLMag ? magL : maxMagTable[match_ind].maxLMag;
-	maxMagTable[match_ind].maxRMag = magR > maxMagTable[match_ind].maxRMag ? magR : maxMagTable[match_ind].maxRMag;
-	*maxLMag = maxMagTable[match_ind].maxLMag;
-	*maxRMag = maxMagTable[match_ind].maxRMag;
-}
 
 static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 {
@@ -209,9 +164,8 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	//wiimote* WPAD_GetWiimotes(s32 chan)
 	//wiimote* wm = WPAD_GetWiimote(Control);
 	float maxLMag = DEFAULT_MAX_MAG;
-	float maxRMag = DEFAULT_MAX_MAG; 
-	//if(wm) SetMaxMag(&wm->bdaddr, wpad->exp.classic.ljs.mag, wpad->exp.classic.rjs.mag, &maxLMag, &maxRMag);
-	
+	float maxRMag = DEFAULT_MAX_MAG;
+
 	unsigned int b = getButtons(&wpad->exp.classic, maxLMag, maxRMag);
 	inline int isHeld(button_tp button){
 		return (b & button->mask) == button->mask;
@@ -279,7 +233,6 @@ static void assign(int p, int v){
 	// TODO: Light up the LEDs appropriately
 }
 
-static void init(void);
 static void refreshAvailable(void);
 
 controller_t controller_Classic =
@@ -315,7 +268,8 @@ controller_t controller_Classic =
 	    .analog    = &analog_sources[0],
 	    .exit      = &menu_combos[2],
 	    .invertedY = 0,
-	  }
+	  },
+	  {{0}}, {{0}}
 	 };
 
 static void refreshAvailable(void){

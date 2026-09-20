@@ -300,7 +300,8 @@ controller_t controller_Wiimote =
 		.analog    = &analog_sources_wm[0],
 		.exit      = &menu_combos[0],
 		.invertedY = 0
-	  }
+	  },
+	  {{0}}, {{0}}
 	};
 
 controller_t controller_WiimoteNunchuk =
@@ -336,7 +337,8 @@ controller_t controller_WiimoteNunchuk =
 	    .analog    = &analog_sources_wmn[0],
 	    .exit      = &menu_combos[0],
 	    .invertedY = 0
-	  }
+	  },
+	  {{0}}, {{0}}
 	 };
 
 static void refreshAvailableWM(void){

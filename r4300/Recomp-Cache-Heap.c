@@ -48,7 +48,7 @@ static int cacheSize = 0;
 
 #define HEAP_CHILD1(i) ((i<<1)+1)
 #define HEAP_CHILD2(i) ((i<<1)+2)
-#define HEAP_PARENT(i) ((i-1)>>2)
+#define HEAP_PARENT(i) ((i-1)>>1)
 
 #define INITIAL_HEAP_SIZE (64)
 #define MIN_RELEASE_SIZE (512*1024)

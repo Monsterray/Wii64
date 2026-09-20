@@ -73,7 +73,10 @@ public:
             keys = new Key[maxSize];
             elements = new Element[maxSize];
             memcpy(keys,oldkeys,oldmaxsize*sizeof(Key));
-            memcpy(elements,oldelements,oldmaxsize*sizeof(Element));
+            for( int k=0; k<oldmaxsize; k++ )
+                elements[k] = oldelements[k];
+            delete [] oldkeys;
+            delete [] oldelements;
         }
 
         for( i=0; i<curSize; i++ )

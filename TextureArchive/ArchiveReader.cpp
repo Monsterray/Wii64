@@ -32,13 +32,14 @@ unsigned char* ArchiveReader::getIcon() { return &icon[0]; }
 
 void ArchiveReader::setArchiveFile(const char* filename) {
 	file = fopen(filename, "rb");
-	table = readMetadata();
+	table = file ? readMetadata() : new ArchiveTable(0);
 	stream.zalloc = NULL; stream.zfree = NULL; stream.opaque = NULL;
 }
 
 void ArchiveReader::reset() {
-	fclose(file);
+	if(file) { fclose(file); file = NULL; }
 	delete table;
+	table = NULL;
 }
 
 ArchiveTable* ArchiveReader::readMetadata() {

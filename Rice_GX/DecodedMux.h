@@ -207,6 +207,10 @@ public:
         return *this;
     }
 
+    // Explicit to match operator= above (both do a plain member-wise copy) and
+    // avoid -Wdeprecated-copy for having one without the other.
+    DecodedMux(const DecodedMux&) = default;
+
     static inline bool IsConstFactor(uint8 val)
     {
         uint8 v = val&MUX_MASK;

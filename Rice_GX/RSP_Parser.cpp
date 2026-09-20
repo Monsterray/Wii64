@@ -105,7 +105,11 @@ unsigned char gLastMicrocodeString[ 300 ] = "";
 //*****************************************************************************
 //
 //*****************************************************************************
-static UcodeData g_UcodeData[] = 
+// Most rows below only set the first 4 fields, relying on non_nearclip/reject
+// defaulting to false; explicit only where a game needs a workaround flag true.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+static UcodeData g_UcodeData[] =
 {
     //crc_size, crc_800;
 
@@ -234,14 +238,15 @@ static UcodeData g_UcodeData[] =
     {19, 0xa486bed3, 0xa486bed3, (unsigned char*)"Unknown 0xa486bed3, 0xa486bed3",}, // Last Legion UX, 
     {19, 0x6b519381, 0xfebacfd8, (unsigned char*)"Unknown in Toukan Road",}, // I don't know which ucode
 
-    {20, 0x6d2a01b1, 0x6d2a01b1, (unsigned char*)"RSP Gfx ucode ZSortp 0.33 Yoshitaka Yasumoto Nintendo.",}, // Mia Hamm Soccer 64, 
+    {20, 0x6d2a01b1, 0x6d2a01b1, (unsigned char*)"RSP Gfx ucode ZSortp 0.33 Yoshitaka Yasumoto Nintendo.",}, // Mia Hamm Soccer 64,
 };
+#pragma GCC diagnostic pop
 
 FiddledVtx * g_pVtxBase=NULL;
 
-SetImgInfo g_TI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_CI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_ZI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
+SetImgInfo g_TI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0, 0 };
+SetImgInfo g_CI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0, 0 };
+SetImgInfo g_ZI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0, 0 };
 RenderTextureInfo g_ZI_saves[2];
 
 DListStack  gDlistStack[MAX_DL_STACK_SIZE];

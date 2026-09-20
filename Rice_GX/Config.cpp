@@ -270,16 +270,20 @@ void GenerateFrameBufferOptions(void)
         break;
     case FRM_BUF_WRITEBACK_AND_RELOAD:
         frameBufferOptions.bLoadBackBufFromRDRAM    = true;
+        /* fallthrough */
     case FRM_BUF_BASIC_AND_WRITEBACK:
         frameBufferOptions.bWriteBackBufToRDRAM     = true;
+        /* fallthrough */
     case FRM_BUF_BASIC:
         frameBufferOptions.bCheckBackBufs           = true;
+        /* fallthrough */
     case FRM_BUF_IGNORE:
         frameBufferOptions.bUpdateCIInfo            = true;
         break;
     case FRM_BUF_BASIC_AND_WITH_EMULATOR:
         // Banjo Kazooie
         frameBufferOptions.bCheckBackBufs           = true;
+        /* fallthrough */
     case FRM_BUF_WITH_EMULATOR:
         frameBufferOptions.bUpdateCIInfo            = true;
         frameBufferOptions.bProcessCPUWrite         = true;
@@ -302,11 +306,14 @@ void GenerateFrameBufferOptions(void)
         break;
     case TXT_BUF_WRITE_BACK_AND_RELOAD:
         frameBufferOptions.bLoadRDRAMIntoRenderTexture      = true;
+        /* fallthrough */
     case TXT_BUF_WRITE_BACK:
         frameBufferOptions.bRenderTextureWriteBack          = true;
+        /* fallthrough */
     case TXT_BUF_NORMAL:
         frameBufferOptions.bCheckRenderTextures         = true;
         frameBufferOptions.bIgnore                  = false;
+        /* fallthrough */
     case TXT_BUF_IGNORE:
         frameBufferOptions.bUpdateCIInfo            = true;
         frameBufferOptions.bSupportRenderTextures           = true;

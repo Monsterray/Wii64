@@ -262,7 +262,6 @@ static void DIV()
 	sign_extended(r4300.lo);
 	sign_extended(r4300.hi);
      }
-   else printf("div\n");
    r4300.pc+=4;
 }
 
@@ -275,7 +274,6 @@ static void DIVU()
 	sign_extended(r4300.lo);
 	sign_extended(r4300.hi);
      }
-   else printf("divu\n");
    r4300.pc+=4;
 }
 
@@ -362,7 +360,6 @@ static void DDIV()
 	r4300.lo = (long long int)rrs / (long long int)rrt;
 	r4300.hi = (long long int)rrs % (long long int)rrt;
      }
-   else printf("ddiv\n");
    r4300.pc+=4;
 }
 
@@ -374,7 +371,6 @@ static void DDIVU()
 	r4300.lo = (unsigned long long int)rrs / (unsigned long long int)rrt;
 	r4300.hi = (unsigned long long int)rrs % (unsigned long long int)rrt;
      }
-   else printf("ddivu\n");
    r4300.pc+=4;
 }
 
@@ -1176,7 +1172,8 @@ static void MFC0()
 	r4300.stop=1;
 #ifdef DEBUGON
   _break();
-#endif     
+#endif
+	/* fallthrough */
       default:
 	rrt32 = r4300.reg_cop0[PC.f.r.nrd];
 	sign_extended(rrt);
@@ -1460,10 +1457,6 @@ static void MUL_S()
 
 static void DIV_S()
 {
-   if((r4300.fcr31 & 0x400) && *r4300.fpr_single[cfft] == 0)
-     {
-	printf("div_s by 0\n");
-     }
    set_rounding();
    *r4300.fpr_single[cffd] = *r4300.fpr_single[cffs] /
      *r4300.fpr_single[cfft];
@@ -1821,15 +1814,6 @@ static void MUL_D()
 
 static void DIV_D()
 {
-   if((r4300.fcr31 & 0x400) && *r4300.fpr_double[cfft] == 0)
-     {
-	//r4300.fcr31 |= 0x8020;
-	/*r4300.fcr31 |= 0x8000;
-	Cause = 15 << 2;
-	exception_general();*/
-	printf("div_d by 0\n");
-	//return;
-     }
    set_rounding();
    *r4300.fpr_double[cffd] = *r4300.fpr_double[cffs] /
      *r4300.fpr_double[cfft];
