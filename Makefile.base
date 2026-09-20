@@ -16,14 +16,21 @@ INCLUDE 	+= -I$(DEVKITPRO)/portlibs/ppc/include
 LIBPATHS	+= -L$(DEVKITPRO)/portlibs/ppc/lib
 
 CXXFLAGS		+= \
-		-g -O3 $(LTO) -Wall -Wno-parentheses -Wno-unused-parameter -pipe $(MACHDEP) $(INCLUDE) \
+		-g -O3 $(LTO) -Wall -Wextra -Wno-parentheses -Wno-unused-parameter -pipe $(MACHDEP) $(INCLUDE) \
 		-DGEKKO -D__GX__ -DUSE_GUI -DRELEASE \
 		-DTHREADED_AUDIO -DUSE_RECOMP_CACHE -DPPC_DYNAREC -DFASTMEM -DFASTMEM_HOT_NOFLUSH -DNO_ASM \
 		-Wstrict-aliasing=3 -Wcast-align -Wlto-type-mismatch -Wodr \
 		-Wclobbered -Wvolatile-register-var -Winline -fno-toplevel-reorder -fno-strict-aliasing \
 		$(DEBUG_FLAGS) $(FEATURES) #-fno-exceptions
 
-CFLAGS	+= $(CXXFLAGS) -fgnu89-inline -Wno-multichar
+# := forces immediate expansion here, snapshotting CXXFLAGS's value now (Makefile.base
+# is always the last-included fragment, so this already has every plugin/platform flag).
+# That snapshot matters because -Wno-register below only applies to C++ (the 'register'
+# keyword removal is a C++17 change); appending it straight to CXXFLAGS with += would
+# otherwise leak into this CFLAGS via lazy expansion and warn "invalid for C" on every
+# .c file.
+CFLAGS	:= $(CFLAGS) $(CXXFLAGS) -fgnu89-inline -Wno-multichar
+CXXFLAGS	+= -Wno-register
 
 OBJ		+= \
 		main/gamehacks.o \

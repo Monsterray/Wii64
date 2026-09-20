@@ -4,8 +4,8 @@ CXXFLAGS	+= -DWII -DHW_RVL -DUSE_EXPANSION -D__wii__
 
 LDFLAGS		+= -mrvl
 
-LIBPATHS 	+= -L$(DEVKITPRO)/libogc2/wii/lib
-INCLUDE 	+= -I$(DEVKITPRO)/libogc2/wii/include
+LIBPATHS 	+= -L$(DEVKITPRO)/libogc2/lib/wii
+INCLUDE 	+= -I$(DEVKITPRO)/libogc2/include
 
 OBJ		+= \
 		vm/dsihandler.o \

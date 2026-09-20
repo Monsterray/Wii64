@@ -137,6 +137,20 @@ The following can be passed in via wiiload or by editing the meta.xml to overrid
 ## COMPATIBILITY
 Report and view any open issues on the [issue tracker](https://github.com/emukidid/Wii64/issues).
 
+## BUILDING FROM SOURCE
+ * Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the "Wii Development" component checked. This gives you the current devkitPPC, `wii-dev` (which provides `elf2dol`, `gxtexconv`, etc.), and the portlibs used by `Makefile.base`.
+ * This project links against [libogc2](https://github.com/extremscorner/libogc2) (Extrems' fork), not the official `libogc` devkitPro packages. libogc2 has no official devkitPro package, so it must be obtained separately and placed at `$(DEVKITPRO)/libogc2` with the standard `include/`, `lib/wii/`, `lib/cube/` layout (the same layout `libogc2`'s own `wii_rules`/`gamecube_rules` expect).
+ * The prebuilt libogc2 binaries are only ABI-compatible with **devkitPPC r41-2**; the current devkitPPC that the installer/pacman gives you is newer and will fail to link (undefined references like `__stack_addr`, `__gxregs`). Install r41-2 alongside your current devkitPPC (e.g. as `$(DEVKITPRO)/devkitPPC-r41-2`, never overwriting the current one) and point `DEVKITPPC` at it for this project specifically.
+   * `tools/libogc2-current-devkitppc-compat.ld` (pass via `-Wl,-T,tools/libogc2-current-devkitppc-compat.ld`) closes part of that gap for anyone who wants to build against the *current* devkitPPC instead: current devkitPPC's linker script dropped a handful of memory-layout symbols (`__stack_addr`, `__gxregs`, etc.) that libogc2's prebuilt `.a` files still reference, and this restores them. It gets you past the undefined-symbol stage, but the current binutils' linker then rejects prebuilt `libwiiuse.a`'s small-data-area relocations (`R_PPC_EMB_SDA21 ... wrong output section`) independently of this script — that needs `libwiiuse` itself rebuilt against the current toolchain, which is out of scope here. Until then, r41-2 is the toolchain actually verified to build and boot.
+ * `elf2dol` isn't always on `PATH` after installing devkitPro; if `make` can't find it, call `$(DEVKITPRO)/tools/bin/elf2dol.exe` directly, or add `$(DEVKITPRO)/tools/bin` to `PATH`.
+ * Build with, for example:
+   ```
+   make -f Makefile.glN64_wii DEVKITPPC=$(DEVKITPRO)/devkitPPC-r41-2 DEVKITPRO=$(DEVKITPRO)
+   ```
+   Other targets: `Makefile.glN64_gc[_exp]`, `Makefile.glN64_wiivc`, `Makefile.Rice_wii`, `Makefile.Rice_gc[_exp]`, `Makefile.Rice_wiivc`.
+ * Object files build in-place next to their sources (there's no separate build directory per target), so run `make -f <Makefile> clean` before switching between targets/toolchains — otherwise the link step can silently pick up stale objects built with the wrong plugin's macros.
+ * To test a build without a Wii, boot the resulting `.dol` in [Dolphin](https://dolphin-emu.org/): `Dolphin.exe -b -e path\to\wii64.dol`.
+
 ## CREDITS
  * Core Coder: tehpola
  * Graphics & Menu Coder: sepp256

@@ -2,3 +2,10 @@
 *.elf
 *.dol
 *.map
+
+# Local build/test tooling and profiles (machine-specific, not for other contributors)
+.dev/
+
+# Local agent notes (machine-specific, not project documentation)
+AGENTS.md
+.claude/
