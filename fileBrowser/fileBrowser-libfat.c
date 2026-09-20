@@ -128,9 +128,15 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 				*dir = realloc( *dir, ((num_entries)+1) * sizeof(fileBrowser_file) ); 
 			}
 			if(n64only) {
+				// Byte order comes from the ROM header's magic word (see
+				// init_byte_swap() in rom_gc.c), not the extension -- .rom is
+				// a plain-bare-extension convention some dumps/sites use for
+				// an otherwise ordinary .z64/.v64/.n64 image, so it belongs
+				// in this whitelist alongside them.
 				const char *ext = strrchr(direntry->name, '.');
 				if(!ext || (strcasecmp(ext, ".v64") && strcasecmp(ext, ".z64") &&
-					 strcasecmp(ext, ".n64") && strcasecmp(ext, ".bin")))
+					 strcasecmp(ext, ".n64") && strcasecmp(ext, ".bin") &&
+					 strcasecmp(ext, ".rom")))
 					continue;
 			}
 			
