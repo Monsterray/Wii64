@@ -86,10 +86,82 @@ inline u32 dyna_run(PowerPC_func* func, PowerPC_instr *code){
 	return (u32)r3;
 }
 
+extern void wii64_watchdogMessage(const char* text); // libgui/GraphicsGX.cpp
+
+/* Safety net for the dynarec getting wedged -- found via dynarec_trace while
+   investigating an intermittent hang on Banjo-Kazooie/Zelda: Majora's
+   Mask/Zelda: OoT Master Quest (all CIC-NUS-6105 games). Confirmed to be
+   non-deterministic (same ROM boots fine on one run, wedges on another) and,
+   critically, NOT a simple "same address twice in a row" repeat: the actual
+   observed failure was a period-2 oscillation, PC alternating between
+   0x00000000 and an otherwise-ordinary-looking RDRAM address (0x800023A0)
+   forever, dispatch after dispatch, CPU pegged, no recovery even after 90+
+   seconds of real time. A same-as-previous check can never catch this --
+   the address is "new" (different from the immediately preceding one) on
+   literally every iteration, so it never accumulates a streak. Needs actual
+   cycle detection: keep the last RING_SIZE distinct-position dispatches and
+   check whether the current address already appears in that window.
+   0x00000000 specifically is also flagged on its own with a much smaller
+   limit, since it is never a legitimate PC in normal operation -- seeing it
+   at all is already a hard error, no need to wait for a full cycle to
+   confirm.
+   Neither root cause (why a wild jump lands on exactly 0, or what makes a
+   normal-looking block cycle forever) is fixed here -- that needs the
+   actual bad branch found, which is a much bigger dig. What this does is
+   turn an unrecoverable hang -- Dolphin still reports the process as
+   "Responding" so it isn't an OS-level hang, but the guest never cooperates
+   with a graceful close either -- into a graceful return to the menu with a
+   message, every time. */
+#define DYNAREC_WATCHDOG_ZEROPC_LIMIT 64
+#define DYNAREC_WATCHDOG_RING_SIZE 16
+// Deliberately generous: a real (bounded) loop over a small set of blocks --
+// e.g. zeroing/copying a large buffer word-by-word during boot -- can
+// legitimately revisit the same handful of block addresses many times
+// without ever being stuck. This has to sit well above that before it's a
+// safe "definitely not making progress" signal. 3,000,000 was tried first
+// and measured too slow in practice -- a real wedged run (Zelda: Ocarina of
+// Time Master Quest) hadn't triggered it after 3+ minutes of real time, an
+// unacceptable wait for what should be a quick automatic recovery. Lowered
+// an order of magnitude; still 300x the size of the single-address
+// DYNAREC_WATCHDOG_ZEROPC_LIMIT case above, and a genuinely wedged loop
+// resolves in well under a minute at this size (each iteration is a fast
+// native dispatch, not real work).
+#define DYNAREC_WATCHDOG_CYCLE_LIMIT 300000
+
 void dynarec(unsigned int address){
+	unsigned int watchdogRing[DYNAREC_WATCHDOG_RING_SIZE];
+	unsigned int watchdogRingPos = 0;
+	unsigned int watchdogCycleCount = 0;
+	unsigned int watchdogZeroCount = 0;
+	int i;
+	for(i = 0; i < DYNAREC_WATCHDOG_RING_SIZE; i++) watchdogRing[i] = 0xFFFFFFFF; // sentinel, never a dispatch address here
 	while(!r4300.stop){
 		//print_gecko("PC: %08X cop0[9]: %08X\r\n",address,r4300.reg_cop0[9]);
 		dynarecTrace_dispatch(address); // no-op unless diag.cfg's dynarec_trace=1 -- see main/dynarec_trace.h
+
+		if(address == 0 && ++watchdogZeroCount >= DYNAREC_WATCHDOG_ZEROPC_LIMIT) {
+			wii64_watchdogMessage("Dynarec jumped to address 0 -- stopped and returned to menu");
+			r4300.stop = 1;
+			break;
+		}
+
+		{
+			int seenBefore = 0;
+			for(i = 0; i < DYNAREC_WATCHDOG_RING_SIZE; i++) {
+				if(watchdogRing[i] == address) { seenBefore = 1; break; }
+			}
+			watchdogRing[watchdogRingPos] = address;
+			watchdogRingPos = (watchdogRingPos + 1) % DYNAREC_WATCHDOG_RING_SIZE;
+			if(seenBefore) {
+				if(++watchdogCycleCount >= DYNAREC_WATCHDOG_CYCLE_LIMIT) {
+					wii64_watchdogMessage("Dynarec got stuck in a loop -- stopped and returned to menu");
+					r4300.stop = 1;
+					break;
+				}
+			} else {
+				watchdogCycleCount = 0;
+			}
+		}
 #ifdef PROFILE
 		refresh_stat();
 

@@ -215,7 +215,7 @@ struct ButtonInfo
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
 	//Button 41 appended out of tab order (not 37-40) so the Saves tab's existing indices didn't need renumbering
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	500.0,	380.0,	120.0,	50.0,	35,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-right of Audio tab)
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	 20.0,	380.0,	120.0,	50.0,	35,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-left of Audio tab -- bottom-right is under the spinning logo)
 };
 
 struct TextBoxInfo

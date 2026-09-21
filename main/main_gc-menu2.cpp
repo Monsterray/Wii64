@@ -244,8 +244,17 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           main/dynarec_trace.h) -- combine with
                                           autoboot_rom+dynacore=dynarec to see
                                           exactly which block a JIT hang gets
-                                          stuck on, even on the very first one. */
+                                          stuck on, even on the very first one.
+     randomize_interrupt=0               r4300.c's randomize_interrupt is 1
+                                          unconditionally (up to 63 cycles of
+                                          jitter added to every PI/SI
+                                          interrupt's delay -- see
+                                          add_random_interupt_time). Force it
+                                          off for a run to test whether that
+                                          jitter is what an intermittent hang
+                                          is timing-sensitive to. */
 extern "C" void DiagNav_SelectRomSD(void);
+extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 
@@ -267,6 +276,8 @@ static void apply_diag_automation(void) {
 			else                                     g_diagDynacoreOverride = atoi(coreName);
 		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
 			dynarecTrace_setEnabled(1);
+		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
+			randomize_interrupt = 0;
 		}
 	}
 	fclose(f);

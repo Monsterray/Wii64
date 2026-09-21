@@ -19,9 +19,11 @@
 **/
 
 #include <math.h>
+#include <string.h>
 #include "Gui.h"
 #include "GraphicsGX.h"
 #include "IPLFont.h"
+#include "MessageBox.h"
 #include "../main/wii64config.h"
 #include "../r4300/r4300.h"
 #ifdef HW_RVL
@@ -618,7 +620,21 @@ void Graphics::drawDebugBreadcrumb(const char* text) {
 	IplFont::getInstance().drawInit(fontColor);
 	for (int i = 0; i < 2; i++) {
 		clearEFB((GXColor){0, 0, 0, 0xFF}, GX_MAX_Z24);
-		IplFont::getInstance().drawString(20, 40, (char*)text, 0.5, false);
+		// text may be several '\n'-separated lines (dynarec_trace.c's PC
+		// history) -- draw each on its own row instead of running them
+		// together, since drawString itself doesn't wrap on '\n'.
+		char buf[512];
+		strncpy(buf, text, sizeof(buf)-1);
+		buf[sizeof(buf)-1] = 0;
+		int y = 40;
+		char* line = buf;
+		while (line) {
+			char* nl = strchr(line, '\n');
+			if (nl) *nl = 0;
+			IplFont::getInstance().drawString(20, y, line, 1.2, false);
+			y += 24;
+			line = nl ? nl + 1 : NULL;
+		}
 		GX_DrawDone();
 		GX_CopyDisp(xfb[which_fb], GX_TRUE);
 		GX_Flush();
@@ -632,6 +648,15 @@ void Graphics::drawDebugBreadcrumb(const char* text) {
 extern "C" void wii64_debugBreadcrumb(const char* text)
 {
 	Gui::getInstance().gfx->drawDebugBreadcrumb(text);
+}
+
+/* Used by the dynarec-watchdog bailout in r4300/ppc/Wrappers.c -- queues a
+   message on the normal MessageBox mechanism (the same one "Please load a
+   ROM first" etc. use) for the menu to show once dynarec() returns and
+   control is back in the menu's own render loop. */
+extern "C" void wii64_watchdogMessage(const char* text)
+{
+	menu::MessageBox::getInstance().setMessage(text);
 }
 
 GXRModeObj* Graphics::getVmode() {
