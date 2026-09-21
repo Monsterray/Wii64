@@ -89,14 +89,14 @@ remains the practical workaround.
 ## 3. gc_input
 
 **Cleanup**:
-- `gc_input/controller-DRC.c:1-2` -- header comment is a copy-paste leftover from `controller-Classic.c` (says "Classic controller input module" but this is the DRC/gamepad module).
+- `gc_input/controller-DRC.c:1-2` -- header comment is a copy-paste leftover from `controller-Classic.c` (says "Classic controller input module" but this is the DRC/gamepad module). **APPLIED**.
 
 **Optimizations**:
-- `gc_input/controller-Classic.c:128-148,160` and `controller-WiimoteNunchuk.c:175-214,115` -- `available()`/`checkType()` call `WPAD_Probe()` (an IOS/IPC round trip) unconditionally on **every** `_GetKeys` call -- i.e. every input poll for every classic/nunchuk-mapped controller -- not gated behind the cheap `wpadNeedScan` flag the way `WPAD_ScanPads()` a few lines above is (`:154`). Compare `controller-GC.c:105` / `controller-DRC.c:137`, which cache their scan behind a `*NeedScan` flag with no further per-controller IPC call. The expansion type should be derivable from the `WPADData` already fetched by `WPAD_Data()` right above, without a second IPC call per controller per frame.
+- `gc_input/controller-Classic.c:128-148,160` and `controller-WiimoteNunchuk.c:175-214,115` -- `available()`/`checkType()` call `WPAD_Probe()` (an IOS/IPC round trip) unconditionally on **every** `_GetKeys` call -- i.e. every input poll for every classic/nunchuk-mapped controller -- not gated behind the cheap `wpadNeedScan` flag the way `WPAD_ScanPads()` a few lines above is (`:154`). Compare `controller-GC.c:105` / `controller-DRC.c:137`, which cache their scan behind a `*NeedScan` flag with no further per-controller IPC call. The expansion type should be derivable from the `WPADData` already fetched by `WPAD_Data()` right above, without a second IPC call per controller per frame. **APPLIED**: both now read `WPAD_Data(Control)->err`/`->exp.type` instead of calling `WPAD_Probe()`, since that data was already refreshed by the caller's `WPAD_ScanPads()`/`WPAD_Data()` a few lines above -- same values, no second IPC round trip.
 
 **Future work**:
-- Open TODOs: `controller-GC.c:167-169`, `controller-Classic.c:232-234`, `controller-WiimoteNunchuk.c:263,311`, `controller-DRC.c:200-202` (all "light up the LEDs appropriately" / integration stubs).
-- `gc_input/input.c:418-426` -- `load_configurations()` doesn't check `fread`'s return value before comparing against magic bytes; a truncated config file is silently treated as a normal mismatch rather than reported.
+- Open TODOs: `controller-GC.c:167-169`, `controller-Classic.c:232-234`, `controller-WiimoteNunchuk.c:263,311`, `controller-DRC.c:200-202` (all "light up the LEDs appropriately" / integration stubs). Left alone -- genuine unimplemented feature work, not a bug.
+- `gc_input/input.c:418-426` -- `load_configurations()` doesn't check `fread`'s return value before comparing against magic bytes; a truncated config file is silently treated as a normal mismatch rather than reported. **APPLIED**: added the missing return-value check.
 
 ## 4. gc_audio + rsp_hle
 

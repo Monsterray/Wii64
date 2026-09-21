@@ -126,9 +126,13 @@ static unsigned int getButtons(classic_ctrl_t* controller, float maxLMag, float 
 }
 
 static int available(int Control) {
-	int err;
-	u32 expType;
-	err = WPAD_Probe(Control, &expType);
+	// WPADData is already refreshed by _GetKeys' WPAD_ScanPads/WPAD_Data
+	// right before this is called, so reading the expansion type out of it
+	// is free -- WPAD_Probe() here was a second IOS/IPC round trip per
+	// controller per input poll.
+	WPADData* wpad = WPAD_Data(Control);
+	int err = wpad->err;
+	u32 expType = wpad->exp.type;
 	if(err == WPAD_ERR_NONE &&
 	   expType == WPAD_EXP_CLASSIC){
 		controller_Classic.available[Control] = 1;

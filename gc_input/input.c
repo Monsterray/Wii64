@@ -421,7 +421,8 @@ int load_configurations(FILE* f, controller_t* controller){
 		'W', 64, controller->identifier, CONTROLLER_CONFIG_VERSION
 	};
 	char actual[4];
-	fread(actual, 1, 4, f);
+	if(fread(actual, 1, 4, f) != 4)
+		return 0;
 	if(memcmp(magic, actual, 4))
 		return 0;
 	

@@ -173,13 +173,17 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config,
 }
 
 static int checkType(int Control, int type){
-	int err;
-	u32 expType;
-	err = WPAD_Probe(Control, &expType);
+	// WPADData is already refreshed by the caller's WPAD_ScanPads/WPAD_Data
+	// right before this runs, so reading the expansion type out of it is
+	// free -- WPAD_Probe() here was a second IOS/IPC round trip per
+	// controller per input poll.
+	WPADData* wpad = WPAD_Data(Control);
+	int err = wpad->err;
+	u32 expType = wpad->exp.type;
 
 	if(err != WPAD_ERR_NONE)
 		return -1;
-	
+
 	switch(expType){
 	case WPAD_EXP_NONE:
 		controller_Wiimote.available[Control] = 1;

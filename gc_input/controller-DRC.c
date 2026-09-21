@@ -1,9 +1,9 @@
 /**
- * Wii64 - controller-Classic.c
+ * Wii64 - controller-DRC.c
  * Copyright (C) 2007, 2008, 2009, 2010 Mike Slegeir
  * Copyright (C) 2007, 2008, 2009, 2010 sepp256
- * 
- * Classic controller input module
+ *
+ * Wii U GamePad (DRC) input module
  *
  * Wii64 homepage: http://www.emulatemii.com
  * email address: tehpola@gmail.com
