@@ -269,9 +269,10 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           dirty flags so Save doesn't no-op.
                                           Requires autoboot_rom= so a ROM is
                                           loaded first.
-     autonav=settings_general|settings_video  Jump straight to that Settings
-                                          tab at boot -- for screenshotting a
-                                          menu layout without a controller. */
+     autonav=settings_general|settings_video|settings_saves  Jump straight to
+                                          that Settings tab at boot -- for
+                                          screenshotting a menu layout
+                                          without a controller. */
 extern "C" void DiagNav_SelectRomSD(void);
 extern void Func_SR_SD(void);
 extern void Func_ReturnFromSelectRomFrame(void);
@@ -300,6 +301,8 @@ static void apply_diag_automation(void) {
 			g_diagSettingsSubmenu = 0; // SettingsFrame::SUBMENU_GENERAL
 		} else if(strncmp(line, "autonav=settings_video", 22) == 0) {
 			g_diagSettingsSubmenu = 1; // SettingsFrame::SUBMENU_VIDEO
+		} else if(strncmp(line, "autonav=settings_saves", 22) == 0) {
+			g_diagSettingsSubmenu = 4; // SettingsFrame::SUBMENU_SAVES
 		} else if(sscanf(line, "dynacore=%31[^\r\n]", coreName) == 1) {
 			if(!strcmp(coreName, "dynarec"))         g_diagDynacoreOverride = DYNACORE_DYNAREC;
 			else if(!strcmp(coreName, "pureinterp")) g_diagDynacoreOverride = DYNACORE_PURE_INTERP;

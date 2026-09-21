@@ -432,7 +432,11 @@ void SettingsFrame::activateSubmenu(int submenu)
 			FRAME_BUTTONS[4].button->setSelected(true);
 			if (autoSave == AUTOSAVE_ENABLE)	FRAME_BUTTONS[37].button->setSelected(true);
 			else								FRAME_BUTTONS[38].button->setSelected(true);
-			for (int i = 37; i < NUM_FRAME_BUTTONS; i++)
+			// Stop at 41, not NUM_FRAME_BUTTONS -- button 41 is the Advanced
+			// Audio Settings button, appended out of tab order (see its own
+			// comment below) and meant only for the Audio tab. This loop used
+			// to sweep it in too, so it also showed up on the Saves tab.
+			for (int i = 37; i < 41; i++)
 			{
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
