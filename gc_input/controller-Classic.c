@@ -234,7 +234,10 @@ static void configure(int Control, controller_config_t* config){
 }
 
 static void assign(int p, int v){
-	// TODO: Light up the LEDs appropriately
+	// v is the N64 port (0-3); WPAD_LED_1..4 are 0x01,0x02,0x04,0x08, so
+	// player N+1 lights LED N+1 only, matching the System Menu/most games'
+	// convention rather than a binary player-count encoding.
+	WPAD_ControlLed(p, 1 << v);
 }
 
 static void refreshAvailable(void);

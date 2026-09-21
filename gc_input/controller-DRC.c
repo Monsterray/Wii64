@@ -198,7 +198,11 @@ static void configure(int Control, controller_config_t* config){
 }
 
 static void assign(int p, int v){
-	// TODO: Light up the LEDs appropriately
+	// Not implementable: unlike WPAD_ControlLed() for the Wiimote (see
+	// controller-Classic.c/controller-WiimoteNunchuk.c's assign()),
+	// libogc2's wiidrc.h exposes no LED/player-indicator control for the
+	// Wii U GamePad at all -- it only has a power/sync light, not discrete
+	// per-player LEDs to begin with.
 }
 
 static void refreshAvailable(void);
