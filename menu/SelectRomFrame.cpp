@@ -36,6 +36,9 @@
 #include "../libgui/FocusManager.h"
 #include "../libgui/CursorManager.h"
 #include "../libgui/Gui.h"
+extern "C" {
+extern void LoadingBar_showBar(float percent, const char* string);
+}
 
 extern "C" {
 #include "../fileBrowser/fileBrowser.h"
@@ -707,6 +710,13 @@ void selectRomFrame_FillPage()
 				//print_gecko("Loading Boxart for %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].nom,
 				//			rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				//load boxart
+				// BOXART_LoadTexture does a real fseek/fread against boxart.bin (up to
+				// 15MB, scattered offsets) with no draw() calls in between iterations --
+				// up to NUM_FILE_SLOTS of these in a row froze the whole menu for however
+				// long that took. Draw a progress frame per tile instead of one frozen
+				// frame for the entire page, using the codebase's own existing mechanism
+				// for this (previously only ever called once, at 100%, in LoadRomFrame.cpp).
+				LoadingBar_showBar((float)(i+1)/NUM_FILE_SLOTS, "Loading boxart...");
 				BOXART_Init();
 #ifdef SHOW_DEBUG
 				bool found =
