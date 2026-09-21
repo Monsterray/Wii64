@@ -33,6 +33,7 @@ public:
 	~Graphics();
 	void init();
 	void drawInit();
+	void resetDrawState();
 	void swapBuffers();
 	void clearEFB(GXColor color, u32 zvalue);
 	void resetCopyParamsForMenu(bool applyDeflicker);

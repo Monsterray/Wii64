@@ -168,18 +168,33 @@ void Graphics::drawInit()
 	GX_SetScissor(0,0,vmode->fbWidth,vmode->efbHeight);
 	GX_SetAlphaCompare(GX_ALWAYS,0,GX_AOP_AND,GX_ALWAYS,0);
 
-	GX_SetZMode(GX_ENABLE,GX_ALWAYS,GX_TRUE);
-
 	//set blend mode
 	GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR); //Fix src alpha
 	GX_SetColorUpdate(GX_ENABLE);
 	GX_SetAlphaUpdate(GX_ENABLE);
 	GX_SetDstAlpha(GX_DISABLE, 0xFF);
-	//set cull mode
-	GX_SetCullMode (GX_CULL_NONE);
 
 	GX_InvVtxCache();
 	GX_InvalidateTexAll();
+
+	resetCopyParamsForMenu(false);
+
+	resetDrawState();
+}
+
+// The subset of drawInit() that just resets GX render state (vertex
+// format/desc, cull/Z mode, TEV, matrices) without touching the video
+// hardware (VIDEO_Init/VIDEO_Configure/VIDEO_Flush etc, only needed once
+// per frame). Box3D::drawComponent() calls this to undo its own 3D-specific
+// GX state after drawing each box -- it used to call the full drawInit(),
+// which reprogrammed the VI every single boxart tile (up to 16x/frame in
+// the ROM browser) and was the dominant cost of an otherwise-idle frame
+// (see doc/subsystem-review.md's New ROM menu slowdown writeup).
+void Graphics::resetDrawState()
+{
+	GX_SetZMode(GX_ENABLE,GX_ALWAYS,GX_TRUE);
+	//set cull mode
+	GX_SetCullMode (GX_CULL_NONE);
 
 	GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 	GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
@@ -192,8 +207,6 @@ void Graphics::drawInit()
 	GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
 	GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 	GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-
-	resetCopyParamsForMenu(false);
 
 	setTEV(GX_PASSCLR);
 	newModelView();

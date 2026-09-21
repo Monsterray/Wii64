@@ -191,13 +191,22 @@ void Box3D::drawComponent(Graphics& gfx)
 	u16 pad0 = PAD_ButtonsDown(0);
 	if (pad0 & PAD_TRIGGER_Z) logoMode = (logoMode+1) % 3;
 
-	//libOGC was changed such that sticks are now clamped and don't have to be by us
-	stickX = PAD_SubStickX(0);
-	stickY = PAD_SubStickY(0);
-//	if(stickX > 18 || stickX < -18) rotateX += stickX/32;
-//	if(stickY > 18 || stickY < -18) rotateY += stickY/32;
 	if(enableRotate)
 	{
+		// Real GameCube pad reads -- moved inside this guard since stickX/
+		// stickY are only ever used here. This component is shared and
+		// redrawn once per visible box (up to 16 times a frame for the ROM
+		// browser's boxart grid, only one of which has enableRotate set at
+		// a time), so reading the stick unconditionally meant ~2 unused
+		// PAD IPC round trips per non-interactive tile, every single frame
+		// -- measured as the dominant cost of an otherwise-idle ROM
+		// browser frame (see doc/subsystem-review.md's New ROM menu
+		// slowdown writeup).
+		//libOGC was changed such that sticks are now clamped and don't have to be by us
+		stickX = PAD_SubStickX(0);
+		stickY = PAD_SubStickY(0);
+//		if(stickX > 18 || stickX < -18) rotateX += stickX/32;
+//		if(stickY > 18 || stickY < -18) rotateY += stickY/32;
 		rotateX += stickX/32;
 		rotateY += stickY/32;
 	}
@@ -327,7 +336,7 @@ void Box3D::drawComponent(Graphics& gfx)
 	//Reset GX state:
     GX_SetChanCtrl(GX_COLOR0A0,GX_DISABLE,GX_SRC_REG,GX_SRC_VTX,GX_LIGHTNULL,GX_DF_NONE,GX_AF_NONE);
 //	GX_SetLineWidth(6,GX_TO_ZERO);
-	gfx.drawInit();
+	gfx.resetDrawState();
 }
 
 void Box3D::drawQuad(u8 v0, u8 v1, u8 v2, u8 v3, u8 st0, u8 st1, u8 st2, u8 st3, u8 c, u8 n)
