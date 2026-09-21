@@ -131,6 +131,81 @@ check, just fed from the DVD TOC instead of a recursive scan -- lower risk
 since it's not compounding across recursion depth, but worth the same
 `snprintf`-and-skip treatment if it's ever hit.
 
+## Investigated and fixed: New ROM menu slowdown
+
+Used the new profiling tooling end to end for this one: `.dev/build_profiling.sh`
+to get real numbers, `.dev/wii64_diag.sh perf` to pull them off a killed
+instance's raw SD image, and the ROM browser's existing `pageBegin`/`tileLoaded`/
+`pageEnd` instrumentation (boxart page fill) plus two new spans added for this
+investigation (`perfProf_dirScan` around `romFile_readDir`/the header-read loop
+in `menu/SelectRomFrame.cpp`'s `selectRomFrame_OpenDirectory`).
+
+First measurement, `stress_selectrom=10` against the same flat 5-ROM SD folder
+used elsewhere this session: totally flat across all 10 repeats (~1ms readDir,
+~1.7ms headers, ~11ms boxart page fill, no degradation with reuse) -- nothing
+here matches "slow down" at that scale, so the bug had to be one that only
+shows up with a larger, more realistic ROM collection. Copied 150 dummy `.z64`
+files into the SD roms folder (155 entries total) and re-measured: `readDirUs`
+jumped from ~900us to **135,249us** and `headersUs` from ~1,700us to
+**207,503us** -- a 31x entry increase producing a 150x and 122x time increase
+respectively, both clearly super-linear. That's ~370ms just to open the ROM
+browser, genuinely perceptible, and it gets worse for anyone with a real,
+larger romset.
+
+**Root cause 1 (fixed): `fileBrowser_libfat_readDir()`'s per-entry `realloc`.**
+`fileBrowser-libfat.c` grew `*dir` by exactly one `fileBrowser_file` at a time
+for every matched entry -- O(n^2) copying for a large folder, the classic
+dynamic-array-without-amortized-growth anti-pattern. **APPLIED**: doubling
+growth (start at 64, double on demand) in both `fileBrowser-libfat.c` and the
+identical pattern in `fileBrowser-DVD.c`.
+
+**Root cause 2 (fixed, the dominant one): a redundant `stat()` per entry.**
+Isolating it (temporarily zeroing `direntry->size` instead of calling `stat()`)
+dropped `readDirUs` from ~135ms to ~3ms for 155 entries -- `stat()` was
+~97% of readDir's cost, not the realloc pattern (that fix alone barely moved
+the number; it matters more as n grows further, since `stat()`'s cost per
+call looks roughly constant here rather than itself growing with n -- the
+pinned toolchain's `struct dirent` (`devkitPPC-r41-2/.../sys/dirent.h`) has no
+`d_stat`/size field to read the size for free the way a newer newlib does, so
+this is a genuine second path-based directory lookup per file). **APPLIED**:
+stopped calling `stat()` during the listing entirely (`direntry->size = 0`).
+Verified this is safe, not just fast: the only consumer that needs a real
+size is the ROM actually being loaded, and `main/rom_gc.c`'s `rom_read()`
+already re-derives it correctly via a pre-existing "dummy read" through
+`fileBrowser_libfatROM_readFile()`, which does its own single `stat()` for
+that one file, before `ROM-Cache.c` ever reads `.size`. Confirmed nothing else
+in the codebase reads `.size` off a listing entry (grepped for it) --
+`FileBrowserFrame.cpp`'s save-file browser doesn't touch it either.
+
+Added `test_selectload=1` to diag.cfg (click the first entry in the sorted SD
+listing, not just navigate to it like `stress_selectrom` does) specifically to
+validate this safely -- watched `loadROM`'s marks run all the way through
+`ROMCache_load`/`init_memory`/`cpu_init` against both the 155-entry and the
+real 5-ROM folder, confirming the ROM still loads correctly with the
+now-deferred size.
+
+Net result for the 155-entry case: `readDirUs` 135,249 -> ~3,000 (45x), total
+ROM-browser open time ~370ms -> ~240ms. `headersUs` (~207ms) is **not** fixed
+-- it's `selectRomFrame_OpenDirectory`'s separate per-entry
+`romFile_readHeader()` loop (peeking each ROM's header via a fresh
+`fopen()`/`fseek()`/`fread()`/`fclose()`), and unlike the size, the header
+bytes genuinely have to be read from each of the N files to sort/display them,
+so this can't be skipped the way the redundant `stat()` could. A real fix
+would mean reading header bytes during the same `readdir()` pass that already
+visits every file (avoiding N separate path-based `fopen()`s), which touches
+how the DVD driver populates the same fields too -- a bigger, riskier
+restructure than this pass's two fixes, left as follow-up work.
+
+Also found and fixed in passing: `main/main_gc-menu2.cpp`'s `diag.cfg` parser
+had the exact same off-by-one `strncmp` length bug twice --
+`"test_saveload=1"` was compared with length 16 instead of 15, so it had
+*never actually matched*, meaning the earlier session pass that reported
+"SD/USB round-tripped cleanly" via `test_saveload=1` never actually ran
+`Func_SaveGame()`/`Func_LoadSave()` at all; it only confirmed that *not*
+running them didn't crash anything. Fixed alongside the same bug just
+introduced in this pass's own new `"test_selectload=1"` (18 instead of 17).
+The save/load path itself needs re-testing now that the flag actually fires.
+
 ## 2. fileBrowser + vm
 
 **Cleanup**:

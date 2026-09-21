@@ -45,6 +45,7 @@ fileBrowser_file topLevel_DVD =
 	};
 
 static int num_entries = 0;
+static int dir_capacity = 0; // slots currently allocated in *dir, not the same as num_entries -- see below
 int fileBrowser_DVD_readDir(fileBrowser_file* ffile, fileBrowser_file** dir, int recursive, int n64only){	
 	
 	if(dvd_get_error() || !dvd_init) { //if some error
@@ -129,13 +130,18 @@ int fileBrowser_DVD_readDir(fileBrowser_file* ffile, fileBrowser_file** dir, int
 			fileBrowser_DVD_readDir(direntry, dir, recursive, n64only);
 		}
 		else {
+			// Doubling growth, not a realloc for every single matched
+			// entry -- same fix as fileBrowser-libfat.c's readDir, see its
+			// comment and doc/subsystem-review.md's New ROM menu slowdown
+			// writeup.
 			if(*dir == NULL) {
-				*dir = malloc(sizeof(fileBrowser_file));
+				dir_capacity = 64;
+				*dir = malloc( dir_capacity * sizeof(fileBrowser_file) );
 				num_entries = 0;
 			}
-			else {
-				//print_gecko("Size of *dir = %i\r\n", num_entries);
-				*dir = realloc( *dir, ((num_entries)+1) * sizeof(fileBrowser_file) ); 
+			else if(num_entries >= dir_capacity) {
+				dir_capacity *= 2;
+				*dir = realloc( *dir, dir_capacity * sizeof(fileBrowser_file) );
 			}
 			if(n64only) {
 				if(!(strcasecmp(direntry->name,".v64") || strcasecmp(direntry->name,".z64") ||

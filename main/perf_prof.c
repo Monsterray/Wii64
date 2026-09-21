@@ -143,4 +143,16 @@ void perfProf_cpuSample(void)
 	fclose(f);
 }
 
+/* The part of opening the ROM browser that isn't the already-instrumented
+   boxart page fill (pageBegin/tileLoaded/pageEnd): the directory scan
+   itself and the per-entry ROM header peek that follows it -- see
+   menu/SelectRomFrame.cpp's selectRomFrame_OpenDirectory. */
+void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersUs)
+{
+	FILE* f = fopen("sd:/wii64/perf.log", "a");
+	if (!f) return;
+	fprintf(f, "dirscan: entries=%d readDirUs=%u headersUs=%u\n", entries, readDirUs, headersUs);
+	fclose(f);
+}
+
 #endif /* PERF_PROF */

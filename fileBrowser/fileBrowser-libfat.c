@@ -89,6 +89,7 @@ fileBrowser_file saveDir_libfat_USB =
 	 };
 
 static int num_entries = 0;
+static int dir_capacity = 0; // slots currently allocated in *dir, not the same as num_entries -- see below
 int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, int recursive, int n64only){
 	
 	DIR* dp = opendir( file->name );
@@ -113,10 +114,18 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 		   >= FILE_BROWSER_MAX_PATH_LEN)
 			continue;
 		direntry->offset = 0;
-		{
-			struct stat st;
-			direntry->size = (stat(direntry->name, &st) == 0) ? st.st_size : 0;
-		}
+		// Deliberately not stat()ing every entry here anymore: stat() is a
+		// second, path-based directory lookup per file (readdir() already
+		// gave us the name for free), and doing it for every entry in a
+		// large ROM folder was the dominant cost of opening the ROM
+		// browser -- ~130ms of a ~135ms readDir for 155 entries, i.e.
+		// essentially all of it (see doc/subsystem-review.md's New ROM
+		// menu slowdown writeup). Safe to leave at 0: the only consumer
+		// that needs a real size is loading the one ROM actually picked,
+		// and main/rom_gc.c's rom_read() already re-derives it correctly
+		// via a "dummy read" through fileBrowser_libfatROM_readFile()
+		// below, which does its own single stat() for that one file.
+		direntry->size = 0;
 		direntry->attr   = (entry->d_type == DT_DIR) ?
 							FILE_BROWSER_ATTR_DIR : 0;
 		
@@ -127,13 +136,21 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 			fileBrowser_libfat_readDir(direntry, dir, recursive, n64only);
 		}
 		else {
+			// Doubling growth, not a realloc for every single matched
+			// file: a large ROM folder (hundreds of entries) used to mean
+			// hundreds of individual reallocs, each one a fresh copy of
+			// everything added so far -- O(n^2) work just to build the
+			// list, measured as the dominant cost of opening the ROM
+			// browser on a big collection (see doc/subsystem-review.md's
+			// New ROM menu slowdown writeup).
 			if(*dir == NULL) {
-				*dir = malloc( sizeof(fileBrowser_file) );
+				dir_capacity = 64;
+				*dir = malloc( dir_capacity * sizeof(fileBrowser_file) );
 				num_entries = 0;
 			}
-			else {
-				//print_gecko("Size of *dir = %i\r\n", num_entries);
-				*dir = realloc( *dir, ((num_entries)+1) * sizeof(fileBrowser_file) ); 
+			else if(num_entries >= dir_capacity) {
+				dir_capacity *= 2;
+				*dir = realloc( *dir, dir_capacity * sizeof(fileBrowser_file) );
 			}
 			if(n64only) {
 				// Byte order comes from the ROM header's magic word (see

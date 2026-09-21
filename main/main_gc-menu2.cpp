@@ -272,19 +272,37 @@ static void ensure_wii64_dirs(const char *prefix) {
      autonav=settings_general|settings_video|settings_saves  Jump straight to
                                           that Settings tab at boot -- for
                                           screenshotting a menu layout
-                                          without a controller. */
+                                          without a controller.
+     test_selectload=1                   Jump to the ROM browser (SD) and
+                                          click the first entry in the
+                                          sorted list, like a real user
+                                          would -- unlike autoboot_rom=,
+                                          which loads a ROM directly without
+                                          going through the browser's
+                                          fileBrowser_file at all. Verifies
+                                          hasLoadedROM via a perfProf_mark
+                                          so a change to how the browser
+                                          populates its listing (e.g. a
+                                          size=0 placeholder -- see
+                                          doc/subsystem-review.md's New ROM
+                                          menu slowdown writeup) can be
+                                          checked against a real load, not
+                                          just a fast scan. */
 extern "C" void DiagNav_SelectRomSD(void);
 extern void Func_SR_SD(void);
+extern void Func_SR_Select1(void);
 extern void Func_ReturnFromSelectRomFrame(void);
 extern void Func_SaveGame(void);
 extern void Func_LoadSave(void);
 extern bool sramWritten, eepromWritten, mempakWritten, flashramWritten;
+extern BOOL hasLoadedROM;
 extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
+static int g_diagTestSelectLoad = 0; // 1 = click the first ROM in the SD browser listing at boot, 0 = off
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -314,8 +332,10 @@ static void apply_diag_automation(void) {
 			randomize_interrupt = 0;
 		} else if(sscanf(line, "stress_selectrom=%d", &g_diagStressSelectRom) == 1) {
 			// no-op besides the sscanf; consumed after MenuContext exists, see main()
-		} else if(strncmp(line, "test_saveload=1", 16) == 0) {
+		} else if(strncmp(line, "test_saveload=1", 15) == 0) {
 			g_diagTestSaveLoad = 1;
+		} else if(strncmp(line, "test_selectload=1", 17) == 0) {
+			g_diagTestSelectLoad = 1;
 		}
 	}
 	fclose(f);
@@ -521,6 +541,15 @@ int main(int argc, const char* argv[]) {
 		Func_ReturnFromSelectRomFrame();
 		menu::Gui::getInstance().draw();
 		perfProf_mark("stress_selectrom: back out");
+	}
+	if(g_diagTestSelectLoad) {
+		perfProf_mark("test_selectload: Func_SR_SD");
+		Func_SR_SD();
+		menu::Gui::getInstance().draw();
+		perfProf_mark("test_selectload: Func_SR_Select1");
+		Func_SR_Select1();
+		menu::Gui::getInstance().draw();
+		perfProf_mark(hasLoadedROM ? "test_selectload: hasLoadedROM=1" : "test_selectload: hasLoadedROM=0");
 	}
 	if(g_diagTestSaveLoad) {
 		char savedDevice = nativeSaveDevice;

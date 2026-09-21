@@ -631,18 +631,25 @@ void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 	max_page = 0;
 		
 	// Read the directories and return on error
+#ifdef PERF_PROF
+	u64 dirScanStart = PERF_NOW();
+#endif
 	int entries = romFile_readDir(dir, &dir_entries, 1, 1);
+#ifdef PERF_PROF
+	unsigned int readDirUs = PERF_US(dirScanStart);
+	u64 headersStart = PERF_NOW();
+#endif
 	if(entries <= 0)
-	{ 
-		if(dir_entries) { free(dir_entries); dir_entries = NULL; } 
-		selectRomFrame_Error(dir, entries); 
+	{
+		if(dir_entries) { free(dir_entries); dir_entries = NULL; }
+		selectRomFrame_Error(dir, entries);
 		return;
 	}
 	num_entries = entries;
-	
+
 	// Sort the listing
 	qsort(dir_entries, num_entries, sizeof(fileBrowser_file), dir_comparator);
-	
+
 	// Read all headers
 	rom_headers = (rom_header*) malloc(sizeof(rom_header)*num_entries);
 	for(int i = 0; i < num_entries; i++) {
@@ -656,6 +663,7 @@ void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 		byte_swap((char*)&rom_headers[i], sizeof(rom_header), init_byte_swap(*(u32*)&rom_headers[i]));
 		//print_gecko("header CRC %08X\r\n",rom_headers[i].CRC1);
 	}
+	perfProf_dirScan(entries, readDirUs, PERF_US(headersStart));
 
 	current_page = 0;
 	max_page = (int)ceil((float)num_entries/NUM_FILE_SLOTS);
