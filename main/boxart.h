@@ -22,5 +22,14 @@ void BOXART_Init();
 void BOXART_DeInit();
 bool BOXART_LoadTexture(u32 CRC, char *buffer);
 
+/* System-level diagnostic knob, read from sd:/wii64/diag.cfg (a
+   "boxart_limit=N" line), never created automatically. Returns defaultLimit
+   unchanged if the file or that line is absent, so nobody sees a behavior
+   change unless they deliberately create it. Lets someone cap how many
+   visible ROM-browser tiles actually load real boxart -- the rest fall back
+   to the placeholder texture without touching boxart.bin -- to bisect how
+   much of a page's load time boxart accounts for versus everything else. */
+int BOXART_GetLoadLimit(int defaultLimit);
+
 #endif
 

@@ -32,6 +32,7 @@
 #include "../r4300/r4300.h"
 #include "../gui/DEBUG.h"
 #include "ROM-Cache.h"
+#include "perf_prof.h"
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -193,6 +194,7 @@ void ROMCache_read(u8* ram_dest, u32 rom_offset, u32 length){
 
 int ROMCache_load(fileBrowser_file* file){
 	char txt[128];
+	perfProf_mark("ROMCache_load: enter");
 #ifdef HW_RVL
 	sprintf(txt, "Loading ROM %s into MEM2",ROMTooBig ? "partially" : "fully");
 #else
@@ -209,11 +211,14 @@ int ROMCache_load(fileBrowser_file* file){
 		
 		ROMBase = VMBase;
 	}
+	perfProf_mark("ROMCache_load: before first read");
 	do {
 		bytes_read = romFile_readFile(file, ROMBase + i, 32*KB);
+		if (i == 0)
+			perfProf_mark("ROMCache_load: first read returned");
 		if (bytes_read < 0)
 			return ROM_CACHE_ERROR_READ;
-		
+
 		//initialize byteswapping if it isn't already
 		if(!readBefore)
 		{
@@ -223,16 +228,20 @@ int ROMCache_load(fileBrowser_file* file){
  			  return ROM_CACHE_INVALID_ROM;
 		  }
  			readBefore = 1;
+ 			perfProf_mark("ROMCache_load: byte_swap_type set");
 		}
-		
+
 		byte_swap(ROMBase + i, bytes_read, byte_swap_type);
+		if (i == 0)
+			perfProf_mark("ROMCache_load: first byte_swap done");
 		i += bytes_read;
-		
+
 		if (!loads_til_update--) {
 			LoadingBar_showBar((float)i / rom_length, txt);
 			loads_til_update = 16;
 		}
 	} while (bytes_read > 0);
+	perfProf_mark("ROMCache_load: loop exited normally");
 	//romFile_deinit(file);
 	return 0;
 #endif

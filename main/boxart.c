@@ -70,6 +70,27 @@ void BOXART_DeInit()
 	}
 }
 
+int BOXART_GetLoadLimit(int defaultLimit)
+{
+	static int cached = -2; // -2 = not yet read; sentinel, not a valid limit
+	if(cached == -2) {
+		cached = defaultLimit;
+		FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
+		if(f) {
+			char line[64];
+			while(fgets(line, sizeof(line), f)) {
+				int n;
+				if(sscanf(line, "boxart_limit=%d", &n) == 1) {
+					cached = n;
+					break;
+				}
+			}
+			fclose(f);
+		}
+	}
+	return cached;
+}
+
 /* Pass In a CRC and a aligned buffer of size BOXART_TEX_SIZE
 	- a RGB565 image will be returned */
 bool BOXART_LoadTexture(u32 CRC, char *buffer)

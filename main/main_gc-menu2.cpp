@@ -28,6 +28,7 @@
 /* INCLUDES */
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <malloc.h>
@@ -49,6 +50,7 @@ extern "C" {
 #include "main.h"
 #include "rom.h"
 #include "plugin.h"
+#include "perf_prof.h"
 #include "../gc_input/controller.h"
 #include <aesndlib.h>
 #include "../r4300/interupt.h"
@@ -208,6 +210,41 @@ static void ensure_wii64_dirs(const char *prefix) {
 	mkdir(path, 0777);
 }
 
+/* Debugging tool: sd:/wii64/diag.cfg, never created automatically, drives
+   Wii64 through states that otherwise need a live Wiimote/GC pad -- built so
+   the whole boot-and-reproduce cycle for a bug (build, boot, get to the
+   broken screen) can run unattended off a config file, the same way
+   fileBrowser.h's diag_cfg is boxart's load-count knob (see boxart.h).
+     autoboot_rom=sd:/wii64/roms/Foo.z64  Load and run this ROM immediately at
+                                          boot, via the SAME mechanism Wii64
+                                          already uses when a loader passes a
+                                          path in argv[1] (which Dolphin's -e
+                                          direct-.dol boot never does) --
+                                          reproduces "pick a ROM and go"
+                                          without a menu click.
+     autonav=selectrom_sd                Jump straight to the ROM browser (SD)
+                                          at boot -- same as clicking New ROM
+                                          then SD -- for screens that need to
+                                          be reached but not played, such as
+                                          the boxart display. */
+extern "C" void DiagNav_SelectRomSD(void);
+static bool g_diagAutonavSelectRomSD = false;
+
+static void apply_diag_automation(void) {
+	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
+	if(!f) return;
+	char line[192];
+	while(fgets(line, sizeof(line), f)) {
+		char romPath[192];
+		if(sscanf(line, "autoboot_rom=%191[^\r\n]", romPath) == 1) {
+			Autoboot::setPath(romPath);
+		} else if(strncmp(line, "autonav=selectrom_sd", 20) == 0) {
+			g_diagAutonavSelectRomSD = true;
+		}
+	}
+	fclose(f);
+}
+
 void load_config(const char *loaded_path) {
 	//config stuff
 	fileBrowser_file configFile_file;
@@ -239,6 +276,9 @@ void load_config(const char *loaded_path) {
 	}
 	if(configFile_init(&configFile_file)) {                	//only if device initialized ok
 		ensure_wii64_dirs(prefix);
+		perfProf_reset(); // truncates sd:/wii64/perf.log once per boot; no-op unless built with -DPERF_PROF
+		apply_diag_automation(); // sd:/wii64/diag.cfg -- autoboot_rom / autonav, see comment above
+		perfProf_selfTest(); // sanity-checks the timer itself; see perf_prof.c
 		sprintf(configFile_file.name, "%s%s", prefix, "settings.cfg");
 		FILE* f = fopen( configFile_file.name, "r" );  //attempt to open file
 		if(f) {        //open ok, read it
@@ -385,6 +425,18 @@ int main(int argc, const char* argv[]) {
 		menu->setUseMiniMenu(true);
 		menu->setActiveFrame(MenuContext::FRAME_MAIN);
 	}
+	// Must run AFTER the miniMenuActive block above: miniMenuActive defaults
+	// to enabled for this build (see "Default Settings" earlier in this
+	// function), and that block unconditionally sets the active frame to
+	// FRAME_MAIN -- confirmed by adding perfProf_mark calls around this and
+	// finding the ROM browser's own boxart-load sequence had genuinely
+	// completed in the log, yet the screen never showed it, because this
+	// unconditional reset ran right after and clobbered it before a single
+	// frame was drawn.
+	perfProf_mark(g_diagAutonavSelectRomSD ? "diag autonav: flag set" : "diag autonav: flag NOT set");
+	if(g_diagAutonavSelectRomSD)
+		DiagNav_SelectRomSD();
+	perfProf_mark("diag autonav: after DiagNav_SelectRomSD call");
 	while (menu->isRunning()) {}
 
 	delete menu;
@@ -438,6 +490,7 @@ int autoSaveLoaded = NATIVESAVEDEVICE_NONE;
 
 int loadROM(fileBrowser_file* rom){
   int ret = 0;
+	perfProf_mark("loadROM: enter");
 	// First, if there's already a loaded ROM
 	if(hasLoadedROM){
 		// Unload it, and deinit everything
@@ -468,14 +521,18 @@ int loadROM(fileBrowser_file* rom){
 	tlb_mem2_init();
 #endif
 #endif
+	perfProf_mark("loadROM: before rom_read");
 	ret = rom_read(rom);
+	perfProf_mark("loadROM: after rom_read");
 	if(ret){	// Something failed while trying to read the ROM.
 		hasLoadedROM = FALSE;
 		return ret;
 	}
 
 	// Init everything for this ROM
+	perfProf_mark("loadROM: before init_memory");
 	init_memory();
+	perfProf_mark("loadROM: after init_memory");
 
 	gfx_set_fb(xfb[0], xfb[1]);
 	if (screenMode == SCREENMODE_16x9_PILLARBOX)
@@ -487,11 +544,16 @@ int loadROM(fileBrowser_file* rom){
 	audio_info_init();
 	rsp_info_init();
 
+	perfProf_mark("loadROM: before romOpen_gfx");
 	romOpen_gfx();
+	perfProf_mark("loadROM: after romOpen_gfx / before romOpen_audio");
 	romOpen_audio();
+	perfProf_mark("loadROM: after romOpen_audio / before romOpen_input");
 	romOpen_input();
+	perfProf_mark("loadROM: after romOpen_input / before cpu_init");
 
 	cpu_init();
+	perfProf_mark("loadROM: after cpu_init");
 
   if(autoSave==AUTOSAVE_ENABLE) {
     switch (nativeSaveDevice)

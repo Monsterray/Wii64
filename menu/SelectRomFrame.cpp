@@ -48,6 +48,7 @@ extern "C" {
 #include "../main/rom.h"
 #include "../main/ROM-Cache.h"
 #include "../main/wii64config.h"
+#include "../main/perf_prof.h"
 #include "../gui/DEBUG.h"
 }
 #ifdef HW_RVL
@@ -514,6 +515,18 @@ void Func_SR_SD()
 	pMenuContext->setActiveFrame(MenuContext::FRAME_SELECTROM,SelectRomFrame::SUBMENU_SD);
 }
 
+/* System-level diagnostic hook: identical to what clicking the SD button on
+   the New ROM screen does, callable from startup (main_gc-menu2.cpp, gated on
+   sd:/wii64/diag.cfg's "autonav=selectrom_sd") so the ROM browser -- and
+   whatever it loads, like boxart.bin -- can be reached and screenshotted
+   without live input, the same way autoboot_rom drives an actual ROM load. */
+extern "C" void DiagNav_SelectRomSD()
+{
+	perfProf_mark("DiagNav_SelectRomSD: enter");
+	Func_SR_SD();
+	perfProf_mark("DiagNav_SelectRomSD: after Func_SR_SD");
+}
+
 void Func_SR_USB()
 {
 #ifdef WII
@@ -700,6 +713,16 @@ void selectRomFrame_FillPage()
 	// as slow motion even though the total time is the same either way.
 	LoadingBar_showBar(0.0f, "Loading boxart...");
 
+	// System-level diagnostic knob (sd:/wii64/diag.cfg, see boxart.h) and the
+	// perf log (sd:/wii64/perf.log, PERF_PROF builds only) this page fill
+	// reports to -- see main/perf_prof.h. Neither changes behavior unless
+	// someone deliberately opts in.
+	int boxartLoadLimit = BOXART_GetLoadLimit(NUM_FILE_SLOTS);
+#ifdef PERF_PROF
+	unsigned int pageStart = PERF_NOW();
+#endif
+	perfProf_pageBegin(NUM_FILE_SLOTS, boxartLoadLimit);
+
 	//set entries according to page
 	for (int i = 0; i < NUM_FILE_SLOTS; i++)
 	{
@@ -713,23 +736,50 @@ void selectRomFrame_FillPage()
 				memset(fileTextures[i], 0xFF, BOXART_TEX_SIZE);
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 			}
-			else
+			else if(i < boxartLoadLimit)
 			{
 				FRAME_BUTTONS[btn_ind].button->setLabelColor((GXColor) {255,255,255,255});
 				//print_gecko("Loading Boxart for %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].nom,
 				//			rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				//load boxart
+#ifdef PERF_PROF
+				unsigned int t0 = PERF_NOW();
+#endif
 				BOXART_Init();
+#ifdef PERF_PROF
+				unsigned int initUs = PERF_US(t0);
+				unsigned int t1 = PERF_NOW();
+#endif
 #ifdef SHOW_DEBUG
 				bool found =
 #endif
 				BOXART_LoadTexture(rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1,(char*) fileTextures[i]);
+#ifdef PERF_PROF
+				unsigned int loadUs = PERF_US(t1);
+#endif
 #ifdef SHOW_DEBUG
 				if(!found) {
 					print_gecko("Boxart miss %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].Name, rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				}
 #endif
+#ifdef PERF_PROF
+				unsigned int t2 = PERF_NOW();
+#endif
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
+				perfProf_tileLoaded(i, 1, initUs, loadUs, PERF_US(t2));
+				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[i+(current_page*NUM_FILE_SLOTS)].Country_code == 0x4A);
+			}
+			else
+			{
+				// Over the system-level boxart_limit: skip BOXART_Init/LoadTexture
+				// entirely (no file I/O at all) -- same blank placeholder already
+				// used above for empty/directory slots in this function. Used to
+				// isolate how much of a page's load time boxart accounts for
+				// versus everything else.
+				FRAME_BUTTONS[btn_ind].button->setLabelColor((GXColor) {255,255,255,255});
+				memset(fileTextures[i], 0xFF, BOXART_TEX_SIZE);
+				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
+				perfProf_tileLoaded(i, 0, 0, 0, 0);
 				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[i+(current_page*NUM_FILE_SLOTS)].Country_code == 0x4A);
 			}
 		}
@@ -741,7 +791,11 @@ void selectRomFrame_FillPage()
 			DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 		}
 	}
+#ifdef PERF_PROF
+	unsigned int invalidateStart = PERF_NOW();
+#endif
 	GX_InvalidateTexAll();
+	perfProf_pageEnd(PERF_US(invalidateStart), PERF_US(pageStart));
 
 	//activate next/prev buttons
 	if (current_page > 0) FRAME_BUTTONS[3].button->setActive(true);
