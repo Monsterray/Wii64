@@ -108,7 +108,14 @@ bool BOXART_LoadTexture(u32 CRC, char *buffer)
 		if(boxartHeader[i] == CRC)
 		{
 			fseek(boxartFile,boxartHeader[i+1],SEEK_SET);
-			fread(buffer, 1, BOXART_TEX_SIZE, boxartFile);
+			// A short read (offset table entry pointing past a truncated
+			// boxart.bin -- seen in practice: ~30% of one real boxart.bin's
+			// entries did) used to leave the memset(0x5A) pre-fill showing
+			// through as a solid-color "texture" instead of falling back
+			// to the normal missing-art placeholder like an unmatched CRC
+			// already does below.
+			if(fread(buffer, 1, BOXART_TEX_SIZE, boxartFile) != BOXART_TEX_SIZE)
+				break;
 			return true;
 		}
 	}
