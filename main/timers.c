@@ -11,6 +11,7 @@
 #include "../r4300/r4300.h"
 #include "../gui/DEBUG.h"
 #include "gamehacks.h"
+#include "perf_prof.h"
 
 timers Timers = {0.0, 0.0, 0, 1, 0, 100};
 float VILimit = 60.0;
@@ -95,6 +96,7 @@ void new_frame(void) {
 	}
 	else if (CurrentFPSTime - CounterTime >= 500000.0 ) {
 		Timers.fps = (float) (Fps_Counter * 1000000.0 / (CurrentFPSTime - CounterTime));
+		perfProf_fpsSample(Timers.fps);
 		CounterTime = ticks_to_microsecs(gettick());
 		Fps_Counter = 0;
 	}
@@ -154,6 +156,8 @@ void new_vi(void) {
 	}
 	else if (CurrentFPSTime - CounterTime >= 500000.0 ) {
 		Timers.vis = (float) (VI_Counter * 1000000.0 / (CurrentFPSTime - CounterTime));
+		perfProf_visSample(Timers.vis);
+		perfProf_cpuSample();
 //		sprintf(txtbuffer,"Timer.VIs: Current = %dus; Last = %dus; diff_ms = %d; FPS_count = %d", CurrentFPSTime, CounterTime, diff_millisecs, VI_Counter);
 //		DEBUG_print(txtbuffer,0);
 		CounterTime = ticks_to_microsecs(gettick());

@@ -1,2 +1,3 @@
-id,date,rom,build,purpose,pages,avg_tile_init_us,avg_tile_load_us,avg_tile_flush_us,avg_page_total_us,avg_page_invalidate_us
-2026-09-21_selectrom_baseline,2026-09-21,Banjo-Kazooie etc (5 ROMs),,"post-timestamp-fix baseline, 5-ROM SD roms folder, stress_selectrom=1",1,57.8,991.6,16.0,11388.0,0.0
+id,date,rom,build,purpose,pages,avg_tile_init_us,avg_tile_load_us,avg_tile_flush_us,avg_page_total_us,avg_page_invalidate_us,vis_samples,avg_vis,min_vis,fps_samples,avg_fps,min_fps,total_exceptions,total_cache_resets
+2026-09-21_selectrom_baseline,2026-09-21,Banjo-Kazooie etc (5 ROMs),,"post-timestamp-fix baseline, 5-ROM SD roms folder, stress_selectrom=1",1,57.8,991.6,16.0,11388.0,0.0,,,,,,,,
+2026-09-21_banjo_gameplay_baseline,2026-09-21,Banjo-Kazooie,,"20s autoboot gameplay, dynarec, stock settings",0,0.0,0.0,0.0,0.0,0.0,34,58.1,0.2,29,26.9,0.2,5944,1

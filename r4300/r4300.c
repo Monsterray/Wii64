@@ -37,6 +37,7 @@
 #include "recomp.h"
 #include "Invalid_Code.h"
 #include "Recomp-Cache.h"
+#include "../main/perf_prof.h"
 #include "ppc/Wrappers.h"
 #include <malloc.h>
 
@@ -203,6 +204,7 @@ void go()
 		dynacore = 1;
 		if(cpu_inited) {
 			RecompCache_Init();
+			perfProf_cacheReset();
 			init_blocks();
 			cpu_inited = 0;
 		}

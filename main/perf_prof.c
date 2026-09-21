@@ -90,4 +90,57 @@ void perfProf_mark(const char* label)
 	fclose(f);
 }
 
+/* One sample every ~500ms during actual gameplay -- see main/timers.c's
+   new_vi()/new_frame(), which already finalize Timers.vis/Timers.fps on
+   that same cadence for the in-game "Show FPS" overlay. vis is the raw
+   VI-interrupt rate; fps is the completed-display-list rate (see
+   Dlist_Incomplete in timers.c) -- neither is "real" N64 hardware speed,
+   but both are directly comparable build-to-build the way WiiStation's
+   own vblanks-per-guest-second speed metric is (see baselines/README.md). */
+void perfProf_visSample(float vis)
+{
+	FILE* f = fopen("sd:/wii64/perf.log", "a");
+	if (!f) return;
+	fprintf(f, "vis: %.1f\n", vis);
+	fclose(f);
+}
+
+void perfProf_fpsSample(float fps)
+{
+	FILE* f = fopen("sd:/wii64/perf.log", "a");
+	if (!f) return;
+	fprintf(f, "fps: %.1f\n", fps);
+	fclose(f);
+}
+
+/* CPU-core counters: cumulative since boot, bumped from r4300/exception.c's
+   exception_general() and r4300/r4300.c's go() (recompiler cache reset).
+   Plain in-memory increments -- no file I/O here, so these are safe to call
+   from those hot paths even though they can fire far more often than the
+   ~500ms perfProf_cpuSample() report cadence (called from the same
+   new_vi() hook as perfProf_visSample -- see main/timers.c). Cumulative
+   rather than a per-window delta: a run's *total* exception/reset count is
+   what a baseline comparison cares about ("did this change make the core
+   throw more exceptions or thrash the JIT cache more"), not the rate. */
+static unsigned int g_perfExceptionCount = 0;
+static unsigned int g_perfCacheResetCount = 0;
+
+void perfProf_exceptionOccurred(void)
+{
+	g_perfExceptionCount++;
+}
+
+void perfProf_cacheReset(void)
+{
+	g_perfCacheResetCount++;
+}
+
+void perfProf_cpuSample(void)
+{
+	FILE* f = fopen("sd:/wii64/perf.log", "a");
+	if (!f) return;
+	fprintf(f, "cpu: exceptions=%u cacheResets=%u\n", g_perfExceptionCount, g_perfCacheResetCount);
+	fclose(f);
+}
+
 #endif /* PERF_PROF */

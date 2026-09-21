@@ -30,10 +30,12 @@ synced-folder copy of `perf.log` is stale or missing; the raw image isn't.
 
 ```
 python scripts/baseline_add.py out.log --id 2026-09-21_selectrom_baseline --purpose "boxart page load, 5 ROMs, stock"
+python scripts/baseline_add.py out.log --id 2026-09-21_banjo_gameplay_baseline --rom "Banjo-Kazooie" --purpose "20s autoboot gameplay, dynarec"
 ```
 
-Picks up the perf.log's page/tile averages itself (same parsing as `perf_compare.py`); writes
-`notes.md` and appends a row to `index.csv`. `--force` replaces an existing id.
+Picks up whichever metrics the perf.log actually has (same parsing as `perf_compare.py` --
+boxart page/tile averages, gameplay vis/fps averages, or both); writes `notes.md` and appends a
+row to `index.csv`. `--force` replaces an existing id.
 
 ## Comparing against one
 
@@ -41,8 +43,10 @@ Picks up the perf.log's page/tile averages itself (same parsing as `perf_compare
 python scripts/perf_compare.py baselines/<id>/perf.log <new capture>.log
 ```
 
-Prints both logs' averaged tile-load/page-load numbers side by side plus the B/A ratio -- a
-regression or improvement is visible at a glance instead of eyeballed from two raw logs.
+Prints both logs' averages side by side plus the B/A ratio -- a regression or improvement is
+visible at a glance instead of eyeballed from two raw logs. Only metrics present in at least one
+of the two logs are printed, so a boxart-page capture compared against a gameplay capture just
+shows nothing in common (expected -- they don't measure the same thing).
 
 ## What the numbers are, and are not
 
@@ -51,7 +55,28 @@ estimate, good for ranking relative cost and catching a regression, not a promis
 hardware would show. A hardware capture (same PERF_PROF build, real Wii, `sd:/wii64/perf.log`
 pulled off a real SD card) files the same way and should say `hardware` in its purpose.
 
-Right now the only real-time-bearing data `perf_prof.c` emits is the ROM browser's boxart page
-load (`pageBegin`/`tileLoaded`/`pageEnd` -- see `menu/SelectRomFrame.cpp`'s
-`selectRomFrame_FillPage`). Extending it to cover CPU-core/dynarec or renderer timing the way
-WiiStation's `Gamecube/perf_prof.c` does for its own domain is future work, not done yet.
+`min_vis`/`min_fps` will usually be a near-zero outlier from the very first sample of a capture
+(the window from ROM boot to the first 500ms tick, not a real stutter) -- expect it, don't read
+it as a hitch unless it recurs later in the log too.
+
+Three real-time/count-bearing sources exist:
+- The ROM browser's boxart page load (`pageBegin`/`tileLoaded`/`pageEnd` --
+  `menu/SelectRomFrame.cpp`'s `selectRomFrame_FillPage`).
+- Actual gameplay speed (`visSample`/`fpsSample`, ~2/sec -- `main/timers.c`'s
+  `new_vi()`/`new_frame()`, the same numbers the in-game "Show FPS" overlay shows: `vis` is the
+  raw VI-interrupt rate, `fps` is the completed-display-list rate). This is the number that
+  answers "did this change make the emulator faster or slower" for real gameplay, the way
+  WiiStation's vblacks-per-guest-second `speed` metric does for its own domain.
+- CPU-core counters (`cpuSample`, same ~2/sec cadence as `visSample` -- `total_exceptions` from
+  `r4300/exception.c`'s `exception_general()`, `total_cache_resets` from `r4300/r4300.c`'s `go()`
+  reinitializing the recompiler cache). Cumulative since boot, not a rate: a baseline compares
+  a run's *total* count, the same way WiiStation's `jit_full`/`jit_part`/`exc` counters are used.
+  A `total_cache_resets` above 1 for a normal single-ROM run is itself a signal (the JIT cache
+  had to fully reinitialize mid-session) worth looking at directly in the raw log, not just the
+  averaged number.
+
+Renderer-internal timing (Rice_GX/glN64_GX present time, texture cache hit/miss -- what
+WiiStation's `Gamecube/perf_prof.c` also tracks for its GPU side) isn't captured yet. It would
+need counters added inside the renderer plugins' own draw/present paths rather than a call site
+that already existed to hook into, the same way the CPU counters above needed new increments
+inside `exception_general()`/`go()` instead of just wrapping an existing call. Future work.

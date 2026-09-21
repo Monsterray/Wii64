@@ -35,6 +35,7 @@
 #include "../gui/DEBUG.h"
 #include "../gc_memory/memory.h"
 #include "interupt.h"
+#include "../main/perf_prof.h"
 
 
 #ifdef DEBUGON
@@ -114,6 +115,7 @@ void TLB_refill_exception(unsigned long address, int w)
 
 void exception_general()
 {
+  perfProf_exceptionOccurred();
   update_count();
   Status |= 2;
    
