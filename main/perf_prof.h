@@ -33,6 +33,7 @@ void perfProf_exceptionOccurred(void);
 void perfProf_cacheReset(void);
 void perfProf_cpuSample(void);
 void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersUs);
+void perfProf_menuFpsSample(float fps);
 
 #ifdef __cplusplus
 }
@@ -55,6 +56,7 @@ void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersU
 #define perfProf_cacheReset()
 #define perfProf_cpuSample()
 #define perfProf_dirScan(entries, readDirUs, headersUs)
+#define perfProf_menuFpsSample(fps)
 #define PERF_NOW() (0)
 #define PERF_US(start) (0)
 

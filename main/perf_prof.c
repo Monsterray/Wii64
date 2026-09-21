@@ -155,4 +155,12 @@ void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersU
 	fclose(f);
 }
 
+void perfProf_menuFpsSample(float fps)
+{
+	FILE* f = fopen("sd:/wii64/perf.log", "a");
+	if (!f) return;
+	fprintf(f, "menufps: %.1f\n", fps);
+	fclose(f);
+}
+
 #endif /* PERF_PROF */

@@ -27,6 +27,10 @@
 #include "LoadingBar.h"
 #include "GuiResources.h"
 #include "../main/wii64config.h"
+#include "../main/perf_prof.h"
+#ifdef PERF_PROF
+#include <ogc/lwp_watchdog.h>
+#endif
 
 extern "C" {
 #include "../gc_input/controller.h"
@@ -84,6 +88,26 @@ void Gui::removeFrame(Frame *frame)
 void Gui::draw()
 {
 //	printf("Gui draw\n");
+#ifdef PERF_PROF
+	// How fast this screen is actually advancing -- unlike
+	// perfProf_visSample()/perfProf_fpsSample() (main/timers.c's
+	// new_vi()/new_frame(), only called during actual N64 gameplay), this
+	// counts real Gui::draw() calls, so it also covers the menu itself
+	// (the ROM browser, Settings, etc.) where those never fire.
+	{
+		static u64 counterTime = 0;
+		static int frameCount = 0;
+		u64 now = gettime();
+		frameCount++;
+		if (counterTime == 0) counterTime = now;
+		unsigned int elapsedUs = ticks_to_microsecs(now - counterTime);
+		if (elapsedUs >= 500000) {
+			perfProf_menuFpsSample((float)(frameCount * 1000000.0 / elapsedUs));
+			counterTime = now;
+			frameCount = 0;
+		}
+	}
+#endif
 	Input::getInstance().refreshInput();
 	Cursor::getInstance().updateCursor();
 	Focus::getInstance().updateFocus();
