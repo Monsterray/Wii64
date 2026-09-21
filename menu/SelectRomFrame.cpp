@@ -97,6 +97,7 @@ static char FRAME_STRINGS[7][14] =
 static u8* fileTextures[NUM_FILE_SLOTS];
 static fileBrowser_file* dir_entries;
 static rom_header* 		rom_headers;
+static bool*			rom_headers_valid; // lazy per-entry flag, see selectRomFrame_FillPage
 static int				num_entries;
 static int				current_page;
 static int				max_page;
@@ -226,7 +227,8 @@ SelectRomFrame::SelectRomFrame()
 	}
 	dir_entries = NULL;
 	rom_headers = NULL;
-	
+	rom_headers_valid = NULL;
+
 }
 
 SelectRomFrame::~SelectRomFrame()
@@ -498,7 +500,6 @@ void SelectRomFrame::drawChildren(menu::Graphics &gfx)
 				FRAME_TEXTBOXES[1].textBoxString = filenameFromAbsPath(dir_entries[i+(current_page*NUM_FILE_SLOTS)].name);
 			}
 		}
-		
 		//Draw buttons
 		menu::ComponentList::const_iterator iteration;
 		for (iteration = componentList.begin(); iteration != componentList.end(); iteration++)
@@ -566,11 +567,12 @@ void Func_ReturnFromSelectRomFrame()
 	}
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
 	if(rom_headers){ free(rom_headers); rom_headers = NULL; }
+	if(rom_headers_valid){ free(rom_headers_valid); rom_headers_valid = NULL; }
 
 	num_entries = 0;
 	current_page = 0;
 	max_page = 0;
-		
+
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
 }
 
@@ -626,6 +628,7 @@ void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 //	if(menu_items){  free(menu_items);  menu_items  = NULL; }
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
 	if(rom_headers){ free(rom_headers); rom_headers = NULL; }
+	if(rom_headers_valid){ free(rom_headers_valid); rom_headers_valid = NULL; }
 	num_entries = 0;
 	current_page = 0;
 	max_page = 0;
@@ -650,19 +653,15 @@ void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 	// Sort the listing
 	qsort(dir_entries, num_entries, sizeof(fileBrowser_file), dir_comparator);
 
-	// Read all headers
+	// Headers are read lazily, one page's worth at a time, from
+	// selectRomFrame_FillPage() -- not here. Reading every entry's header
+	// up front meant a fresh fopen()/fseek()/fread()/fclose() per ROM
+	// (dir_comparator above only needs the name, already free from
+	// romFile_readDir), i.e. the full cost of a large collection paid
+	// immediately even though only one page's worth is ever shown at a
+	// time (see doc/subsystem-review.md's New ROM menu slowdown writeup).
 	rom_headers = (rom_header*) malloc(sizeof(rom_header)*num_entries);
-	for(int i = 0; i < num_entries; i++) {
-		fileBrowser_file f;
-		memcpy(&f, &dir_entries[i], sizeof(fileBrowser_file));
-		//print_gecko("reading header %s\r\n",&f.name[0]);
-		romFile_seekFile(&f, 0, FILE_BROWSER_SEEK_SET);
-		if(romFile_readHeader(&f, &rom_headers[i], sizeof(rom_header))!=sizeof(rom_header)) {
-			break;	// give up on the first read error
-		}
-		byte_swap((char*)&rom_headers[i], sizeof(rom_header), init_byte_swap(*(u32*)&rom_headers[i]));
-		//print_gecko("header CRC %08X\r\n",rom_headers[i].CRC1);
-	}
+	rom_headers_valid = (bool*) calloc(num_entries, sizeof(bool));
 	perfProf_dirScan(entries, readDirUs, PERF_US(headersStart));
 
 	current_page = 0;
@@ -737,7 +736,8 @@ void selectRomFrame_FillPage()
 		int btn_ind = i+5;
 		if ((current_page*NUM_FILE_SLOTS) + i < num_entries)
 		{
-			if(dir_entries[i+(current_page*NUM_FILE_SLOTS)].attr & FILE_BROWSER_ATTR_DIR)
+			int globalIdx = i+(current_page*NUM_FILE_SLOTS);
+			if(dir_entries[globalIdx].attr & FILE_BROWSER_ATTR_DIR)
 			{
 				FRAME_BUTTONS[btn_ind].button->setLabelColor((GXColor) {255,50,50,255});
 				FRAME_BUTTONS[btn_ind].button->setBoxTall(false);
@@ -753,6 +753,14 @@ void selectRomFrame_FillPage()
 #ifdef PERF_PROF
 				u64 t0 = PERF_NOW();
 #endif
+				if(!rom_headers_valid[globalIdx]) {
+					fileBrowser_file f;
+					memcpy(&f, &dir_entries[globalIdx], sizeof(fileBrowser_file));
+					romFile_seekFile(&f, 0, FILE_BROWSER_SEEK_SET);
+					if(romFile_readHeader(&f, &rom_headers[globalIdx], sizeof(rom_header)) == sizeof(rom_header))
+						byte_swap((char*)&rom_headers[globalIdx], sizeof(rom_header), init_byte_swap(*(u32*)&rom_headers[globalIdx]));
+					rom_headers_valid[globalIdx] = true; // attempted -- don't retry every time this page is revisited
+				}
 				BOXART_Init();
 #ifdef PERF_PROF
 				unsigned int initUs = PERF_US(t0);
@@ -761,13 +769,13 @@ void selectRomFrame_FillPage()
 #ifdef SHOW_DEBUG
 				bool found =
 #endif
-				BOXART_LoadTexture(rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1,(char*) fileTextures[i]);
+				BOXART_LoadTexture(rom_headers[globalIdx].CRC1,(char*) fileTextures[i]);
 #ifdef PERF_PROF
 				unsigned int loadUs = PERF_US(t1);
 #endif
 #ifdef SHOW_DEBUG
 				if(!found) {
-					print_gecko("Boxart miss %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].Name, rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
+					print_gecko("Boxart miss %s with CRC: %08X\r\n",&rom_headers[globalIdx].Name, rom_headers[globalIdx].CRC1);
 				}
 #endif
 #ifdef PERF_PROF
@@ -775,7 +783,7 @@ void selectRomFrame_FillPage()
 #endif
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 				perfProf_tileLoaded(i, 1, initUs, loadUs, PERF_US(t2));
-				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[i+(current_page*NUM_FILE_SLOTS)].Country_code == 0x4A);
+				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[globalIdx].Country_code == 0x4A);
 			}
 			else
 			{
@@ -783,12 +791,21 @@ void selectRomFrame_FillPage()
 				// entirely (no file I/O at all) -- same blank placeholder already
 				// used above for empty/directory slots in this function. Used to
 				// isolate how much of a page's load time boxart accounts for
-				// versus everything else.
+				// versus everything else. Still needs the header for Country_code
+				// (box shape), so the same lazy read applies.
+				if(!rom_headers_valid[globalIdx]) {
+					fileBrowser_file f;
+					memcpy(&f, &dir_entries[globalIdx], sizeof(fileBrowser_file));
+					romFile_seekFile(&f, 0, FILE_BROWSER_SEEK_SET);
+					if(romFile_readHeader(&f, &rom_headers[globalIdx], sizeof(rom_header)) == sizeof(rom_header))
+						byte_swap((char*)&rom_headers[globalIdx], sizeof(rom_header), init_byte_swap(*(u32*)&rom_headers[globalIdx]));
+					rom_headers_valid[globalIdx] = true;
+				}
 				FRAME_BUTTONS[btn_ind].button->setLabelColor((GXColor) {255,255,255,255});
 				memset(fileTextures[i], 0xFF, BOXART_TEX_SIZE);
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 				perfProf_tileLoaded(i, 0, 0, 0, 0);
-				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[i+(current_page*NUM_FILE_SLOTS)].Country_code == 0x4A);
+				FRAME_BUTTONS[btn_ind].button->setBoxTall(rom_headers[globalIdx].Country_code == 0x4A);
 			}
 		}
 		else
