@@ -268,7 +268,10 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           save, load, save, load. Forces the
                                           dirty flags so Save doesn't no-op.
                                           Requires autoboot_rom= so a ROM is
-                                          loaded first. */
+                                          loaded first.
+     autonav=settings_general|settings_video  Jump straight to that Settings
+                                          tab at boot -- for screenshotting a
+                                          menu layout without a controller. */
 extern "C" void DiagNav_SelectRomSD(void);
 extern void Func_SR_SD(void);
 extern void Func_ReturnFromSelectRomFrame(void);
@@ -280,6 +283,7 @@ static bool g_diagAutonavSelectRomSD = false;
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
+static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -292,6 +296,10 @@ static void apply_diag_automation(void) {
 			Autoboot::setPath(romPath);
 		} else if(strncmp(line, "autonav=selectrom_sd", 20) == 0) {
 			g_diagAutonavSelectRomSD = true;
+		} else if(strncmp(line, "autonav=settings_general", 24) == 0) {
+			g_diagSettingsSubmenu = 0; // SettingsFrame::SUBMENU_GENERAL
+		} else if(strncmp(line, "autonav=settings_video", 22) == 0) {
+			g_diagSettingsSubmenu = 1; // SettingsFrame::SUBMENU_VIDEO
 		} else if(sscanf(line, "dynacore=%31[^\r\n]", coreName) == 1) {
 			if(!strcmp(coreName, "dynarec"))         g_diagDynacoreOverride = DYNACORE_DYNAREC;
 			else if(!strcmp(coreName, "pureinterp")) g_diagDynacoreOverride = DYNACORE_PURE_INTERP;
@@ -497,6 +505,8 @@ int main(int argc, const char* argv[]) {
 	// completed in the log, yet the screen never showed it, because this
 	// unconditional reset ran right after and clobbered it before a single
 	// frame was drawn.
+	if(g_diagSettingsSubmenu != -1)
+		menu->setActiveFrame(MenuContext::FRAME_SETTINGS, g_diagSettingsSubmenu);
 	perfProf_mark(g_diagAutonavSelectRomSD ? "diag autonav: flag set" : "diag autonav: flag NOT set");
 	if(g_diagAutonavSelectRomSD)
 		DiagNav_SelectRomSD();
@@ -779,6 +789,7 @@ void stop_it() { r4300.stop = 1; }
 
 #ifdef HW_RVL
 void ShutdownWii() {
+  perfProf_mark("ShutdownWii: called");
   shutdown = 1;
   stop_it();
 }

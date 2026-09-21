@@ -186,19 +186,22 @@ struct ButtonInfo
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	380.0,	 55.0,	50.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	380.0,	 70.0,	50.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
 	//Buttons for Video Tab (starts at button[16])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	156.0,	 75.0,	50.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	420.0,	156.0,	 75.0,	50.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
+	//Sized/positioned to match the General tab's convention (button width fit
+	//to its label, 330/400 for a 2-way toggle, 15px gap) instead of a fixed
+	//75px for every button regardless of label length.
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 55.0,	50.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	100.0,	 70.0,	50.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	156.0,	 70.0,	50.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	415.0,	156.0,	 80.0,	50.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	510.0,	156.0,	115.0,	50.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	212.0,	 75.0,	50.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	212.0,	 75.0,	50.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	268.0,	 75.0,	50.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	268.0,	 75.0,	50.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 75.0,	50.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	324.0,	 75.0,	50.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	380.0,	 75.0,	50.0,	25,	 1,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	380.0,	 75.0,	50.0,	26,	 1,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	212.0,	 55.0,	50.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	212.0,	 70.0,	50.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	268.0,	 55.0,	50.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	268.0,	 70.0,	50.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 55.0,	50.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	324.0,	 70.0,	50.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	380.0,	 55.0,	50.0,	25,	 1,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	380.0,	 70.0,	50.0,	26,	 1,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
 	//Buttons for Input Tab (starts at button[29])
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[24],	185.0,	100.0,	270.0,	50.0,	 2,	30,	-1,	-1,	Func_ConfigureInput,	Func_ReturnFromSettingsFrame }, // Configure Mappings
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[25],	185.0,	170.0,	270.0,	50.0,	29,	31,	-1,	-1,	Func_ConfigurePaks,		Func_ReturnFromSettingsFrame }, // Configure Paks

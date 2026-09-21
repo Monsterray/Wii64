@@ -133,6 +133,14 @@ void Gui::draw()
 		
 		if(fade == 255)
 		{
+			// Nothing else ever clears `shutdown`, and isRunning() keeps
+			// calling draw() every frame regardless -- without this guard
+			// SYS_ResetSystem/exit() below get re-issued every subsequent
+			// frame forever instead of exactly once.
+			static bool shutdownIssued = false;
+			if(shutdownIssued) return;
+			shutdownIssued = true;
+
 			VIDEO_SetBlack(true);
 			VIDEO_Flush();
 		 	VIDEO_WaitVSync();
