@@ -259,14 +259,27 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           that only shows up after several
                                           repeats of entering/leaving the ROM
                                           browser (reported: repeated
-                                          New ROM + back-out froze Wii64). */
+                                          New ROM + back-out froze Wii64).
+     test_saveload=1                     Exercise CurrentRomFrame's real
+                                          Load/Save Native Save path (the one
+                                          the menu actually wires up, unlike
+                                          LoadSaveFrame/SaveGameFrame) for
+                                          both SD and USB right after boot --
+                                          save, load, save, load. Forces the
+                                          dirty flags so Save doesn't no-op.
+                                          Requires autoboot_rom= so a ROM is
+                                          loaded first. */
 extern "C" void DiagNav_SelectRomSD(void);
 extern void Func_SR_SD(void);
 extern void Func_ReturnFromSelectRomFrame(void);
+extern void Func_SaveGame(void);
+extern void Func_LoadSave(void);
+extern bool sramWritten, eepromWritten, mempakWritten, flashramWritten;
 extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
+static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -290,6 +303,8 @@ static void apply_diag_automation(void) {
 			randomize_interrupt = 0;
 		} else if(sscanf(line, "stress_selectrom=%d", &g_diagStressSelectRom) == 1) {
 			// no-op besides the sscanf; consumed after MenuContext exists, see main()
+		} else if(strncmp(line, "test_saveload=1", 16) == 0) {
+			g_diagTestSaveLoad = 1;
 		}
 	}
 	fclose(f);
@@ -493,6 +508,23 @@ int main(int argc, const char* argv[]) {
 		Func_ReturnFromSelectRomFrame();
 		menu::Gui::getInstance().draw();
 		perfProf_mark("stress_selectrom: back out");
+	}
+	if(g_diagTestSaveLoad) {
+		char savedDevice = nativeSaveDevice;
+		nativeSaveDevice = NATIVESAVEDEVICE_SD;
+		sramWritten = eepromWritten = mempakWritten = flashramWritten = true;
+		perfProf_mark("test_saveload: SD save");
+		Func_SaveGame();
+		perfProf_mark("test_saveload: SD load");
+		Func_LoadSave();
+		nativeSaveDevice = NATIVESAVEDEVICE_USB;
+		sramWritten = eepromWritten = mempakWritten = flashramWritten = true;
+		perfProf_mark("test_saveload: USB save");
+		Func_SaveGame();
+		perfProf_mark("test_saveload: USB load");
+		Func_LoadSave();
+		perfProf_mark("test_saveload: done");
+		nativeSaveDevice = savedDevice;
 	}
 	while (menu->isRunning()) {}
 
