@@ -719,7 +719,7 @@ void selectRomFrame_FillPage()
 	// someone deliberately opts in.
 	int boxartLoadLimit = BOXART_GetLoadLimit(NUM_FILE_SLOTS);
 #ifdef PERF_PROF
-	unsigned int pageStart = PERF_NOW();
+	u64 pageStart = PERF_NOW();
 #endif
 	perfProf_pageBegin(NUM_FILE_SLOTS, boxartLoadLimit);
 
@@ -743,12 +743,12 @@ void selectRomFrame_FillPage()
 				//			rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				//load boxart
 #ifdef PERF_PROF
-				unsigned int t0 = PERF_NOW();
+				u64 t0 = PERF_NOW();
 #endif
 				BOXART_Init();
 #ifdef PERF_PROF
 				unsigned int initUs = PERF_US(t0);
-				unsigned int t1 = PERF_NOW();
+				u64 t1 = PERF_NOW();
 #endif
 #ifdef SHOW_DEBUG
 				bool found =
@@ -763,7 +763,7 @@ void selectRomFrame_FillPage()
 				}
 #endif
 #ifdef PERF_PROF
-				unsigned int t2 = PERF_NOW();
+				u64 t2 = PERF_NOW();
 #endif
 				DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 				perfProf_tileLoaded(i, 1, initUs, loadUs, PERF_US(t2));
@@ -792,7 +792,7 @@ void selectRomFrame_FillPage()
 		}
 	}
 #ifdef PERF_PROF
-	unsigned int invalidateStart = PERF_NOW();
+	u64 invalidateStart = PERF_NOW();
 #endif
 	GX_InvalidateTexAll();
 	perfProf_pageEnd(PERF_US(invalidateStart), PERF_US(pageStart));

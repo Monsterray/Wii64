@@ -1,0 +1,2 @@
+id,date,rom,build,purpose,pages,avg_tile_init_us,avg_tile_load_us,avg_tile_flush_us,avg_page_total_us,avg_page_invalidate_us
+2026-09-21_selectrom_baseline,2026-09-21,Banjo-Kazooie etc (5 ROMs),,"post-timestamp-fix baseline, 5-ROM SD roms folder, stress_selectrom=1",1,57.8,991.6,16.0,11388.0,0.0

@@ -13,3 +13,5 @@ AGENTS.md
 # codebase-memory's local index artifact -- regenerate with index_repository,
 # no need to carry a 6MB binary graph.db in the repo.
 .codebase-memory/
+
+__pycache__/
