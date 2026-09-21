@@ -79,14 +79,14 @@ struct ButtonInfo
 	ButtonFunc		returnFunc;
 } FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
 { //	button	buttonStyle	buttonString		x		y		width	height	Up	Dwn	Lft	Rt	clickFunc				returnFunc
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	295.0,	100.0,	160.0,	56.0,	 6,	 2,	 1,	 1,	Func_Controller1Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: Mempak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	465.0,	100.0,	160.0,	56.0,	 7,	 3,	 0,	 0,	Func_Controller1Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: Rumblepak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	295.0,	170.0,	160.0,	56.0,	 0,	 4,	 3,	 3,	Func_Controller2Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: Mempak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	465.0,	170.0,	160.0,	56.0,	 1,	 5,	 2,	 2,	Func_Controller2Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: Rumblepak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	295.0,	240.0,	160.0,	56.0,	 2,	 6,	 5,	 5,	Func_Controller3Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: Mempak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	465.0,	240.0,	160.0,	56.0,	 3,	 7,	 4,	 4,	Func_Controller3Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: Rumblepak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	295.0,	310.0,	160.0,	56.0,	 4,	 0,	 7,	 7,	Func_Controller4Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: Mempak
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	465.0,	310.0,	160.0,	56.0,	 5,	 1,	 6,	 6,	Func_Controller4Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: Rumblepak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	330.0,	100.0,	140.0,	50.0,	 6,	 2,	 1,	 1,	Func_Controller1Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: Mempak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	485.0,	100.0,	140.0,	50.0,	 7,	 3,	 0,	 0,	Func_Controller1Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: Rumblepak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	330.0,	170.0,	140.0,	50.0,	 0,	 4,	 3,	 3,	Func_Controller2Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: Mempak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	485.0,	170.0,	140.0,	50.0,	 1,	 5,	 2,	 2,	Func_Controller2Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: Rumblepak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	330.0,	240.0,	140.0,	50.0,	 2,	 6,	 5,	 5,	Func_Controller3Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: Mempak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	485.0,	240.0,	140.0,	50.0,	 3,	 7,	 4,	 4,	Func_Controller3Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: Rumblepak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	330.0,	310.0,	140.0,	50.0,	 4,	 0,	 7,	 7,	Func_Controller4Mempak,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: Mempak
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	485.0,	310.0,	140.0,	50.0,	 5,	 1,	 6,	 6,	Func_Controller4Rumble,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: Rumblepak
 };
 
 struct TextBoxInfo
@@ -99,14 +99,14 @@ struct TextBoxInfo
 	bool			centered;
 } FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
 { //	textBox	textBoxString		x		y		scale	centered
-	{	NULL,	FRAME_STRINGS[2],	190.0,	128.0,	 1.0,	true }, // Controller 1
-	{	NULL,	FRAME_STRINGS[3],	190.0,	198.0,	 1.0,	true }, // Controller 2
-	{	NULL,	FRAME_STRINGS[4],	190.0,	268.0,	 1.0,	true }, // Controller 3
-	{	NULL,	FRAME_STRINGS[5],	190.0,	338.0,	 1.0,	true }, // Controller 4
-	{	NULL,	FRAME_STRINGS[6],	450.0,	128.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[6],	450.0,	198.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[6],	450.0,	268.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[6],	450.0,	338.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[2],	180.0,	125.0,	 1.0,	true }, // Controller 1
+	{	NULL,	FRAME_STRINGS[3],	180.0,	195.0,	 1.0,	true }, // Controller 2
+	{	NULL,	FRAME_STRINGS[4],	180.0,	265.0,	 1.0,	true }, // Controller 3
+	{	NULL,	FRAME_STRINGS[5],	180.0,	335.0,	 1.0,	true }, // Controller 4
+	{	NULL,	FRAME_STRINGS[6],	478.0,	125.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[6],	478.0,	195.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[6],	478.0,	265.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[6],	478.0,	335.0,	 1.0,	true }, // Unavailable
 };
 
 ConfigurePaksFrame::ConfigurePaksFrame()

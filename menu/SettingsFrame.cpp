@@ -171,46 +171,46 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[3],	395.0,	 30.0,	100.0,	56.0,	-1,	-1,	 2,	 4,	Func_TabAudio,			Func_ReturnFromSettingsFrame }, // Audio tab
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[4],	515.0,	 30.0,	100.0,	56.0,	-1,	-1,	 3,	 0,	Func_TabSaves,			Func_ReturnFromSettingsFrame }, // Saves tab
 	//Buttons for General Tab (starts at button[5])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	295.0,	100.0,	 55.0,	56.0,	 0,	 7,	 6,	 6,	Func_NativeSaveSD,		Func_ReturnFromSettingsFrame }, // Native Save: SD
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	360.0,	100.0,	 70.0,	56.0,	 0,	8,	 5,	 5,	Func_NativeSaveUSB,		Func_ReturnFromSettingsFrame }, // Native Save: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	295.0,	170.0,	 55.0,	56.0,	 5,	9,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	360.0,	170.0,	 70.0,	56.0,	 6,	9,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	295.0,	240.0,	160.0,	56.0,	 7,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	465.0,	240.0,	130.0,	56.0,	8,	12,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	295.0,	310.0,	 55.0,	56.0,	9,	14,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	360.0,	310.0,	 55.0,	56.0,	9,	15,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	425.0,	310.0,	 55.0,	56.0,	9,	15,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	295.0,	380.0,	 55.0,	56.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	360.0,	380.0,	 70.0,	56.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	100.0,	 55.0,	50.0,	 0,	 7,	 6,	 6,	Func_NativeSaveSD,		Func_ReturnFromSettingsFrame }, // Native Save: SD
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	100.0,	 70.0,	50.0,	 0,	8,	 5,	 5,	Func_NativeSaveUSB,		Func_ReturnFromSettingsFrame }, // Native Save: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	170.0,	 55.0,	50.0,	 5,	9,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	170.0,	 70.0,	50.0,	 6,	9,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	330.0,	240.0,	150.0,	50.0,	 7,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	495.0,	240.0,	120.0,	50.0,	8,	12,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	330.0,	310.0,	 55.0,	50.0,	9,	14,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	400.0,	310.0,	 55.0,	50.0,	9,	15,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	470.0,	310.0,	 55.0,	50.0,	9,	15,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	380.0,	 55.0,	50.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	380.0,	 70.0,	50.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
 	//Buttons for Video Tab (starts at button[16])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	325.0,	100.0,	 75.0,	36.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	36.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	230.0,	150.0,	 75.0,	36.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	325.0,	150.0,	 75.0,	36.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	420.0,	150.0,	155.0,	36.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	325.0,	200.0,	 75.0,	36.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	200.0,	 75.0,	36.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	325.0,	250.0,	 75.0,	36.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	250.0,	 75.0,	36.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	325.0,	300.0,	 75.0,	36.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	300.0,	 75.0,	36.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	325.0,	350.0,	 75.0,	36.0,	25,	 1,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	350.0,	 75.0,	36.0,	26,	 1,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	156.0,	 75.0,	50.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	420.0,	156.0,	 75.0,	50.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	510.0,	156.0,	115.0,	50.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	212.0,	 75.0,	50.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	212.0,	 75.0,	50.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	268.0,	 75.0,	50.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	268.0,	 75.0,	50.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 75.0,	50.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	324.0,	 75.0,	50.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	380.0,	 75.0,	50.0,	25,	 1,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	380.0,	 75.0,	50.0,	26,	 1,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
 	//Buttons for Input Tab (starts at button[29])
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[24],	180.0,	100.0,	280.0,	56.0,	 2,	30,	-1,	-1,	Func_ConfigureInput,	Func_ReturnFromSettingsFrame }, // Configure Mappings
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[25],	180.0,	170.0,	280.0,	56.0,	29,	31,	-1,	-1,	Func_ConfigurePaks,		Func_ReturnFromSettingsFrame }, // Configure Paks
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[26],	180.0,	240.0,	280.0,	56.0,	30,	32,	-1,	-1,	Func_ConfigureButtons,	Func_ReturnFromSettingsFrame }, // Configure Buttons
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	295.0,	310.0,	 55.0,	56.0,	31,	34,	33,	33,	Func_SaveButtonsSD,		Func_ReturnFromSettingsFrame }, // Save Button Configs to SD
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	360.0,	310.0,	 70.0,	56.0,	31,	34,	32,	32,	Func_SaveButtonsUSB,	Func_ReturnFromSettingsFrame }, // Save Button Configs to USB
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	295.0,	380.0,	135.0,	56.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[24],	185.0,	100.0,	270.0,	50.0,	 2,	30,	-1,	-1,	Func_ConfigureInput,	Func_ReturnFromSettingsFrame }, // Configure Mappings
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[25],	185.0,	170.0,	270.0,	50.0,	29,	31,	-1,	-1,	Func_ConfigurePaks,		Func_ReturnFromSettingsFrame }, // Configure Paks
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[26],	185.0,	240.0,	270.0,	50.0,	30,	32,	-1,	-1,	Func_ConfigureButtons,	Func_ReturnFromSettingsFrame }, // Configure Buttons
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	310.0,	 55.0,	50.0,	31,	34,	33,	33,	Func_SaveButtonsSD,		Func_ReturnFromSettingsFrame }, // Save Button Configs to SD
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	310.0,	 70.0,	50.0,	31,	34,	32,	32,	Func_SaveButtonsUSB,	Func_ReturnFromSettingsFrame }, // Save Button Configs to USB
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	240.0,	380.0,	160.0,	50.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
 	//Buttons for Audio Tab (starts at button[35])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	345.0,	100.0,	 75.0,	56.0,	 3,	 3,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	440.0,	100.0,	 75.0,	56.0,	 3,	 3,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 3,	 3,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 3,	 3,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
 	//Buttons for Saves Tab (starts at button[37])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	375.0,	100.0,	 75.0,	56.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	470.0,	100.0,	 75.0,	56.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	365.0,	170.0,	190.0,	56.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	365.0,	240.0,	190.0,	56.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
 };
 
 struct TextBoxInfo
@@ -224,26 +224,26 @@ struct TextBoxInfo
 } FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
 { //	textBox	textBoxString		x		y		scale	centered
 	//TextBoxes for General Tab (starts at textBox[0])
-	{	NULL,	FRAME_STRINGS[5],	155.0,	128.0,	 1.0,	true }, // Native Save Device: SD/USB
-	{	NULL,	FRAME_STRINGS[6],	155.0,	198.0,	 1.0,	true }, // Save State Device: SD/USB
-	{	NULL,	FRAME_STRINGS[7],	155.0,	268.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
-	{	NULL,	FRAME_STRINGS[36],	155.0,	338.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
-	{	NULL,	FRAME_STRINGS[8],	155.0,	408.0,	 1.0,	true }, // Save settings.cfg: SD/USB
+	{	NULL,	FRAME_STRINGS[5],	180.0,	125.0,	 1.0,	true }, // Native Save Device: SD/USB
+	{	NULL,	FRAME_STRINGS[6],	180.0,	195.0,	 1.0,	true }, // Save State Device: SD/USB
+	{	NULL,	FRAME_STRINGS[7],	180.0,	265.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
+	{	NULL,	FRAME_STRINGS[36],	180.0,	335.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
+	{	NULL,	FRAME_STRINGS[8],	180.0,	405.0,	 1.0,	true }, // Save settings.cfg: SD/USB
 	//TextBoxes for Video Tab (starts at textBox[5])
-	{	NULL,	FRAME_STRINGS[13],	190.0,	120.0,	 0.75,	true }, // Show FPS: On/Off
-	{	NULL,	FRAME_STRINGS[14],	130.0,	170.0,	 0.75,	true }, // ScreenMode: 4x3/16x9/Force16x9
-	{	NULL,	FRAME_STRINGS[15],	190.0,	220.0,	 0.75,	true }, // CPU Framebuffer: On/Off
-	{	NULL,	FRAME_STRINGS[16],	190.0,	270.0,	 0.75,	true }, // 2xSai: On/Off
-	{	NULL,	FRAME_STRINGS[17],	190.0,	320.0,	 0.75,	true }, // FBTex: On/Off
-	{	NULL,	FRAME_STRINGS[23],	190.0,	370.0,	 0.75,	true }, // Enable 240p: On/Off
+	{	NULL,	FRAME_STRINGS[13],	180.0,	125.0,	 1.0,	true }, // Show FPS: On/Off
+	{	NULL,	FRAME_STRINGS[14],	180.0,	181.0,	 1.0,	true }, // ScreenMode: 4x3/16x9/Force16x9
+	{	NULL,	FRAME_STRINGS[15],	180.0,	237.0,	 1.0,	true }, // CPU Framebuffer: On/Off
+	{	NULL,	FRAME_STRINGS[16],	180.0,	293.0,	 1.0,	true }, // 2xSai: On/Off
+	{	NULL,	FRAME_STRINGS[17],	180.0,	349.0,	 1.0,	true }, // FBTex: On/Off
+	{	NULL,	FRAME_STRINGS[23],	180.0,	405.0,	 1.0,	true }, // Enable 240p: On/Off
 	//TextBoxes for Input Tab (starts at textBox[11])
-	{	NULL,	FRAME_STRINGS[27],	155.0,	338.0,	 1.0,	true }, // Save Button Configs
-	{	NULL,	FRAME_STRINGS[28],	155.0,	408.0,	 1.0,	true }, // Auto Load Slot
+	{	NULL,	FRAME_STRINGS[27],	180.0,	335.0,	 1.0,	true }, // Save Button Configs
+	{	NULL,	FRAME_STRINGS[28],	180.0,	405.0,	 1.0,	true }, // Auto Load Slot
 	//TextBoxes for Audio Tab (starts at textBox[13])
-	{	NULL,	FRAME_STRINGS[30],	210.0,	128.0,	 1.0,	true }, // Disable Audio: Yes/No
+	{	NULL,	FRAME_STRINGS[30],	180.0,	125.0,	 1.0,	true }, // Disable Audio: Yes/No
 	//TextBoxes for Saves Tab (starts at textBox[14])
-	{	NULL,	FRAME_STRINGS[33],	200.0,	128.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
-	
+	{	NULL,	FRAME_STRINGS[33],	180.0,	125.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
+
 };
 
 SettingsFrame::SettingsFrame()

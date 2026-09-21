@@ -51,6 +51,7 @@ extern "C" {
 #include "rom.h"
 #include "plugin.h"
 #include "perf_prof.h"
+#include "dynarec_trace.h"
 #include "../gc_input/controller.h"
 #include <aesndlib.h>
 #include "../r4300/interupt.h"
@@ -226,9 +227,25 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           at boot -- same as clicking New ROM
                                           then SD -- for screens that need to
                                           be reached but not played, such as
-                                          the boxart display. */
+                                          the boxart display.
+     dynacore=dynarec|pureinterp|interp  Force the CPU core for this run only,
+                                          without touching settings.cfg -- lets
+                                          autoboot_rom be combined with a core
+                                          override for a one-line, unattended
+                                          A/B repro (e.g. does this ROM hang
+                                          under the dynarec but not the
+                                          interpreter?). Applied after
+                                          settings.cfg is read, so it wins over
+                                          whatever core the user has saved.
+     dynarec_trace=1                     Sample the dynarec dispatch loop's
+                                          PC straight to the screen (see
+                                          main/dynarec_trace.h) -- combine with
+                                          autoboot_rom+dynacore=dynarec to see
+                                          exactly which block a JIT hang gets
+                                          stuck on, even on the very first one. */
 extern "C" void DiagNav_SelectRomSD(void);
 static bool g_diagAutonavSelectRomSD = false;
+static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -236,10 +253,18 @@ static void apply_diag_automation(void) {
 	char line[192];
 	while(fgets(line, sizeof(line), f)) {
 		char romPath[192];
+		char coreName[32];
 		if(sscanf(line, "autoboot_rom=%191[^\r\n]", romPath) == 1) {
 			Autoboot::setPath(romPath);
 		} else if(strncmp(line, "autonav=selectrom_sd", 20) == 0) {
 			g_diagAutonavSelectRomSD = true;
+		} else if(sscanf(line, "dynacore=%31[^\r\n]", coreName) == 1) {
+			if(!strcmp(coreName, "dynarec"))         g_diagDynacoreOverride = DYNACORE_DYNAREC;
+			else if(!strcmp(coreName, "pureinterp")) g_diagDynacoreOverride = DYNACORE_PURE_INTERP;
+			else if(!strcmp(coreName, "interp"))     g_diagDynacoreOverride = DYNACORE_INTERPRETER;
+			else                                     g_diagDynacoreOverride = atoi(coreName);
+		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
+			dynarecTrace_setEnabled(1);
 		}
 	}
 	fclose(f);
@@ -285,6 +310,8 @@ void load_config(const char *loaded_path) {
 			readConfig(f);
 			fclose(f);
 		}
+		if(g_diagDynacoreOverride != -1) // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
+			dynacore = g_diagDynacoreOverride;
 		sprintf(configFile_file.name, "%s%s", prefix, "controlG.cfg");
 		f = fopen( configFile_file.name, "r" );  //attempt to open file
 		if(f) {
@@ -360,11 +387,7 @@ int main(int argc, const char* argv[]) {
 	miniMenuActive   = MINIMENU_DISABLE; // Activate MiniMenu
 #endif
 	audioEnabled     = 1; // Audio
-#ifdef RELEASE
-	showFPSonScreen  = 0; // Show FPS on Screen
-#else
-	showFPSonScreen  = 1; // Show FPS on Screen
-#endif
+	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging
 	Timers.limitVIs  = LIMITVIS_WAIT_FOR_VI; // Sync to VI

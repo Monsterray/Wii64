@@ -68,6 +68,7 @@ public:
 	void setTransparency(float f);
 	float getTransparency();
 	void setInGameVMode();
+	void drawDebugBreadcrumb(const char* text);
 
 private:
 	void applyCurrentColor();

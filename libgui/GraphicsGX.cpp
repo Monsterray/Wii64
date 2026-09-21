@@ -608,6 +608,32 @@ void Graphics::setInGameVMode() {
 	}
 }
 
+/* Draws one line of text directly to the screen right now -- two immediate
+   draw+flip passes (like setInGameVMode's debug print above) so it survives
+   the Wii's double buffering instead of being overwritten by the next vsync.
+   Used by dynarec_trace.c to leave a breadcrumb on screen before a call that
+   might never return -- see main/dynarec_trace.h. */
+void Graphics::drawDebugBreadcrumb(const char* text) {
+	GXColor fontColor = {255, 220, 80, 255};
+	IplFont::getInstance().drawInit(fontColor);
+	for (int i = 0; i < 2; i++) {
+		clearEFB((GXColor){0, 0, 0, 0xFF}, GX_MAX_Z24);
+		IplFont::getInstance().drawString(20, 40, (char*)text, 0.5, false);
+		GX_DrawDone();
+		GX_CopyDisp(xfb[which_fb], GX_TRUE);
+		GX_Flush();
+		VIDEO_SetNextFramebuffer(xfb[which_fb]);
+		VIDEO_Flush();
+		VIDEO_WaitVSync();
+		which_fb ^= 1;
+	}
+}
+
+extern "C" void wii64_debugBreadcrumb(const char* text)
+{
+	Gui::getInstance().gfx->drawDebugBreadcrumb(text);
+}
+
 GXRModeObj* Graphics::getVmode() {
 	return curVmode;
 }

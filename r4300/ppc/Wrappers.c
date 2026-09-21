@@ -31,6 +31,7 @@
 #include "../Recomp-Cache.h"
 #include "Recompile.h"
 #include "Wrappers.h"
+#include "../../main/dynarec_trace.h"
 
 extern unsigned long instructionCount;
 extern void (*interp_ops[64])(void);
@@ -88,9 +89,10 @@ inline u32 dyna_run(PowerPC_func* func, PowerPC_instr *code){
 void dynarec(unsigned int address){
 	while(!r4300.stop){
 		//print_gecko("PC: %08X cop0[9]: %08X\r\n",address,r4300.reg_cop0[9]);
+		dynarecTrace_dispatch(address); // no-op unless diag.cfg's dynarec_trace=1 -- see main/dynarec_trace.h
 #ifdef PROFILE
 		refresh_stat();
-		
+
 		start_section(TRAMP_SECTION);
 #endif
 		unsigned long paddr = update_invalid_addr(address);
