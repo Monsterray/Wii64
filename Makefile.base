@@ -18,7 +18,7 @@ LIBPATHS	+= -L$(DEVKITPRO)/portlibs/ppc/lib
 CXXFLAGS		+= \
 		-g -O3 $(LTO) -Wall -Wextra -Wno-parentheses -Wno-unused-parameter -pipe $(MACHDEP) $(INCLUDE) \
 		-DGEKKO -D__GX__ -DUSE_GUI -DRELEASE \
-		-DTHREADED_AUDIO -DUSE_RECOMP_CACHE -DPPC_DYNAREC -DFASTMEM -DFASTMEM_HOT_NOFLUSH -DNO_ASM \
+		-DUSE_RECOMP_CACHE -DPPC_DYNAREC -DFASTMEM -DFASTMEM_HOT_NOFLUSH -DNO_ASM \
 		-Wstrict-aliasing=3 -Wcast-align -Wlto-type-mismatch -Wodr \
 		-Wclobbered -Wvolatile-register-var -Winline -fno-toplevel-reorder -fno-strict-aliasing \
 		$(DEBUG_FLAGS) $(FEATURES) #-fno-exceptions
@@ -51,6 +51,7 @@ OBJ		+= \
 		menu/ConfigureButtonsFrame.o\
 		menu/ConfigureInputFrame.o\
 		menu/ConfigurePaksFrame.o\
+		menu/AdvancedAudioFrame.o\
 		menu/CurrentRomFrame.o \
 		menu/LoadSaveFrame.o \
 		menu/SaveGameFrame.o \

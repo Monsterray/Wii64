@@ -34,6 +34,12 @@
 #include "Rsp_#1.1.h"
 #include "Audio_#1.1.h"
 
+/* Wii64 setting (see wii64config.h's audioQuality/AUDIOQUALITY_*): read by
+   alist.c's alist_resample to pick the resample filter. Owned here rather
+   than in alist.c/audio.c so those stay close to their mupen64plus-rsp-hle
+   upstream. */
+char audioQuality;
+
 /* local variables */
 static struct hle_t g_hle;
 static void (*l_CheckInterrupts)(void) = NULL;

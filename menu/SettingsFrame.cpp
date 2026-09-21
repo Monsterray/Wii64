@@ -22,6 +22,7 @@
 #include "SettingsFrame.h"
 #include "ConfigurePaksFrame.h"
 #include "ConfigureButtonsFrame.h"
+#include "AdvancedAudioFrame.h"
 #include "../libgui/Button.h"
 #include "../libgui/TextBox.h"
 #include "../libgui/resources.h"
@@ -77,6 +78,7 @@ void Func_ToggleButtonLoad();
 
 void Func_DisableAudioYes();
 void Func_DisableAudioNo();
+void Func_AdvancedAudioSettings();
 
 void Func_AutoSaveNativeYes();
 void Func_AutoSaveNativeNo();
@@ -92,14 +94,14 @@ static const char* LoadButtonLabels[5] = {
 	"Default"
 };
 
-#define NUM_FRAME_BUTTONS 41
+#define NUM_FRAME_BUTTONS 42
 #define NUM_TAB_BUTTONS 5
 #define FRAME_BUTTONS settingsFrameButtons
 #define FRAME_STRINGS settingsFrameStrings
 #define NUM_FRAME_TEXTBOXES 15
 #define FRAME_TEXTBOXES settingsFrameTextBoxes
 
-static char FRAME_STRINGS[40][23] =
+static char FRAME_STRINGS[41][23] =
 	{ "General",
 	  "Video",
 	  "Input",
@@ -145,6 +147,7 @@ static char FRAME_STRINGS[40][23] =
 	  "1",
 	  "2",
 	  "3",
+	  "Advanced",   //[40]
 	};
 
 struct ButtonInfo
@@ -202,15 +205,17 @@ struct ButtonInfo
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[26],	185.0,	240.0,	270.0,	50.0,	30,	32,	-1,	-1,	Func_ConfigureButtons,	Func_ReturnFromSettingsFrame }, // Configure Buttons
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	310.0,	 55.0,	50.0,	31,	34,	33,	33,	Func_SaveButtonsSD,		Func_ReturnFromSettingsFrame }, // Save Button Configs to SD
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	310.0,	 70.0,	50.0,	31,	34,	32,	32,	Func_SaveButtonsUSB,	Func_ReturnFromSettingsFrame }, // Save Button Configs to USB
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	240.0,	380.0,	160.0,	50.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	330.0,	380.0,	160.0,	50.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
 	//Buttons for Audio Tab (starts at button[35])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 3,	 3,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 3,	 3,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 3,	41,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 3,	41,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
 	//Buttons for Saves Tab (starts at button[37])
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
+	//Button 41 appended out of tab order (not 37-40) so the Saves tab's existing indices didn't need renumbering
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	500.0,	380.0,	120.0,	50.0,	35,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-right of Audio tab)
 };
 
 struct TextBoxInfo
@@ -394,7 +399,7 @@ void SettingsFrame::activateSubmenu(int submenu)
 			{
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[35].button);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[35].button);
+				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[41].button);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
 			for (int i = 13; i < 14; i++)
@@ -407,6 +412,8 @@ void SettingsFrame::activateSubmenu(int submenu)
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
+			FRAME_BUTTONS[41].button->setVisible(true);
+			FRAME_BUTTONS[41].button->setActive(true);
 			break;
 		case SUBMENU_SAVES:
 			setDefaultFocus(FRAME_BUTTONS[4].button);
@@ -847,6 +854,11 @@ void Func_ConfigureButtons()
 //	menu::MessageBox::getInstance().setMessage("Controller Buttons not implemented");
 	menu::Gui::getInstance().menuLogo->setVisible(false);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_CONFIGUREBUTTONS,ConfigureButtonsFrame::SUBMENU_N64_PADNONE);
+}
+
+void Func_AdvancedAudioSettings()
+{
+	pMenuContext->setActiveFrame(MenuContext::FRAME_ADVANCEDAUDIO, 0);
 }
 
 void Func_SaveButtonsSD()

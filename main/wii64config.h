@@ -41,6 +41,13 @@ enum audioEnabled
 	AUDIO_ENABLE
 };
 
+extern char audioQuality;
+enum audioQuality
+{
+	AUDIOQUALITY_HIFI=0,	// 4-tap interpolated resample (default, matches original behavior)
+	AUDIOQUALITY_FAST	// nearest-sample resample -- cheaper, some audio fidelity loss
+};
+
 extern char showFPSonScreen;
 enum showFPSonScreen
 {

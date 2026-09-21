@@ -37,6 +37,7 @@
 #include "ConfigureInputFrame.h"
 #include "ConfigurePaksFrame.h"
 #include "ConfigureButtonsFrame.h"
+#include "AdvancedAudioFrame.h"
 
 #include "MenuTypes.h"
 
@@ -63,8 +64,9 @@ public:
 		FRAME_SELECTCPU,
 		FRAME_CONFIGUREINPUT,
 		FRAME_CONFIGUREPAKS,
-		FRAME_CONFIGUREBUTTONS
-		
+		FRAME_CONFIGUREBUTTONS,
+		FRAME_ADVANCEDAUDIO
+
 	};
 
 private:
@@ -85,6 +87,7 @@ private:
 	ConfigureInputFrame *configureInputFrame;
 	ConfigurePaksFrame *configurePaksFrame;
 	ConfigureButtonsFrame *configureButtonsFrame;
+	AdvancedAudioFrame *advancedAudioFrame;
 	bool useMiniMenu;
 
 };

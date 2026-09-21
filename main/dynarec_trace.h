@@ -12,6 +12,10 @@
  * the last frame rendered (screenshottable via PrintWindow even while
  * Dolphin reports the process as hung/unresponsive to a close request).
  *
+ * Only samples the first handful of dispatches, deliberately -- see the
+ * comment above dynarecTrace_dispatch's definition for why a periodic
+ * resample after that is unsafe, not just slow.
+ *
  * Not gated behind a build flag like perf_prof.h's PERF_PROF -- this is
  * meant to be available in any build without a rebuild, same as diag.cfg's
  * other autoboot_rom/autonav knobs.

@@ -106,6 +106,7 @@ static CONTROL_INFO control_info;
 static RSP_INFO     rsp_info;
 
 extern char audioEnabled;
+extern char audioQuality;
 extern char printToScreen;
 extern char showFPSonScreen;
 extern char printToSD;
@@ -145,6 +146,7 @@ static struct {
 } OPTIONS[] =
 { { "MiniMenu", &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE },
   { "Audio", &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE },
+  { "AudioQuality", &audioQuality, AUDIOQUALITY_HIFI, AUDIOQUALITY_FAST },
   { "FPS", &showFPSonScreen, FPS_HIDE, FPS_SHOW },
 //  { "Debug", &printToScreen, DEBUG_HIDE, DEBUG_SHOW },
   { "FBTex", &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE },
@@ -387,6 +389,7 @@ int main(int argc, const char* argv[]) {
 	miniMenuActive   = MINIMENU_DISABLE; // Activate MiniMenu
 #endif
 	audioEnabled     = 1; // Audio
+	audioQuality     = AUDIOQUALITY_HIFI; // Audio resample quality
 	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging

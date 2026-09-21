@@ -637,6 +637,15 @@ static void alist_resample_save(struct hle_t* hle, uint32_t address, uint16_t po
     *dram_u16(hle, address + 8) = pitch_accu;
 }
 
+/* Wii64 setting -- see wii64config.h. 0 (AUDIOQUALITY_HIFI, default) keeps
+   the original 4-tap interpolation below; nonzero (AUDIOQUALITY_FAST) skips
+   straight to a nearest-sample pick, cutting this loop's per-sample cost
+   from 4 multiplies+a LUT fetch down to a single fetch, at the cost of some
+   resampled audio fidelity (more aliasing/harshness on pitch-shifted
+   sounds). Same load/reset/save history handling either way, so streaming
+   state stays consistent if the setting is changed between calls. */
+extern char audioQuality;
+
 void alist_resample(
         struct hle_t* hle,
         bool init,
@@ -648,6 +657,7 @@ void alist_resample(
         uint32_t address)
 {
     uint32_t pitch_accu;
+    bool fast = (audioQuality != 0);
 
     uint16_t ipos = dmemi >> 1;
     uint16_t opos = dmemo >> 1;
@@ -663,13 +673,17 @@ void alist_resample(
         alist_resample_load(hle, address, ipos, &pitch_accu);
 
     while (count != 0) {
-        const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+        if (fast) {
+            *sample(hle, opos++) = *sample(hle, ipos + 2);
+        } else {
+            const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
 
-        *sample(hle, opos++) = clamp_s16( (
-            (*sample(hle, ipos    ) * lut[0]) +
-            (*sample(hle, ipos + 1) * lut[1]) +
-            (*sample(hle, ipos + 2) * lut[2]) +
-            (*sample(hle, ipos + 3) * lut[3]) ) >> 15);
+            *sample(hle, opos++) = clamp_s16( (
+                (*sample(hle, ipos    ) * lut[0]) +
+                (*sample(hle, ipos + 1) * lut[1]) +
+                (*sample(hle, ipos + 2) * lut[2]) +
+                (*sample(hle, ipos + 3) * lut[3]) ) >> 15);
+        }
 
         pitch_accu += pitch;
         ipos += (pitch_accu >> 16);
