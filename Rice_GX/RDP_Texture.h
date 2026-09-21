@@ -91,342 +91,8 @@ inline uint32 ReverseDXT(uint32 val, uint32 lrs, uint32 width, uint32 size)
 // rewrite these routine by myself.
 // Rice, 02/24/2004
 
-inline void UnswapCopy( void *src, void *dest, uint32 numBytes )
-{
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm
-    {
-        mov     ecx, 0
-        mov     esi, dword ptr [src]
-        mov     edi, dword ptr [dest]
-
-        mov     ebx, esi
-        and     ebx, 3          // ebx = number of leading bytes
-
-        cmp     ebx, 0
-        jz      StartDWordLoop
-        neg     ebx
-        add     ebx, 4
-
-        cmp     ebx, [numBytes]
-        jle     NotGreater
-        mov     ebx, [numBytes]
-NotGreater:
-        mov     ecx, ebx
-            xor     esi, 3
-LeadingLoop:                // Copies leading bytes, in reverse order (un-swaps)
-        mov     al, byte ptr [esi]
-        mov     byte ptr [edi], al
-        sub     esi, 1
-        add     edi, 1
-        loop    LeadingLoop
-        add     esi, 5
-
-StartDWordLoop:
-        mov     ecx, dword ptr [numBytes]
-        sub     ecx, ebx        // Don't copy what's already been copied
-
-        mov     ebx, ecx
-        and     ebx, 3
-        //      add     ecx, 3          // Round up to nearest dword
-        shr     ecx, 2
-
-        cmp     ecx, 0          // If there's nothing to do, don't do it
-        jle     StartTrailingLoop
-
-        // Copies from source to destination, bswap-ing first
-DWordLoop:
-        mov     eax, dword ptr [esi]
-        bswap   eax
-        mov     dword ptr [edi], eax
-        add     esi, 4
-        add     edi, 4
-        loop    DWordLoop
-StartTrailingLoop:
-        cmp     ebx, 0
-        jz      Done
-        mov     ecx, ebx
-        xor     esi, 3
-
-TrailingLoop:
-        mov     al, byte ptr [esi]
-        mov     byte ptr [edi], al
-        sub     esi, 1
-        add     edi, 1
-        loop    TrailingLoop
-Done:
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  asm volatile(" movl       %k1,   %%ebx      \n"
-               " andl        $3,   %%ebx      \n"
-               " cmpl        $0,   %%ebx      \n"
-               " jz          2f               \n"
-               " negl     %%ebx               \n"
-               " addl        $4,   %%ebx      \n"
-               " cmpl       %k2,   %%ebx      \n"
-               " jle         0f               \n"
-               " movl       %k2,   %%ebx      \n"
-               "0:                            \n"
-               " movl     %%ebx,   %%ecx      \n"
-               " xor         $3,      %1      \n"
-               "1:                            \n"
-               " movb      (%1),    %%al      \n"
-               " movb      %%al,    (%0)      \n"
-               " sub         $1,      %1      \n"
-               " add         $1,      %0      \n"
-               " decl     %%ecx               \n"
-               " jne         1b               \n"
-               " add         $5,      %1      \n"
-               "2:                            \n"
-               " movl       %k2,   %%ecx      \n"
-               " subl     %%ebx,   %%ecx      \n"
-               " movl     %%ecx,   %%ebx      \n"
-               " andl       $3,    %%ebx      \n"
-               " shrl       $2,    %%ecx      \n"
-               " cmpl       $0,    %%ecx      \n"
-               " jle        4f                \n"
-               "3:                            \n"
-               " movl     (%1),    %%eax      \n"
-               " bswapl  %%eax                \n"
-               " movl    %%eax,     (%0)      \n"
-               " add        $4,       %1      \n"
-               " add        $4,       %0      \n"
-               " decl    %%ecx                \n"
-               " jne        3b                \n"
-               "4:                            \n"
-               " cmpl       $0,    %%ebx      \n"
-               " jz         6f                \n"
-               " xor        $3,       %1      \n"
-               "5:                            \n"
-               " movb     (%1),     %%al      \n"
-               " movb     %%al,     (%0)      \n"
-               " sub        $1,       %1      \n"
-               " add        $1,       %0      \n"
-               " decl    %%ebx                \n"
-               " jne        5b                \n"
-               "6:                            \n"
-               :"+r"(dest), "+r"(src)
-               :"r"(numBytes)
-               : "memory", "cc", "%rax", "%rbx", "%rcx"
-               );
-
-#elif !defined(NO_ASM)
-# ifndef PIC
-   g_src = src;
-   g_dest = dest;
-   g_numBytes = numBytes;
-   
-   asm volatile ("pusha                           \n"
-         "mov       $0, %%ecx         \n"
-         "mov       g_src, %%esi      \n"
-         "mov       g_dest, %%edi     \n"
-         
-         "mov       %%esi, %%ebx      \n"
-         "and       $3, %%ebx         \n"           // ebx = number of leading bytes
-         
-         "cmp       $0, %%ebx         \n"
-         "jz            2f                \n" //jz      StartDWordLoop
-         "neg       %%ebx             \n"
-         "add       $4, %%ebx         \n"
-         
-         "cmp       g_numBytes, %%ebx \n"
-         "jle           0f                \n" //jle     NotGreater
-         "mov       g_numBytes, %%ebx \n"
-         "0:                              \n" //NotGreater:
-         "mov       %%ebx, %%ecx      \n"
-         "xor       $3, %%esi         \n"
-         "1:                              \n" //LeadingLoop:                // Copies leading bytes, in reverse order (un-swaps)
-         "mov       (%%esi), %%al     \n"
-         "mov       %%al, (%%edi)     \n"
-         "sub       $1, %%esi         \n"
-         "add       $1, %%edi         \n"
-         "loop          1b                \n" //loop     LeadingLoop
-         "add       $5, %%esi         \n"
-         
-         "2:                              \n" //StartDWordLoop:
-         "mov       g_numBytes, %%ecx \n"
-         "sub       %%ebx, %%ecx      \n"       // Don't copy what's already been copied
-         
-         "mov       %%ecx, %%ebx      \n"
-         "and       $3, %%ebx         \n"
-         //     add     ecx, 3          // Round up to nearest dword
-         "shr       $2, %%ecx         \n"
-         
-         "cmp       $0, %%ecx         \n"           // If there's nothing to do, don't do it
-         "jle           4f                \n" //jle     StartTrailingLoop
-         
-         // Copies from source to destination, bswap-ing first
-         "3:                              \n" //DWordLoop:
-         "mov       (%%esi), %%eax    \n"
-         "bswap %%eax                     \n"
-         "mov       %%eax, (%%edi)    \n"
-         "add       $4, %%esi         \n"
-         "add       $4, %%edi         \n"
-         "loop          3b                \n" //loop    DWordLoop
-         "4:                              \n" //StartTrailingLoop:
-         "cmp       $0, %%ebx         \n"
-         "jz            6f                \n" //jz      Done
-         "mov       %%ebx, %%ecx      \n"
-         "xor       $3, %%esi         \n"
-         
-         "5:                              \n" //TrailingLoop:
-         "mov       (%%esi), %%al     \n"
-         "mov       %%al, (%%edi)     \n"
-         "sub       $1, %%esi         \n"
-         "add       $1, %%edi         \n"
-         "loop          5b                \n" //loop    TrailingLoop
-         "6:                              \n" //Done:
-         "popa                            \n"
-         :
-         :
-         : "memory", "cc"
-         );
-# else // PIC
-   unsigned int saveEBX;
-   asm volatile ("mov           %%ebx, %2         \n"
-         "mov       $0, %%ecx         \n"
-         "mov       %0, %%esi         \n"
-         "mov       %1, %%edi         \n"
-         
-         "mov       %%esi, %%ebx      \n"
-         "and       $3, %%ebx         \n"           // ebx = number of leading bytes
-         
-         "cmp       $0, %%ebx         \n"
-         "jz            2f                \n" //jz      StartDWordLoop
-         "neg       %%ebx             \n"
-         "add       $4, %%ebx         \n"
-         
-         "cmp       %3, %%ebx         \n"
-         "jle           0f                \n" //jle     NotGreater
-         "mov       %3, %%ebx         \n"
-         "0:                              \n" //NotGreater:
-         "mov       %%ebx, %%ecx      \n"
-         "xor       $3, %%esi         \n"
-         "1:                              \n" //LeadingLoop:                // Copies leading bytes, in reverse order (un-swaps)
-         "mov       (%%esi), %%al     \n"
-         "mov       %%al, (%%edi)     \n"
-         "sub       $1, %%esi         \n"
-         "add       $1, %%edi         \n"
-         "loop          1b                \n" //loop     LeadingLoop
-         "add       $5, %%esi         \n"
-         
-         "2:                              \n" //StartDWordLoop:
-         "mov       %3, %%ecx         \n"
-         "sub       %%ebx, %%ecx      \n"       // Don't copy what's already been copied
-         
-         "mov       %%ecx, %%ebx      \n"
-         "and       $3, %%ebx         \n"
-         //     add     ecx, 3          // Round up to nearest dword
-         "shr       $2, %%ecx         \n"
-         
-         "cmp       $0, %%ecx         \n"           // If there's nothing to do, don't do it
-         "jle           4f                \n" //jle     StartTrailingLoop
-         
-         // Copies from source to destination, bswap-ing first
-         "3:                              \n" //DWordLoop:
-         "mov       (%%esi), %%eax    \n"
-         "bswap %%eax                     \n"
-         "mov       %%eax, (%%edi)    \n"
-         "add       $4, %%esi         \n"
-         "add       $4, %%edi         \n"
-         "loop          3b                \n" //loop    DWordLoop
-         "4:                              \n" //StartTrailingLoop:
-         "cmp       $0, %%ebx         \n"
-         "jz            6f                \n" //jz      Done
-         "mov       %%ebx, %%ecx      \n"
-         "xor       $3, %%esi         \n"
-         
-         "5:                              \n" //TrailingLoop:
-         "mov       (%%esi), %%al     \n"
-         "mov       %%al, (%%edi)     \n"
-         "sub       $1, %%esi         \n"
-         "add       $1, %%edi         \n"
-         "loop          5b                \n" //loop    TrailingLoop
-         "6:                              \n" //Done:
-         "mov           %2, %%ebx         \n"
-         :
-         : "m"(src), "m"(dest), "m"(saveEBX), "m"(numBytes)
-         : "memory", "cc", "%ecx", "%esi", "%edi", "%eax"
-         );
-# endif // PIC
-#endif
-}
-
 inline void DWordInterleave( void *mem, uint32 numDWords )
 {
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm {
-        mov     esi, dword ptr [mem]
-        mov     edi, dword ptr [mem]
-        add     edi, 4
-        mov     ecx, dword ptr [numDWords]
-DWordInterleaveLoop:
-        mov     eax, dword ptr [esi]
-        mov     ebx, dword ptr [edi]
-        mov     dword ptr [esi], ebx
-        mov     dword ptr [edi], eax
-        add     esi, 8
-        add     edi, 8
-        loop    DWordInterleaveLoop
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  asm volatile("0:                                 \n"
-               " movl     (%0),     %%eax          \n"
-               " movl    8(%0),     %%ebx          \n"
-               " movl    %%eax,     8(%0)          \n"
-               " movl    %%ebx,      (%0)          \n"
-               " add        $8,        %0          \n"
-               " decl      %k1                     \n"
-               " jne        0b                     \n"
-           : "+r"(mem), "+r"(numDWords)
-           :
-           : "memory", "cc", "%rax", "%rbx"
-           );
-#elif !defined(NO_ASM)
-# ifndef PIC
-   g_mem = mem;
-   g_numDWords = numDWords;
-   
-   asm volatile ("pusha                            \n"
-         "mov       g_mem, %%esi       \n"
-         "mov       g_mem, %%edi       \n"
-         "add       $4, %%edi          \n"
-         "mov       g_numDWords, %%ecx \n"
-         "0:                               \n" //DWordInterleaveLoop:
-         "mov       (%%esi), %%eax     \n"
-         "mov       (%%edi), %%ebx     \n"
-         "mov       %%ebx, (%%esi)     \n"
-         "mov       %%eax, (%%edi)     \n"
-         "add       $8, %%esi          \n"
-         "add       $8, %%edi          \n"
-         "loop          0b                 \n" //loop   DWordInterleaveLoop
-         "popa                             \n"
-         :
-         :
-         : "memory", "cc"
-         );
-# else // PIC
-   unsigned int saveEBX;
-   asm volatile ("mov           %%ebx, %2          \n"
-         "mov       %0, %%esi          \n"
-         "mov       %0, %%edi          \n"
-         "add       $4, %%edi          \n"
-         "mov       %1, %%ecx          \n"
-         "0:                               \n" //DWordInterleaveLoop:
-         "mov       (%%esi), %%eax     \n"
-         "mov       (%%edi), %%ebx     \n"
-         "mov       %%ebx, (%%esi)     \n"
-         "mov       %%eax, (%%edi)     \n"
-         "add       $8, %%esi          \n"
-         "add       $8, %%edi          \n"
-         "loop          0b                 \n" //loop   DWordInterleaveLoop
-         "mov           %2, %%ebx          \n"
-         :
-         : "m"(mem), "m"(numDWords), "m"(saveEBX)
-         : "memory", "cc", "%esi", "%edi", "%ecx", "%eax"
-         );
-# endif // PIC
-#else //NO_ASM
 	int tmp;
 	while( numDWords-- )
 	{
@@ -436,109 +102,10 @@ DWordInterleaveLoop:
 
 		mem = (void *)((int)mem + 8);
 	}
-#endif
 }
 
 inline void QWordInterleave( void *mem, uint32 numDWords )
 {
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm
-    {
-        // Interleave the line on the qword
-        mov     esi, dword ptr [mem]
-        mov     edi, dword ptr [mem]
-        add     edi, 8
-        mov     ecx, dword ptr [numDWords]
-        shr     ecx, 1
-QWordInterleaveLoop:
-        mov     eax, dword ptr [esi]
-        mov     ebx, dword ptr [edi]
-        mov     dword ptr [esi], ebx
-        mov     dword ptr [edi], eax
-        add     esi, 4
-        add     edi, 4
-        mov     eax, dword ptr [esi]
-        mov     ebx, dword ptr [edi]
-        mov     dword ptr [esi], ebx
-        mov     dword ptr [edi], eax
-        add     esi, 12
-        add     edi, 12
-        loop    QWordInterleaveLoop
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  asm volatile(" shr        $1,       %k1          \n"
-               "0:                                 \n"
-               " mov      (%0),     %%rax          \n"
-               " mov     8(%0),     %%rbx          \n"
-               " mov     %%rax,     8(%0)          \n"
-               " mov     %%rbx,      (%0)          \n"
-               " add       $16,        %0          \n"
-               " decl      %k1                     \n"
-               " jne        0b                     \n"
-           : "+r"(mem), "+r"(numDWords)
-           :
-           : "memory", "cc", "%rax", "%rbx"
-           );
-#elif !defined(NO_ASM) // GCC assumed
-# ifndef PIC
-   g_mem = mem;
-   g_numDWords = numDWords;
-   asm volatile("pusha                             \n"
-        // Interleave the line on the qword
-        "mov        g_mem, %%esi       \n"
-        "mov        g_mem, %%edi       \n"
-        "add        $8, %%edi          \n"
-        "mov        g_numDWords, %%ecx \n"
-        "shr        $1, %%ecx          \n"
-        "0:                                \n" //QWordInterleaveLoop:
-        "mov        (%%esi), %%eax     \n"
-        "mov        (%%edi), %%ebx     \n"
-        "mov        %%ebx, (%%esi)     \n"
-        "mov        %%eax, (%%edi)     \n"
-        "add        $4, %%esi          \n"
-        "add        $4, %%edi          \n"
-        "mov        (%%esi), %%eax     \n"
-        "mov        (%%edi), %%ebx     \n"
-        "mov        %%ebx, (%%esi)     \n"
-        "mov        %%eax, (%%edi)     \n"
-        "add        $12, %%esi         \n"
-        "add        $12, %%edi         \n"
-        "loop           0b                 \n" //loop   QWordInterleaveLoop
-        "popa                              \n"
-        :
-        :
-        : "memory", "cc"
-        );
-# else // PIC
-   unsigned int saveEBX;
-   asm volatile("mov            %%ebx, %2          \n"
-        // Interleave the line on the qword
-        "mov        %0, %%esi          \n"
-        "mov        %0, %%edi          \n"
-        "add        $8, %%edi          \n"
-        "mov        %1, %%ecx          \n"
-        "shr        $1, %%ecx          \n"
-        "0:                                \n" //QWordInterleaveLoop:
-        "mov        (%%esi), %%eax     \n"
-        "mov        (%%edi), %%ebx     \n"
-        "mov        %%ebx, (%%esi)     \n"
-        "mov        %%eax, (%%edi)     \n"
-        "add        $4, %%esi          \n"
-        "add        $4, %%edi          \n"
-        "mov        (%%esi), %%eax     \n"
-        "mov        (%%edi), %%ebx     \n"
-        "mov        %%ebx, (%%esi)     \n"
-        "mov        %%eax, (%%edi)     \n"
-        "add        $12, %%esi         \n"
-        "add        $12, %%edi         \n"
-        "loop           0b                 \n" //loop   QWordInterleaveLoop
-        "mov            %2, %%ebx          \n"
-        :
-        : "m"(mem), "m"(numDWords), "m"(saveEBX)
-        : "memory", "cc", "%esi", "%edi", "%ecx", "%eax"
-        );
-# endif // PIC
-#else //NO_ASM
 	int tmp;
 	numDWords >>= 1; // qwords
 	while( numDWords-- )
@@ -553,58 +120,20 @@ QWordInterleaveLoop:
 
 		mem = (void *)((int)mem + 16);
 	}
-#endif
 }
 
 inline uint32 swapdword( uint32 value )
 {
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm
-    {
-        mov     eax, dword ptr [value]
-        bswap   eax
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  asm volatile(" bswapl %k0                    \n"
-               : "+r"(value)
-               :
-               :
-               );
-  return value;
-#elif defined(__GNUC__) && defined(__i386__) && !defined(NO_ASM)
-  asm volatile("bswapl %0 \n"
-               : "+r"(value)
-               :
-               :
-               );
-   return value;
-#else
   return ((value & 0xff000000) >> 24) |
          ((value & 0x00ff0000) >>  8) |
          ((value & 0x0000ff00) <<  8) |
          ((value & 0x000000ff) << 24);
-#endif
 }
 
 inline uint16 swapword( uint16 value )
 {
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm
-    {
-        mov     ax, word ptr [value]
-        xchg    ah, al
-    }
-#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__)) && !defined(NO_ASM)
-  asm volatile("xchg  %%al, %%ah    \n"
-               : "+a"(value)
-               :
-               :
-               );
-  return value;
-#else
   return ((value & 0xff00) >> 8) |
          ((value & 0x00ff) << 8);
-#endif
 }
 
 
@@ -1540,11 +1069,7 @@ void DLParser_LoadBlock(Gfx *gfx)
 
             for (uint32 y = 0; y < height; y++)
             {
-#ifndef _BIG_ENDIAN
-                UnswapCopy( src, dest, bpl );
-#else // !_BIG_ENDIAN
                 memcpy( dest, src, bpl );
-#endif // _BIG_ENDIAN
                 if (y & 1) Interleave( dest, line );
 
                 src += line;
@@ -1552,11 +1077,7 @@ void DLParser_LoadBlock(Gfx *gfx)
             }
         }
         else
-#ifndef _BIG_ENDIAN
-            UnswapCopy( src, dest, bytes );
-#else // !_BIG_ENDIAN
             memcpy( dest, src, bytes );
-#endif // _BIG_ENDIAN
     }
 
 
@@ -1655,11 +1176,7 @@ void DLParser_LoadTile(Gfx *gfx)
 
         for (y = 0; y < height; y++)
         {
-#ifndef _BIG_ENDIAN
-            UnswapCopy( src, dest, bpl );
-#else // !_BIG_ENDIAN
             memcpy( dest, src, bpl );
-#endif // _BIG_ENDIAN
             if (y & 1) Interleave( dest, line );
 
             src += g_TI.bpl;

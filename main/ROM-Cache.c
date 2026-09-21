@@ -214,8 +214,9 @@ int ROMCache_load(fileBrowser_file* file){
 	perfProf_mark("ROMCache_load: before first read");
 	do {
 		bytes_read = romFile_readFile(file, ROMBase + i, 32*KB);
-		if (i == 0)
+		if (i == 0) {
 			perfProf_mark("ROMCache_load: first read returned");
+		}
 		if (bytes_read < 0)
 			return ROM_CACHE_ERROR_READ;
 
@@ -232,8 +233,9 @@ int ROMCache_load(fileBrowser_file* file){
 		}
 
 		byte_swap(ROMBase + i, bytes_read, byte_swap_type);
-		if (i == 0)
+		if (i == 0) {
 			perfProf_mark("ROMCache_load: first byte_swap done");
+		}
 		i += bytes_read;
 
 		if (!loads_til_update--) {

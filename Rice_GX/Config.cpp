@@ -521,70 +521,19 @@ uint32 ReadRegistryDwordVal(const char *Field)
 }
 
 
-bool isMMXSupported() 
-{ 
-    int IsMMXSupported = 0; 
-   
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    __asm 
-    { 
-        mov eax,1   // CPUID level 1 
-        cpuid       // EDX = feature flag 
-        and edx,0x800000        // test bit 23 of feature flag 
-        mov IsMMXSupported,edx  // != 0 if MMX is supported 
-    } 
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  return true;
-#elif !defined(NO_ASM) // GCC assumed
-   asm volatile (
-         "push %%ebx           \n"
-         "mov $1, %%eax        \n"  // CPUID level 1 
-         "cpuid                \n"      // EDX = feature flag 
-         "and $0x800000, %%edx \n"      // test bit 23 of feature flag 
-         "pop %%ebx            \n"
-         : "=d"(IsMMXSupported)
-         :
-         : "memory", "cc", "eax", "ecx"
-         );
-#endif
-    if (IsMMXSupported != 0) 
-        return true; 
-    else 
-        return false; 
-} 
-
-bool isSSESupported() 
+bool isMMXSupported()
 {
-    int SSESupport = 0;
+    // Previously ran a CPUID asm check gated on !defined(NO_ASM), which is
+    // always dead here (NO_ASM is defined project-wide, see Makefile.base).
+    // PowerPC has no MMX; false is what that dead code already evaluated to.
+    return false;
+}
 
-    // And finally, check the CPUID for Streaming SIMD Extensions support.
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-    _asm{
-       mov      eax, 1          // Put a "1" in eax to tell CPUID to get the feature bits
-         cpuid                  // Perform CPUID (puts processor feature info into EDX)
-         and        edx, 02000000h  // Test bit 25, for Streaming SIMD Extensions existence.
-         mov        SSESupport, edx // SIMD Extensions).  Set return value to 1 to indicate,
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  return true;
-#elif !defined(NO_ASM) // GCC assumed
-   asm volatile (
-         "push %%ebx                       \n"
-         "mov $1, %%eax                    \n"          // Put a "1" in eax to tell CPUID to get the feature bits
-         "cpuid                            \n"                  // Perform CPUID (puts processor feature info into EDX)
-         "and       $0x02000000, %%edx \n"  // Test bit 25, for Streaming SIMD Extensions existence.
-         "pop %%ebx                        \n"
-         : "=d"(SSESupport)
-         :
-         : "memory", "cc", "eax", "ecx"
-         );
-# endif
-    
-    if (SSESupport != 0) 
-        return true; 
-    else 
-        return false; 
-} 
+bool isSSESupported()
+{
+    // Same as isMMXSupported() above -- PowerPC has no SSE.
+    return false;
+}
 
 void ReadConfiguration(void)
 {
@@ -738,14 +687,9 @@ void ReadConfiguration(void)
     }
 
     status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
-#if !defined(NO_ASM)
-    if( status.isSSEEnabled )
-    {
-        ProcessVertexData = ProcessVertexDataSSE;
-        printf("[RiceVideo] SSE processing enabled.\n");
-    }
-    else
-#endif
+    // Always NoSSE: isSSESupported() is unconditionally false on PowerPC (see
+    // its definition), so isSSEEnabled can never be true, and the SSE
+    // asm variants this used to pick between were dead under NO_ASM anyway.
     {
         ProcessVertexData = ProcessVertexDataNoSSE;
 #ifndef __GX__
@@ -2294,12 +2238,8 @@ options.colorQuality = colorQualitySettings[i].setting;
 options.bEnableSSE = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(configDialog->enableSSECheckButton));
 status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
 
-#if !defined(NO_ASM)
-if (status.isSSEEnabled) 
-   ProcessVertexData = ProcessVertexDataSSE;
-else
-#endif
-   ProcessVertexData = ProcessVertexDataNoSSE;
+// Always NoSSE -- see the other ProcessVertexData assignment above.
+ProcessVertexData = ProcessVertexDataNoSSE;
 
 options.bSkipFrame = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(configDialog->skipFrameCheckButton));
 options.bWinFrameMode = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(configDialog->winFrameCheckButton));
