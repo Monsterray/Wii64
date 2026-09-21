@@ -69,6 +69,68 @@ diag.cfg (jump straight to a Settings tab at boot) as reusable tooling from
 this pass. The `.dev/wii64_diag.sh`/`wii64_soak.sh` force-kill fallback
 remains the practical workaround.
 
+**Correction, found during the next investigation below**: `Makefile.base`'s
+`-DPERF_PROF` is commented out of `DEBUG_FLAGS` (the same discrepancy
+Section 1 already flagged), so every build this whole pass -- including this
+one -- compiled every `perfProf_mark()` call to a no-op, and separately,
+`sd:/wii64/perf.log` turned out to only sync back to the host on a *clean*
+unmount, which this project's builds never reach. So "confirmed via
+perf.log that ShutdownWii() never fires" above was **not actually verified**
+-- the instrumentation was silently inert the whole time, both for the
+reason it happened to be looked at (the mark itself) and for the reading
+method (the log file). The hang itself is still real and reproducible; only
+the specific "STM event never reaches the guest" root cause is now
+unconfirmed. Re-investigating this properly needs `make DEBUG_FLAGS=-DPERF_PROF`
+(a `clean` first -- no header-dependency tracking means a plain rebuild
+won't pick up a flag-only change) and reading perf.log's *content*, not just
+mtime, immediately after each check, since even then the host-visible copy
+may lag behind what the guest actually wrote.
+
+## Investigated: froze at "Searching for ROMs" after clicking New ROM
+
+Reproduced live (not synthetically) -- a real instance the user was clicking
+through got stuck on the "Searching for ROMs" message with `Dolphin.exe`'s
+working set climbing past 4.8GB and still rising, CPU time still
+accumulating: an active runaway, not a deadlock. `sd:/wii64/roms` in the
+repro environment was flat (5 files, no subdirectories), so the earlier
+`stress_selectrom` synthetic-click tool -- which only exercises that same
+flat listing -- couldn't reproduce it (confirmed again this pass, both
+before and after the fix, 1 rep). This is exactly the same
+"needs something the synthetic test doesn't replicate" gap flagged in the
+first freeze investigation above.
+
+Root cause, found by reading `fileBrowser_libfat_readDir()`
+(`fileBrowser/fileBrowser-libfat.c`) rather than by reproducing it directly:
+```c
+sprintf(direntry->name, "%s/%s", file->name, entry->d_name);
+```
+`direntry->name` is a fixed `char[192]` (`FILE_BROWSER_MAX_PATH_LEN`,
+`fileBrowser.h:30`). `file->name` is the *parent* directory's full path --
+for a recursive scan (`selectRomFrame_OpenDirectory` calls this with
+`recursive=1`), each nesting level's path is the previous level's path
+built the same unchecked way, so it keeps growing with depth. A real ROM
+collection organized into a few nested category folders with reasonably
+long names comfortably exceeds 192 bytes, and this `sprintf` has no bounds
+check at all -- it overflows `direntry->name` into the rest of that
+heap-allocated `fileBrowser_file` struct and whatever the allocator placed
+next to it. Heap corruption from there plausibly explains both symptoms:
+CPU burn (a corrupted free list/allocator loop) and unbounded memory growth
+(a corrupted size request to a subsequent `malloc`/`realloc`).
+
+**APPLIED**: `snprintf` with the actual buffer size, skipping (`continue`)
+any entry whose combined path doesn't fit instead of overflowing into it.
+Verified by recreating the failure condition on purpose -- a 3-level-deep
+directory with ~70-character names (244-byte full path) under
+`sd:/wii64/roms` -- and confirming the automated "New ROM -> SD" click
+completes normally (memory stayed flat, reached the main menu) instead of
+hanging, both with the offending entry present and skipped.
+
+Not fixed, same-shaped risk noted for a future pass: `fileBrowser-DVD.c:117`
+(`strcpy(direntry->name, DVDToc[i].name)`) has the same missing bounds
+check, just fed from the DVD TOC instead of a recursive scan -- lower risk
+since it's not compounding across recursion depth, but worth the same
+`snprintf`-and-skip treatment if it's ever hit.
+
 ## 2. fileBrowser + vm
 
 **Cleanup**:

@@ -100,10 +100,18 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 		struct dirent *entry = readdir(dp);
 		if(!entry)
 			break;
-	
+
 		// Create a temporary entry for this directory entry.
 		memset(direntry, 0, sizeof(fileBrowser_file));
-		sprintf(direntry->name, "%s/%s", file->name, entry->d_name);
+		// snprintf, not sprintf: file->name is the parent's full path, which
+		// for a deeply-nested recursive scan can already be close to
+		// FILE_BROWSER_MAX_PATH_LEN on its own -- an unchecked sprintf here
+		// overflows direntry->name into the rest of the (heap-allocated)
+		// struct and whatever the allocator placed after it. Skip entries
+		// whose combined path doesn't fit rather than corrupt memory.
+		if(snprintf(direntry->name, FILE_BROWSER_MAX_PATH_LEN, "%s/%s", file->name, entry->d_name)
+		   >= FILE_BROWSER_MAX_PATH_LEN)
+			continue;
 		direntry->offset = 0;
 		{
 			struct stat st;
