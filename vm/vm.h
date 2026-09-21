@@ -47,8 +47,6 @@
 #define PTE_SIZE         ((HTABMASK+1)*65536)
 #define PTE_COUNT        (PTE_SIZE>>3)
 
-//#define VM_FILENAME      "/tmp/pagefile.sys"
-
 // keeps a record of each currently mapped page
 typedef union
 {

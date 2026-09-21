@@ -264,6 +264,8 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 	pagefile_fd = ISFS_Open(VM_FILENAME, ISFS_OPEN_RW);
 	if (pagefile_fd < 0)
 	{
+		LWP_MutexDestroy(vm_mutex);
+		vm_mutex = LWP_MUTEX_NULL;
 		errno = ENOENT;
 		return NULL;
 	}
@@ -290,6 +292,10 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 		LoadingBar_showBar((float)i/VMSize, "Growing NAND pagefile");
 		if (ISFS_Write(pagefile_fd, MEM_Base, to_write) != to_write)
 		{
+			LWP_MutexDestroy(vm_mutex);
+			vm_mutex = LWP_MUTEX_NULL;
+			ISFS_Close(pagefile_fd);
+			pagefile_fd = -1;
 			errno = ENOSPC;
 			return NULL;
 		}
@@ -357,7 +363,7 @@ void VM_Deinit(void)
 		vm_mutex = LWP_MUTEX_NULL;
 	}
 
-	if (pagefile_fd)
+	if (pagefile_fd >= 0)
 	{
 		ISFS_Close(pagefile_fd);
 		pagefile_fd = -1;

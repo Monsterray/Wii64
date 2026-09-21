@@ -189,7 +189,7 @@ int fileBrowser_libfat_writeFile(fileBrowser_file* file, void* buffer, unsigned 
     - returns 0 on device not present/error
     - returns 1 on ok
 */
-static int mounted[5];
+static int mounted[3]; // [0]=Wii SD, [1]=Wii USB, [2]=GC (sd2sp2/carda/cardb all collapse to this slot)
 
 int fileBrowser_libfat_init(fileBrowser_file* f){
 
@@ -235,28 +235,30 @@ int fileBrowser_libfat_deleteFile(fileBrowser_file* file){
 	return (remove(file->name) == -1) ? 0 : 1;
 }
 
-static FILE* fd;
 int fileBrowser_libfat_deinit(fileBrowser_file* f){
 	if(f->name[0] == 's') {      //SD
-		if(fd) {
-			fclose(fd);
-			fd = NULL;
-		}
 		//fatUnmount("sd");
  	}
 	return 0;
 }
 
-/* Special for ROM loading only */
+/* Special for ROM loading only. romFd is separate from the save-file path
+   above (which opens/closes its own local FILE* per call) because
+   main/ROM-Cache.c deliberately leaves the ROM handle open across reads --
+   sharing one static FILE* with fileBrowser_libfat_deinit() used to mean any
+   save/load while a ROM was streaming would fclose() the ROM's handle out
+   from under it. */
+static FILE* romFd;
 int fileBrowser_libfatROM_deinit(fileBrowser_file* f){
-	if(fd)
-		fclose(fd);
-	fd = NULL;
+	if(romFd)
+		fclose(romFd);
+	romFd = NULL;
 	return 0;
 }
 int fileBrowser_libfatROM_readFile(fileBrowser_file* file, void* buffer, unsigned int length){
-	if(!fd) {
-		fd = fopen( file->name, "rb");
+	if(!romFd) {
+		romFd = fopen( file->name, "rb");
+		if(!romFd) return 0;
 		struct stat fileInfo;
 		if(!stat(&file->name[0], &fileInfo)){
 			file->size = fileInfo.st_size;
@@ -265,8 +267,8 @@ int fileBrowser_libfatROM_readFile(fileBrowser_file* file, void* buffer, unsigne
 			return 0;
 		}
 	}
-	fseek(fd, file->offset, SEEK_SET);
-	int bytes_read = fread(buffer, 1, length, fd);
+	fseek(romFd, file->offset, SEEK_SET);
+	int bytes_read = fread(buffer, 1, length, romFd);
 	if(bytes_read > 0) file->offset += bytes_read;
 
 	return bytes_read;

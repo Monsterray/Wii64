@@ -153,6 +153,13 @@ int fileBrowser_DVD_readDir(fileBrowser_file* ffile, fileBrowser_file** dir, int
 	if(DVDToc)
 		free(DVDToc);
 
+	// An empty/all-filtered directory never took the *dir malloc path above --
+	// give it a ".." entry too instead of dereferencing a NULL *dir.
+	if(*dir == NULL) {
+		*dir = malloc(sizeof(fileBrowser_file));
+		memset(*dir, 0, sizeof(fileBrowser_file));
+		num_entries = 1;
+	}
 	if(strlen((*dir)[0].name) == 0)
 		strcpy( (*dir)[0].name, ".." );
 

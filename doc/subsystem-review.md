@@ -34,22 +34,55 @@ ever loaded) still needed a force-kill after the usual ~60s graceful-close
 timeout during this investigation -- so the "Dolphin can't always fully shut
 down Wii64" issue flagged earlier this session is not exclusively tied to
 the dynarec hang/watchdog path; it can happen from menu-only state too.
-Not investigated further this pass.
+
+## Investigated: the graceful-close hang (idle instance, no ROM)
+
+Found and fixed a real, independent bug along the way: `Gui::draw()`
+(`libgui/Gui.cpp`) issues the actual shutdown call (`SYS_ResetSystem`/
+`exit()`) once `fade` reaches 255, but nothing ever clears `shutdown` or
+resets `fade`, and `MenuContext::isRunning()` (`menu/MenuContext.cpp`)
+unconditionally returns `true` -- so the `fade==255` branch re-entered and
+re-issued the shutdown syscall on *every subsequent frame, forever*, instead
+of exactly once. **APPLIED**: a one-shot guard. Real defect regardless of
+this specific hang, since it meant a shutdown request got retried
+indefinitely rather than once.
+
+That fix alone did not resolve the hang, nor did swapping
+`SYS_ResetSystem(SYS_POWEROFF,...)` for `exit()` (tried and reverted).
+Instrumented `ShutdownWii()` (`main/main_gc-menu2.cpp`, the
+`WPAD_SetPowerButtonCallback`/`SYS_SetPowerCallback` target) with a
+`perfProf_mark` and confirmed via `sd:/wii64/perf.log` that **it never
+fires at all** -- even minutes after Dolphin's window receives the close
+request. The window's rendered surface goes blank white immediately
+(Dolphin tearing down its own renderer), confirming Dolphin *does* act on
+the close request, but the guest never receives the STM power-button event
+that Wii64's shutdown path depends on. That puts the hang on Dolphin's side,
+before any Wii64 guest code runs -- **not fixable from this codebase**.
+Ruled out along the way: a "confirm stop?" dialog blocking headlessly (no
+such window appears, per `EnumWindows`), and a slow `WiiSDCardEnableFolderSync`
+write-back of the ~120MB synthetic SD card (waited 5+ minutes past the
+normal timeout with zero progress -- not just slow, genuinely stuck).
+
+Left the `ShutdownWii()` perfProf_mark in place since it's the checkpoint
+that proved this, and added `autonav=settings_general|settings_video` to
+diag.cfg (jump straight to a Settings tab at boot) as reusable tooling from
+this pass. The `.dev/wii64_diag.sh`/`wii64_soak.sh` force-kill fallback
+remains the practical workaround.
 
 ## 2. fileBrowser + vm
 
 **Cleanup**:
-- `fileBrowser/fileBrowser-libfat.c:192` -- `static int mounted[5]` only ever uses indices 0-2 (Wii SD/USB use 0/1, everything else collapses to 2); indices 3-4 are unused.
+- `fileBrowser/fileBrowser-libfat.c:192` -- `static int mounted[5]` only ever uses indices 0-2 (Wii SD/USB use 0/1, everything else collapses to 2); indices 3-4 are unused. **APPLIED** (right-sized to `mounted[3]`).
 - `fileBrowser/gc_dvd.h:30` -- `MAXIMUM_ENTRIES_PER_DIR` is defined but never referenced; `read_directory()` (`gc_dvd.c:621-643`) grows its `realloc`'d entry table with no cap despite this constant apparently having been intended as one. **APPLIED** (per explicit request: fixed by actually using it as `read_directory()`'s loop bound, rather than deleting the unused constant).
-- `vm/vm.h:50` -- `VM_FILENAME` is defined but commented out (dead), superseded by `wii_vm.c:35`'s own copy of the same macro.
+- `vm/vm.h:50` -- `VM_FILENAME` is defined but commented out (dead). **APPLIED**, with a correction: it isn't actually superseded by `wii_vm.c:35`'s copy as first thought -- `vm.h`/`vm.c` is the separate GameCube VM implementation (`Makefile.gc` only), and `vm.c`'s `VM_Init` never references a pagefile path at all (its paging is pure `memalign`, no ISFS-equivalent backing store on GC). So there's nothing to wire the macro up to; removed the dead line rather than force a cross-platform coupling that doesn't apply.
 
-**Fixes**:
-- `fileBrowser/gc_dvd.c:213-214` -- `DVD_LowRead64` missing braces: `if ((((int)dst) & 0xC0000000) == 0x80000000) // cached?` only guards the next line (`dvd[0] = 0x2E;`); every subsequent register write (`dvd[1]`...`dvd[7]`, `DCInvalidateRange`) runs unconditionally. For a `dst` pointer in the uncached MEM1/MEM2 mirrors (`0xC0000000+`), `dvd[0]` never gets the read opcode `0x2E` set and keeps whatever the previous DI command left there -- a real bug for the uncached case (muted in practice since most call sites pass ordinary cached pointers).
-- `fileBrowser/fileBrowser-DVD.c:156` -- `if(strlen((*dir)[0].name) == 0)` dereferences `(*dir)[0]` unconditionally, but `*dir` is only allocated once at least one entry survives filtering (`:132-139`). An empty/all-filtered directory leaves `*dir` `NULL` -> null deref.
-- `fileBrowser/fileBrowser-libfat.c:238,251-256` -- the ROM-streaming file handle shares one file-scope `static FILE* fd;` with the unrelated save-file path (`saveFile_deinit`). Since `main/ROM-Cache.c:247` deliberately never closes the ROM handle after loading, any later save operation's `saveFile_deinit` will `fclose()`+NULL that same static `fd` out from under the ROM loader.
-- `fileBrowser/fileBrowser-libfat.c:257-267` -- `fileBrowser_libfatROM_readFile`: if `fopen()` fails but a subsequent `stat()` on the same path succeeds, `fd` stays `NULL` and the function falls through to `fseek(fd,...)`/`fread(fd,...)` with no NULL check.
-- `vm/wii_vm.c:264-269,291-295` -- both the `ISFS_Open` failure path and the pagefile-growing `ISFS_Write` failure path `return NULL` without destroying the `vm_mutex` created just before (`:254`) or closing `pagefile_fd` -- a retried `VM_Init` re-inits over the leaked handle.
-- `vm/wii_vm.c:360` -- `if (pagefile_fd)` should be `if (pagefile_fd >= 0)`: 0 is a legitimate ISFS handle but falsy in C, so `VM_Deinit` silently skips `ISFS_Close` for that case.
+**Fixes** (all applied):
+- `fileBrowser/gc_dvd.c:213-214` -- `DVD_LowRead64` missing braces: `if ((((int)dst) & 0xC0000000) == 0x80000000) // cached?` only guards the next line (`dvd[0] = 0x2E;`); every subsequent register write (`dvd[1]`...`dvd[7]`, `DCInvalidateRange`) runs unconditionally. For a `dst` pointer in the uncached MEM1/MEM2 mirrors (`0xC0000000+`), `dvd[0]` never gets the read opcode `0x2E` set and keeps whatever the previous DI command left there -- a real bug for the uncached case (muted in practice since most call sites pass ordinary cached pointers). **APPLIED**: made the assignment unconditional, matching every other register write in the function.
+- `fileBrowser/fileBrowser-DVD.c:156` -- `if(strlen((*dir)[0].name) == 0)` dereferences `(*dir)[0]` unconditionally, but `*dir` is only allocated once at least one entry survives filtering (`:132-139`). An empty/all-filtered directory leaves `*dir` `NULL` -> null deref. **APPLIED**: allocate a ".." placeholder entry when `*dir` is still `NULL` at that point, instead of dereferencing it.
+- `fileBrowser/fileBrowser-libfat.c:238,251-256` -- the ROM-streaming file handle shares one file-scope `static FILE* fd;` with the unrelated save-file path (`fileBrowser_libfat_deinit`). Since `main/ROM-Cache.c:247` deliberately never closes the ROM handle after loading, any later save operation's `saveFile_deinit` will `fclose()`+NULL that same static `fd` out from under the ROM loader. **APPLIED**: renamed the ROM-only static to `romFd` and dropped the erroneous `fd` close out of the generic `fileBrowser_libfat_deinit()` (which never legitimately owned that handle -- its own read/write functions already open+close a local `FILE*` per call).
+- `fileBrowser/fileBrowser-libfat.c:257-267` -- `fileBrowser_libfatROM_readFile`: if `fopen()` fails but a subsequent `stat()` on the same path succeeds, `fd` stays `NULL` and the function falls through to `fseek(fd,...)`/`fread(fd,...)` with no NULL check. **APPLIED**: added the missing NULL check.
+- `vm/wii_vm.c:264-269,291-295` -- both the `ISFS_Open` failure path and the pagefile-growing `ISFS_Write` failure path `return NULL` without destroying the `vm_mutex` created just before (`:254`) or closing `pagefile_fd` -- a retried `VM_Init` re-inits over the leaked handle. **APPLIED**: both paths now destroy the mutex (and the write-failure path also closes `pagefile_fd`) before returning.
+- `vm/wii_vm.c:360` -- `if (pagefile_fd)` should be `if (pagefile_fd >= 0)`: 0 is a legitimate ISFS handle but falsy in C, so `VM_Deinit` silently skips `ISFS_Close` for that case. **APPLIED**.
 
 *(`vm/vm.c`, the GC/ARAM counterpart, mirrors the same algorithm with no new issues beyond the already-known "GC build is broken" limitation.)*
 

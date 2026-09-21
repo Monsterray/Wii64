@@ -210,8 +210,7 @@ int DVD_LowRead64(void* dst, unsigned int len, uint64_t offset)
   if(offset>>2 > 0xFFFFFFFF)
     return -1;
     
-  if ((((int)dst) & 0xC0000000) == 0x80000000) // cached?
-		dvd[0] = 0x2E;
+  dvd[0] = 0x2E; // read opcode -- needed regardless of dst being a cached (0x80000000+) or uncached (0xC0000000+) mirror
 	dvd[1] = 0;
 	dvd[2] = read_cmd;
 	dvd[3] = read_cmd == DVDR ? offset>>11 : offset >> 2;
