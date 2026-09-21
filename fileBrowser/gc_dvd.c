@@ -624,10 +624,10 @@ int read_directory(int sector, int len, file_entry **DVDToc)
   unsigned char *sector_buffer = (unsigned char*)memalign(32,2048);
   read_sector(sector_buffer, sector);
   
-  while (len > 0)
+  while (len > 0 && files < MAXIMUM_ENTRIES_PER_DIR)
   {
 	int added = 0;
-	*DVDToc = realloc( *DVDToc, ((files)+1) * sizeof(file_entry) ); 
+	*DVDToc = realloc( *DVDToc, ((files)+1) * sizeof(file_entry) );
     ptr += read_direntry(sector_buffer + ptr, &(*DVDToc)[files], &added);
     if (ptr >= 2048 || !sector_buffer[ptr])
     {

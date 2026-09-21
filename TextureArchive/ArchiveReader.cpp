@@ -21,6 +21,8 @@ static void readBinaryWithSize(FILE* file, T& data, int size) {
 }
 
 ArchiveReader::ArchiveReader() {
+	file = NULL;
+	table = NULL;
 	stream.zalloc = NULL; stream.zfree = NULL; stream.opaque = NULL;
 }
 

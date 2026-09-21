@@ -147,7 +147,7 @@ void Func_SaveGameUSB()
 	result += saveMempak(saveFile_dir);
 	result += saveFlashram(saveFile_dir);
 		
-	if (result)	menu::MessageBox::getInstance().setMessage("Saved game to SD card");
+	if (result)	menu::MessageBox::getInstance().setMessage("Saved game to USB device");
 	else		menu::MessageBox::getInstance().setMessage("Nothing to save");
 }
 

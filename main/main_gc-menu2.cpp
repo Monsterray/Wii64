@@ -252,11 +252,21 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           add_random_interupt_time). Force it
                                           off for a run to test whether that
                                           jitter is what an intermittent hang
-                                          is timing-sensitive to. */
+                                          is timing-sensitive to.
+     stress_selectrom=N                  Repeat "New ROM -> SD -> back out" N
+                                          times right after boot, unattended
+                                          -- for reproducing a leak/corruption
+                                          that only shows up after several
+                                          repeats of entering/leaving the ROM
+                                          browser (reported: repeated
+                                          New ROM + back-out froze Wii64). */
 extern "C" void DiagNav_SelectRomSD(void);
+extern void Func_SR_SD(void);
+extern void Func_ReturnFromSelectRomFrame(void);
 extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
+static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -278,6 +288,8 @@ static void apply_diag_automation(void) {
 			dynarecTrace_setEnabled(1);
 		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
 			randomize_interrupt = 0;
+		} else if(sscanf(line, "stress_selectrom=%d", &g_diagStressSelectRom) == 1) {
+			// no-op besides the sscanf; consumed after MenuContext exists, see main()
 		}
 	}
 	fclose(f);
@@ -474,6 +486,14 @@ int main(int argc, const char* argv[]) {
 	if(g_diagAutonavSelectRomSD)
 		DiagNav_SelectRomSD();
 	perfProf_mark("diag autonav: after DiagNav_SelectRomSD call");
+	for(int stress = 0; stress < g_diagStressSelectRom; stress++) {
+		perfProf_mark("stress_selectrom: enter");
+		Func_SR_SD();
+		menu::Gui::getInstance().draw();
+		Func_ReturnFromSelectRomFrame();
+		menu::Gui::getInstance().draw();
+		perfProf_mark("stress_selectrom: back out");
+	}
 	while (menu->isRunning()) {}
 
 	delete menu;

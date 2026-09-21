@@ -1,13 +1,46 @@
 # Subsystem review
 
 Read-only survey, one subsystem at a time (safest/simplest first, CPU
-core/dynarec last). Findings only -- nothing here has been applied yet.
+core/dynarec last). A follow-up pass then applied the standout findings --
+those are marked **APPLIED** inline below. (Section order got scrambled by
+editing -- section 1, Build system, ended up at the bottom of this file;
+content is unaffected, just cosmetic.)
+
+## Investigated: "froze Wii64 by clicking New ROM and backing out multiple times"
+
+Added a reusable diag.cfg stress-test hook (`stress_selectrom=N` in
+`sd:/wii64/diag.cfg`, see `main/main_gc-menu2.cpp`'s diag.cfg doc comment)
+that repeats the exact click path ("New ROM" -> SD -> back out, matching
+`MiniMenuFrame.cpp`'s `Func_MMSelectROM` wiring) N times, unattended, right
+after boot. Ran it 30x then 150x via `.dev/wii64_soak.sh` -- both times the
+process was left idle and responsive at the main menu afterward (confirmed
+via a live screenshot, not just CPU%: the spinning logo had visibly rotated
+between checks, i.e. genuinely still rendering, not just "quiet"). **Could
+not reproduce the freeze this way.** Read through `SelectRomFrame.cpp`'s
+activate/return pair, the boxart texture heap alloc/free, and the directory
+scan/free logic -- all correctly paired (free-then-realloc on every entry,
+`__lwp_heap_free` matched by `__lwp_heap_allocate`, no accumulating state
+found).
+
+Likely needs something this synthetic test doesn't replicate to reproduce --
+real input timing (backing out while boxart is still mid-load, which the
+synthetic loop's synchronous calls can't race), or a longer/different click
+sequence (paging through listings, hovering files, actually starting a load
+before backing out). The `stress_selectrom` hook is still there and cheap to
+extend (e.g. add page-navigation or a mid-load abort) if this recurs.
+
+Also noted in passing: closing an *entirely idle* Wii64 instance (no ROM
+ever loaded) still needed a force-kill after the usual ~60s graceful-close
+timeout during this investigation -- so the "Dolphin can't always fully shut
+down Wii64" issue flagged earlier this session is not exclusively tied to
+the dynarec hang/watchdog path; it can happen from menu-only state too.
+Not investigated further this pass.
 
 ## 2. fileBrowser + vm
 
 **Cleanup**:
 - `fileBrowser/fileBrowser-libfat.c:192` -- `static int mounted[5]` only ever uses indices 0-2 (Wii SD/USB use 0/1, everything else collapses to 2); indices 3-4 are unused.
-- `fileBrowser/gc_dvd.h:30` -- `MAXIMUM_ENTRIES_PER_DIR` is defined but never referenced; `read_directory()` (`gc_dvd.c:621-643`) grows its `realloc`'d entry table with no cap despite this constant apparently having been intended as one.
+- `fileBrowser/gc_dvd.h:30` -- `MAXIMUM_ENTRIES_PER_DIR` is defined but never referenced; `read_directory()` (`gc_dvd.c:621-643`) grows its `realloc`'d entry table with no cap despite this constant apparently having been intended as one. **APPLIED** (per explicit request: fixed by actually using it as `read_directory()`'s loop bound, rather than deleting the unused constant).
 - `vm/vm.h:50` -- `VM_FILENAME` is defined but commented out (dead), superseded by `wii_vm.c:35`'s own copy of the same macro.
 
 **Fixes**:
@@ -53,15 +86,15 @@ core/dynarec last). Findings only -- nothing here has been applied yet.
 - `libgui/Button.cpp:139` -- `#include "ogc/lwp_watchdog.h"` sits mid-file instead of with the top includes.
 - `libgui/LoadingBar.cpp:29` -- unconditional `#include <debug.h>`, unused.
 - `libgui/LoadingBar.cpp:38,45` and `libgui/MessageBox.cpp:70,78` -- `buttonFocusImage` assigned in both, never read again.
-- `menu/MenuContext.cpp:198-240` (`getFrame()`) -- no case for `FRAME_CONFIGUREPAKS`/`FRAME_ADVANCEDAUDIO` (falls through, returns NULL). Harmless today (nothing calls `getFrame()` with those), one-line fix.
+- `menu/MenuContext.cpp:198-240` (`getFrame()`) -- no case for `FRAME_CONFIGUREPAKS`/`FRAME_ADVANCEDAUDIO` (falls through, returns NULL). Harmless today (nothing calls `getFrame()` with those), one-line fix. **APPLIED.**
 
 **Fixes**:
-- `libgui/GuiResources.cpp:28-75` -- `defaultButtonFocusImage` is declared, deleted in the destructor, and returned by `getImage(IMAGE_DEFAULT_BUTTONFOCUS)`, but **never constructed** even though its backing texture asset exists. Every `BUTTON_DEFAULT`-style button (MiniMenuFrame's Save State/Load State/Controller Settings, `MiniMenuFrame.cpp:112-117`) ends up with `focusImage`/`selectedImage` NULL -- no crash (the one deref is null-guarded, `Button.cpp:235`) but the focus-highlight art is silently missing.
-- `menu/LoadSaveFrame.cpp:163-164` / `SaveGameFrame.cpp:150-151` -- copy-paste bug: the USB variants report `"...from/to SD card"`. Latent since both frames are unreachable, but wrong the moment either gets wired up.
+- `libgui/GuiResources.cpp:28-75` -- `defaultButtonFocusImage` is declared, deleted in the destructor, and returned by `getImage(IMAGE_DEFAULT_BUTTONFOCUS)`, but **never constructed** even though its backing texture asset exists. Every `BUTTON_DEFAULT`-style button (MiniMenuFrame's Save State/Load State/Controller Settings, `MiniMenuFrame.cpp:112-117`) ends up with `focusImage`/`selectedImage` NULL -- no crash (the one deref is null-guarded, `Button.cpp:235`) but the focus-highlight art is silently missing. **APPLIED.**
+- `menu/LoadSaveFrame.cpp:163-164` / `SaveGameFrame.cpp:150-151` -- copy-paste bug: the USB variants report `"...from/to SD card"`. Latent since both frames are unreachable, but wrong the moment either gets wired up. **APPLIED** (message text fixed; investigated wiring the frames up too -- they're not redundant with `CurrentRomFrame`'s Load/Save buttons, they offer an explicit per-action SD/USB device choice instead of always using the Settings-configured device, so kept rather than deleted -- but where to put a menu entry point is a UX placement decision, left open).
 - `libgui/MessageBox.cpp:69-76` -- constructor never sets `messageFade` in its init list; safe today only because the function-local-static singleton happens to be zero-initialized before the constructor runs, unlike every other member in the same list.
 
 **Optimizations**:
-- `libgui/InputManager.cpp:63-64` -- `Input::refreshInput()` calls `WPAD_ScanPads()` **twice** every frame on Wii builds: once gated behind `wpadNeedScan` (`:63`), then unconditionally again immediately after (`:64`) -- the flag never actually saves the IPC round-trip it's guarding. Every `Gui::draw()` pays for two full scans instead of one.
+- `libgui/InputManager.cpp:63-64` -- `Input::refreshInput()` calls `WPAD_ScanPads()` **twice** every frame on Wii builds: once gated behind `wpadNeedScan` (`:63`), then unconditionally again immediately after (`:64`) -- the flag never actually saves the IPC round-trip it's guarding. Every `Gui::draw()` pays for two full scans instead of one. **APPLIED.**
 - `menu/ConfigureButtonsFrame.cpp:326-329` -- `updateFrame()` calls `activateSubmenu(activePad)` on **every frame** this page is visible (~17 `strcpy`s + a `sprintf` + toggling 21 buttons' active state), regardless of whether anything changed.
 - `libgui/InputStatusBar.cpp:93` -- `WPAD_Probe()` (IPC round trip) runs unconditionally for up to 4 pads on every draw of the status bar (shown continuously on MainFrame/MiniMenuFrame) -- same per-frame-IPC-probe pattern flagged for gc_input's classic/nunchuk controllers in section 3, a separate call site paying the same cost.
 
@@ -115,7 +148,7 @@ core/dynarec last). Findings only -- nothing here has been applied yet.
 ### TextureArchive
 
 **Fixes**:
-- `TextureArchive/ArchiveReader.h:78-79` / `ArchiveReader.cpp:23-25` -- **reachable crash/heap-corruption risk**: `ArchiveReader::ArchiveReader()` only initializes the zlib `stream` fields; `file` (`FILE*`) and `table` (`ArchiveTable*`) are left uninitialized. It's a Meyer's-singleton, and its first real use (`Rice_GX/TextureFilters.cpp:1991-1998`, `InitExternalTextures()`) calls `CloseExternalTextures()` -> `reset()` *before* `setArchiveFile()` is ever called -- `reset()` does `if(file) fclose(file);` and an unconditional `delete table;` against garbage pointer values on that very first call. Hit on every session's first hi-res-texture-pack init, not theoretical.
+- `TextureArchive/ArchiveReader.h:78-79` / `ArchiveReader.cpp:23-25` -- **reachable crash/heap-corruption risk**: `ArchiveReader::ArchiveReader()` only initializes the zlib `stream` fields; `file` (`FILE*`) and `table` (`ArchiveTable*`) are left uninitialized. It's a Meyer's-singleton, and its first real use (`Rice_GX/TextureFilters.cpp:1991-1998`, `InitExternalTextures()`) calls `CloseExternalTextures()` -> `reset()` *before* `setArchiveFile()` is ever called -- `reset()` does `if(file) fclose(file);` and an unconditional `delete table;` against garbage pointer values on that very first call. Hit on every session's first hi-res-texture-pack init, not theoretical. **APPLIED** (constructor now zero-inits `file`/`table`).
 
 **Future work**:
 - `ArchiveReader.cpp:118` -- `unsigned int width = info.width * 4 * 4; // FIXME: Look this up` -- unverified stride calculation.
@@ -128,14 +161,16 @@ core/dynarec last). Findings only -- nothing here has been applied yet.
 rwmem[0xa830] = rw_mi;   // should almost certainly be rwmem[0x8430]
 rwmem[0xa430] = rw_mi;
 ```
-Every other register block maps a matching *pair* -- cached KSEG0 (`0x8...`) and uncached KSEG1 (`0xa...`) -- to the same handler at the same low bits (DPC: `0x8410`/`0xa410`, VI: `0x8440`/`0xa440`, SI: `0x8480`/`0xa480`). MI is the one exception: `0xa430` (correct) is mapped, but the cached mirror is mapped to `0xa830` -- an address matching no real hardware -- instead of `0x8430`. `rwmem[0x8430]` is left at default `rw_nomem`, so any access to the *cached* MI-register mirror (`0x8430xxxx`) routes through the TLB-miss path (`virtual_to_physical_address()` -> `TLB_refill_exception()`) instead of the real handler -- a spurious guest exception on cached MI access. Most N64 code uses the uncached KSEG1 mirror (correctly mapped), which likely explains why this hasn't been 100% reproducible. Worth a deliberate test: fix `0x8430` and re-run the CIC-6105 hang sweep.
+Every other register block maps a matching *pair* -- cached KSEG0 (`0x8...`) and uncached KSEG1 (`0xa...`) -- to the same handler at the same low bits (DPC: `0x8410`/`0xa410`, VI: `0x8440`/`0xa440`, SI: `0x8480`/`0xa480`). MI is the one exception: `0xa430` (correct) is mapped, but the cached mirror is mapped to `0xa830` -- an address matching no real hardware -- instead of `0x8430`. `rwmem[0x8430]` is left at default `rw_nomem`, so any access to the *cached* MI-register mirror (`0x8430xxxx`) routes through the TLB-miss path (`virtual_to_physical_address()` -> `TLB_refill_exception()`) instead of the real handler -- a spurious guest exception on cached MI access. Most N64 code uses the uncached KSEG1 mirror (correctly mapped), which likely explains why this hasn't been 100% reproducible.
+
+**APPLIED**: fixed to `0x8430`. Not yet re-run against the CIC-6105 hang sweep (that needs a fresh multi-hour soak across Banjo-Kazooie/Zelda MM/Zelda OoT MQ to get a real before/after hang-rate comparison, not a quick smoke test) -- next session should do that A/B before considering this closed.
 
 **Possible lead #2**: `gc_memory/dma.c:292-354` (`dma_sp_write`/`dma_sp_read`, RSP<->RDRAM DMA used by every audio/graphics ucode task) -- `dramaddr` is masked once at entry (24-bit/16MB mask) but advances by `length+skip` for up to 256 iterations with no per-iteration or final clamp against the actual `rdram[]` size (`MEM_SIZE`, 4-8MB). Only the *final* value gets re-masked before being written back to the register -- the loop body already dereferenced the unclamped, larger values. A `count`/`skip` combination that walks `dramaddr` past `MEM_SIZE` (still within the 24-bit mask, so not "invalid") reads/writes out of bounds into whatever follows `rdram[]`. On the SP-task path, active around the same SI-interrupt timing window implicated in the CIC-6105 investigation.
 
 **Possible lead #3**: `gc_memory/pif.c` -- `update_pif_write()`/`update_pif_read()` walk the 64-byte `PIF_RAM` and pass `Command = &PIF_RAMb[i]` into controller/EEPROM command handlers that index up to `Command[0x25]` (37 bytes past `Command[0]`). `i` ranges up to `0x3F` in a 64-byte buffer, so a command block starting late produces accesses up to ~36 bytes past the end of `PIF_RAM` -- OOB write into whatever follows in memory.c's globals. Distinct from the `cic_challenge` logic already investigated; a buffer-bounds bug in the general dispatch that runs on every PIF exchange, including the CIC-6105 handshake's surrounding traffic.
 
 **Fixes**:
-- `gc_memory/memory.c:2944-2945` -- `write_pifd()` writes the high 32 bits of `dword`, then immediately writes the low 32 bits to **the same address** instead of `+4` (compare `read_pifd`/`write_pifh` nearby). Any 64-bit store to PIF RAM silently drops the high word.
+- `gc_memory/memory.c:2944-2945` -- `write_pifd()` writes the high 32 bits of `dword`, then immediately writes the low 32 bits to **the same address** instead of `+4` (compare `read_pifd`/`write_pifh` nearby). Any 64-bit store to PIF RAM silently drops the high word. **APPLIED.**
 - `gc_memory/dma.c:123-137,199-213` (`dma_pi_read`/`dma_pi_write`) -- the SRAM/FlashRAM branch uses `pi_dram_addr_reg` completely unmasked as an `rdramb[]` index, and a length up to ~16MB as the `memcpy` size into/from a fixed 32KB `sram[]` buffer, no clamp at all. The Cart-ROM DMA branch in the same functions explicitly clamps against `rom_length`/`MEM_SIZE`/`MEMMASK` a few lines below -- the SRAM/FlashRAM branch never got the equivalent hardening.
 - `gc_memory/flashram.c:137-151` -- `erase_offset` (`(command & 0xffff) * 128`, up to ~8MB) indexes the fixed 128KB `flashram[]` buffer with no bound check. In the MEM2 layout that buffer is immediately followed by SRAM, MEMPACK, and the 4MB dynarec BLOCKS/RECOMPMETA regions -- an out-of-range offset can write straight into those.
 - `gc_memory/flashram.c:178-211` (`dma_read_flashram`/`dma_write_flashram`) -- same unmasked-`pi_dram_addr_reg` pattern as the SRAM DMA above, no `& MEMMASK` anywhere.

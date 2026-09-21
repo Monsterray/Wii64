@@ -160,8 +160,8 @@ void Func_LoadSaveUSB()
 	result += loadMempak(saveFile_dir);
 	result += loadFlashram(saveFile_dir);
 		
-	if (result)	menu::MessageBox::getInstance().setMessage("Loaded save from SD card");
-	else		menu::MessageBox::getInstance().setMessage("No saves found on SD card");
+	if (result)	menu::MessageBox::getInstance().setMessage("Loaded save from USB device");
+	else		menu::MessageBox::getInstance().setMessage("No saves found on USB device");
 }
 
 extern MenuContext *pMenuContext;

@@ -367,7 +367,7 @@ int init_memory()
 	}
    
 	//init mips registers
-	rwmem[0xa830] = rw_mi;
+	rwmem[0x8430] = rw_mi;
 	rwmem[0xa430] = rw_mi;
 	memset(&MI_register, 0, sizeof(mips_register));
 	MI_register.mi_version_reg = 0x02020102;
@@ -2942,7 +2942,7 @@ void write_pifh()
 void write_pifd()
 {
 	*((unsigned long *)(PIF_RAMb + (address & 0x7FF) - 0x7C0)) = sl((unsigned long)(dword >> 32));
-	*((unsigned long *)(PIF_RAMb + (address & 0x7FF) - 0x7C0)) = sl((unsigned long)(dword & 0xFFFFFFFF));
+	*((unsigned long *)(PIF_RAMb + ((address+4) & 0x7FF) - 0x7C0)) = sl((unsigned long)(dword & 0xFFFFFFFF));
 	if ((address & 0x7FF) == 0x7F8)
 	{
 		if (PIF_RAMb[0x3F] == 0x08)

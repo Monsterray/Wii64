@@ -234,6 +234,12 @@ menu::Frame* MenuContext::getFrame(int frameIndex)
 	case FRAME_CONFIGUREBUTTONS:
 		pFrame = configureButtonsFrame;
 		break;
+	case FRAME_CONFIGUREPAKS:
+		pFrame = configurePaksFrame;
+		break;
+	case FRAME_ADVANCEDAUDIO:
+		pFrame = advancedAudioFrame;
+		break;
 	}
 
 	return pFrame;
