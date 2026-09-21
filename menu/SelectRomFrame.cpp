@@ -691,6 +691,15 @@ void selectRomFrame_Error(fileBrowser_file* dir, int error_code)
 
 void selectRomFrame_FillPage()
 {
+	// Measured via Dolphin's IOS_SD log (real SDIO DMA read timestamps, not
+	// guesswork): a full page of boxart reads totals well under a second --
+	// the earlier per-tile LoadingBar_showBar() call was solving a latency
+	// problem that isn't actually there, and instead turned one brief pause
+	// into a visibly janky multi-step reveal (flash a frame, block, flash the
+	// next). One frame up front reads as a quick blip; a frame per tile reads
+	// as slow motion even though the total time is the same either way.
+	LoadingBar_showBar(0.0f, "Loading boxart...");
+
 	//set entries according to page
 	for (int i = 0; i < NUM_FILE_SLOTS; i++)
 	{
@@ -710,13 +719,6 @@ void selectRomFrame_FillPage()
 				//print_gecko("Loading Boxart for %s with CRC: %08X\r\n",&rom_headers[i+(current_page*NUM_FILE_SLOTS)].nom,
 				//			rom_headers[i+(current_page*NUM_FILE_SLOTS)].CRC1);
 				//load boxart
-				// BOXART_LoadTexture does a real fseek/fread against boxart.bin (up to
-				// 15MB, scattered offsets) with no draw() calls in between iterations --
-				// up to NUM_FILE_SLOTS of these in a row froze the whole menu for however
-				// long that took. Draw a progress frame per tile instead of one frozen
-				// frame for the entire page, using the codebase's own existing mechanism
-				// for this (previously only ever called once, at 100%, in LoadRomFrame.cpp).
-				LoadingBar_showBar((float)(i+1)/NUM_FILE_SLOTS, "Loading boxart...");
 				BOXART_Init();
 #ifdef SHOW_DEBUG
 				bool found =
