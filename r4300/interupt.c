@@ -342,7 +342,13 @@ void gen_interupt()
     r4300.last_pc = r4300.pc;
     r4300.skip_jump=0;
     return;
-  } 
+  }
+
+  // Every other q-dereferencing site in this file guards q==NULL
+  // (check_interupt()/get_event()/remove_event()); this was the one
+  // ungated spot, and gen_interupt() runs on every dynarec dispatch when
+  // cp0_cycle_count >= 0.
+  if (q == NULL) return;
 
   switch(q->type) {
     case SPECIAL_INT:

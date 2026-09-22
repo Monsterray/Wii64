@@ -474,6 +474,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i*4;
 				word = r4300.gpr[value + i];
 				write_word_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*4);
 			break;
@@ -482,6 +483,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i*2;
 				hword = r4300.gpr[value + i];
 				write_hword_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*2);
 			break;
@@ -490,6 +492,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i;
 				byte = r4300.gpr[value + i];
 				write_byte_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*1);
 			break;
@@ -498,6 +501,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i*8;
 				dword = r4300.gpr[value + i];
 				write_dword_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*8);
 			break;
@@ -506,6 +510,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i*4;
 				word = *((long*)r4300.fpr_single[value + i*2]);
 				write_word_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*4);
 			break;
@@ -514,6 +519,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 				address = addr + i*8;
 				dword = *((long long*)r4300.fpr_double[value + i*2]);
 				write_dword_in_memory();
+				if(!address) break;
 			}
 			if(needsCheck) invalidate_func_range(addr, count*8);
 			break;
@@ -530,6 +536,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 		case MEM_SWL:
 			address = addr & ~3;
 			read_word_in_memory();
+			if(!address) break;
 			if((addr & 3) == 0){
 				word = r4300.gpr[value];
 			} else {
@@ -543,6 +550,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 		case MEM_SWR:
 			address = addr & ~3;
 			read_word_in_memory();
+			if(!address) break;
 			if((~addr & 3) == 0){
 				word = r4300.gpr[value];
 			} else {
@@ -556,6 +564,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 		case MEM_SDL:
 			address = addr & ~7;
 			read_dword_in_memory();
+			if(!address) break;
 			if((addr & 7) == 0){
 				dword = r4300.gpr[value];
 			} else {
@@ -569,6 +578,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 		case MEM_SDR:
 			address = addr & ~7;
 			read_dword_in_memory();
+			if(!address) break;
 			if((~addr & 7) == 0){
 				dword = r4300.gpr[value];
 			} else {

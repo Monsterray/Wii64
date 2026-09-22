@@ -246,7 +246,12 @@ void release(int minNeeded){
 void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* func){
 	CacheMetaNode* newBlock = __lwp_heap_allocate(node_heap, sizeof(CacheMetaNode));
 
-	if (!newBlock) {
+	// Retry until it succeeds, matching every other allocation in this file
+	// (cache/MetaCache_Alloc below, RecompCache_Realloc) -- this one used to
+	// retry release(size) exactly once, so if that single release() call
+	// couldn't free enough space, newBlock stayed NULL and the next line
+	// wrote through it.
+	while (!newBlock) {
 		release(size);
 		newBlock = __lwp_heap_allocate(node_heap, sizeof(CacheMetaNode));
 	}

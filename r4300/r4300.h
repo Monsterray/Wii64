@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 #include "../main/rom.h"
 #include "../gc_memory/tlb.h"
 #include "recomp.h"
@@ -64,6 +65,22 @@ typedef struct {
 	unsigned long ppc_reg_scratch[10];	// stashing of volatile regs (rarely)
 } R4300;
 extern R4300 r4300 __attribute__((section(".sbss")));
+
+// r4300/ppc/MIPS-to-PPC.c's JR/JALR stash the jump target in local_gpr[0],
+// and genJumpTo()'s JUMPTO_REG case reads it back via a hardcoded
+// REG_LOCALRS=34 (Wrappers.h) -- i.e. the address of gpr[34], two past the
+// declared 32-entry array, relying entirely on hi/lo/local_gpr[2] sitting
+// immediately after gpr[] with zero padding. Nothing else would fail to
+// compile if a field were ever inserted/reordered here; this guard makes
+// that a build error instead of every JR/JALR silently reading garbage as
+// its jump target.
+#ifdef __cplusplus
+static_assert(offsetof(R4300, local_gpr) == offsetof(R4300, gpr) + 34*sizeof(long long),
+              "R4300 layout: local_gpr must immediately follow gpr[32]+hi+lo with no padding (see JUMPTO_REG's REG_LOCALRS=34)");
+#else
+_Static_assert(offsetof(R4300, local_gpr) == offsetof(R4300, gpr) + 34*sizeof(long long),
+               "R4300 layout: local_gpr must immediately follow gpr[32]+hi+lo with no padding (see JUMPTO_REG's REG_LOCALRS=34)");
+#endif
 
 #define local_rs (r4300.local_gpr[0])
 #define local_rt (r4300.local_gpr[1])
