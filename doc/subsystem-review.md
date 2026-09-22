@@ -387,36 +387,44 @@ Every other register block maps a matching *pair* -- cached KSEG0 (`0x8...`) and
 
 ## 1. Build system (Makefiles, `.dev/` tooling)
 
-**Fixes**
+**Fixes** (all applied)
 - `Makefile.base:155` -- `ifeq ($(strip mupen64_GX_gfx/main.cpp),)` compares
   a literal path *string* to empty, not a file/variable -- always false, so
   the `else` (`export LD := $(CXX)`) always wins regardless of what's being
-  built. Dead conditional; matches observed behavior (g++ always does the
-  final link) but should just be `export LD := $(CXX)` unconditionally, or
-  fixed to actually check something if the intent was ever real.
+  built. **APPLIED**: replaced with the unconditional assignment it always
+  resolved to.
 - No header-dependency tracking: object rules don't depend on the headers
   they include (the `HEADER` var in Makefile.base is defined but never wired
   to anything), so a header-only change doesn't force its dependents to
   recompile. This isn't hypothetical -- it caused a real ODR-violation/stale
   object bug this session (MenuContext.h) that needed a full `make clean` to
-  fix. Worth adding `-MMD -MP` + `-include $(ALL_OBJ:.o=.d)` so this class of
-  bug can't happen silently again.
+  fix. **APPLIED**: `-MMD -MP` + `-include $(ALL_OBJ:.o=.d)`. This alone
+  shifted GNU Make's default goal (a rule read in from a `.d` file via
+  `-include`, before `all:` is parsed, becomes the new "first target in the
+  first makefile" -- a bare `make` with no target silently built nothing).
+  Pinned back with `.DEFAULT_GOAL := all`. Verified: touching a shared
+  header (`perf_prof.h`) now recompiles exactly its 8 dependents, not
+  everything and not nothing; a clean full build still produces the `.dol`.
 - `clean:` does `find . -name '*.o' -delete` from the repo root -- deletes
   `.o` anywhere under the tree, including inside `.claude/worktrees/*` if
-  one exists with its own in-progress build. Low risk today (objects live
-  next to sources, no dedicated build dir) but worth scoping to the actual
-  source directories this Makefile builds from.
+  one exists with its own in-progress build. **APPLIED**: scoped to this
+  project's own source directories, extended to also remove the new `.d`
+  files.
 
-**Cleanup**
-- `Makefile.base:168` -- dead commented-out line (`#	DolTool -d $(ELF)`).
-- `Makefile.base:10` -- `DEBUG_FLAGS` comment lists `-DSHOW_DEBUG` twice.
+**Cleanup** (all applied)
+- `Makefile.base:168` -- dead commented-out line (`#	DolTool -d $(ELF)`). **APPLIED** (removed).
+- `Makefile.base:10` -- `DEBUG_FLAGS` comment lists `-DSHOW_DEBUG` twice. **APPLIED** (removed the duplicate).
 
-**To verify (not a finding, a flag)**
-- Observed real `PERF_PROF` output (`perf.log` content) during this
-  session's testing even though `Makefile.base`'s committed `DEBUG_FLAGS`
-  has `-DPERF_PROF` commented out. Either a local/uncommitted flag was used
-  during that testing, or something else defines it -- worth a quick check
-  before relying on perf_prof.h's "opt-in only" framing.
+**Resolved (was a "to verify" flag)**
+- Observed real `PERF_PROF` output during this session's testing even
+  though `Makefile.base`'s committed `DEBUG_FLAGS` has `-DPERF_PROF`
+  commented out. **Answer**: `.dev/build_profiling.sh` passes
+  `DEBUG_FLAGS=-DPERF_PROF` as a `make` command-line override (after a
+  forced `clean`, since there's no header-dependency tracking to catch a
+  flag-only change -- now less of a footgun with the `.d`-file fix above,
+  though a flag change still isn't a header change so `clean` is still
+  needed for it specifically) -- not a second definition, not an
+  uncommitted local edit. `perf_prof.h`'s "opt-in only" framing holds.
 - `Makefile.glN64` defines `-D__LINUX__` (glN64_GX builds only -- NOT
   defined for Rice builds). This session's Rice_GX dead-code cleanup relied
   on `NO_ASM` (universal) and GCC-builtin `_BIG_ENDIAN`, not `__LINUX__`, so
