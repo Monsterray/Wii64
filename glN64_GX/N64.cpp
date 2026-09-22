@@ -11,11 +11,7 @@
 #include <gccore.h>
 #endif // __GX__
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-#endif // __LINUX__
+#include "../main/winlnxdefs.h"
 #include "N64.h"
 #include "Types.h"
 

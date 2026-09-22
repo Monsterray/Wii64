@@ -9,11 +9,7 @@
  *
 **/
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-#endif // __LINUX__
+#include "../main/winlnxdefs.h"
 #define XXH_PRIVATE_API
 #define XXH_FORCE_MEMORY_ACCESS 2
 #define XXH_FORCE_NATIVE_FORMAT 1

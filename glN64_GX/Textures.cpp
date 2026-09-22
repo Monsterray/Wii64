@@ -19,23 +19,16 @@
 #include "../gui/DEBUG.h"
 #endif // __GX__
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-# include <time.h>
-# include <stdlib.h>
-# ifndef min
-#  define min(a,b) ((a) < (b) ? (a) : (b))
-# endif
-# ifndef max
-#  define max(a,b) ((a) > (b) ? (a) : (b))
-# endif
-# define timeGetTime() time(NULL)
+#include "../main/winlnxdefs.h"
+#include <time.h>
+#include <stdlib.h>
+#ifndef min
+# define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
-#ifndef __GX__
-#include <memory.h>
-#endif // !__GX__
+#ifndef max
+# define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+#define timeGetTime() time(NULL)
 #include "OpenGL.h"
 #include "Textures.h"
 #include "GBI.h"

@@ -9,10 +9,6 @@
  *
 **/
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-#endif // __LINUX__
+#include "../main/winlnxdefs.h"
 
 DWORD Hash_Calculate( DWORD hash, void *buffer, DWORD count );

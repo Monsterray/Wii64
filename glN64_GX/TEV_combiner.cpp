@@ -8,17 +8,12 @@
  *
 **/
 
-//#ifdef __GX__
 #include <gccore.h>
 #include "../gui/DEBUG.h"
 #include <stdio.h>
-//#endif // __GX__
 
-//#ifndef __LINUX__
-//# include <windows.h>
-//#else
-# include "../main/winlnxdefs.h"
-# include <stdlib.h> // malloc()
+#include "../main/winlnxdefs.h"
+#include <stdlib.h> // malloc()
 
 # ifndef max
 #  define max(a,b) ((a) > (b) ? (a) : (b))

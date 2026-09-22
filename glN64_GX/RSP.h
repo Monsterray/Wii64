@@ -12,15 +12,7 @@
 #ifndef RSP_H
 #define RSP_H
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-# ifndef __GX__
-# include "SDL.h"
-# include "SDL_thread.h"
-# endif // !__GX__
-#endif
+#include "../main/winlnxdefs.h"
 #include "N64.h"
 #include "GBI.h"
 #include "gSP.h"

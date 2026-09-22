@@ -9,14 +9,8 @@
  *
 **/
 
-#ifndef __LINUX__
-# include <windows.h>
-# include <commctrl.h>
-# include <process.h>
-#else
-# include "../main/winlnxdefs.h"
-# include <string.h>
-#endif
+#include "../main/winlnxdefs.h"
+#include <string.h>
 
 #ifdef __GX__
 #include "GFXPlugin.h"
@@ -45,14 +39,6 @@
 extern "C" { void _break(); }
 #endif
 
-#ifndef __LINUX__
-HWND		hWnd;
-HWND		hStatusBar;
-//HWND		hFullscreen;
-HWND		hToolBar;
-HINSTANCE	hInstance;
-#endif // !__LINUX__
-
 char		pluginName[] = "glN64 v0.4.1 by Orkin - GX port by sepp256";
 char		*screenDirectory;
 
@@ -72,131 +58,20 @@ void gfx_set_window(int x, int y, int width, int height){
 }
 #endif // __GX__
 
-#ifndef __LINUX__
-LONG		windowedStyle;
-LONG		windowedExStyle;
-RECT		windowedRect;
-HMENU		windowedMenu;
-
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
-{
-	hInstance = hinstDLL;
-
-	if (dwReason == DLL_PROCESS_ATTACH)
-	{
-		Config_LoadConfig();
-		RSP.thread = NULL;
-		OGL.hRC = NULL;
-		OGL.hDC = NULL;
-/*		OGL.hPbufferRC = NULL;
-		OGL.hPbufferDC = NULL;
-		OGL.hPbuffer = NULL;*/
-//		hFullscreen = NULL;
-	}
-	return TRUE;
-}
-#else
 void
 _init( void )
 {
 	Config_LoadConfig();
-# ifndef __GX__
-	OGL.hScreen = NULL;
-# endif // !_GX__
-# ifdef RSPTHREAD
-	RSP.thread = NULL;
-# endif
 }
-#endif // !__LINUX__
 
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
 	screenDirectory = Directory;
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_CAPTURESCREEN] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
 	OGL_SaveScreenshot();
-#endif
 }
 
 EXPORT void CALL ChangeWindow (void)
 {
-#ifdef RSPTHREAD
-	// Textures seem to get corrupted when changing video modes (at least on my Radeon), so destroy them
-	SetEvent( RSP.threadMsg[RSPMSG_DESTROYTEXTURES] );
-	WaitForSingleObject( RSP.threadFinished, INFINITE );
-
-	if (!OGL.fullscreen)
-	{
-		DEVMODE fullscreenMode;
-		memset( &fullscreenMode, 0, sizeof(DEVMODE) );
-		fullscreenMode.dmSize = sizeof(DEVMODE);
-		fullscreenMode.dmPelsWidth			= OGL.fullscreenWidth;
-		fullscreenMode.dmPelsHeight			= OGL.fullscreenHeight;
-		fullscreenMode.dmBitsPerPel			= OGL.fullscreenBits;
-		fullscreenMode.dmDisplayFrequency	= OGL.fullscreenRefresh;
-		fullscreenMode.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
-
-		if (ChangeDisplaySettings( &fullscreenMode, CDS_FULLSCREEN ) != DISP_CHANGE_SUCCESSFUL)
-		{
-			MessageBox( NULL, "Failed to change display mode", pluginName, MB_ICONERROR | MB_OK );
-			return;
-		}
-
-		ShowCursor( FALSE );
-
-		windowedMenu = GetMenu( hWnd );
-
-		if (windowedMenu)
-			SetMenu( hWnd, NULL );
-
-		if (hStatusBar)
-			ShowWindow( hStatusBar, SW_HIDE );
-
-		windowedExStyle = GetWindowLong( hWnd, GWL_EXSTYLE );
-		windowedStyle = GetWindowLong( hWnd, GWL_STYLE );
-
-		SetWindowLong( hWnd, GWL_EXSTYLE, WS_EX_APPWINDOW | WS_EX_TOPMOST );
-		SetWindowLong( hWnd, GWL_STYLE, WS_POPUP );
-
-		GetWindowRect( hWnd, &windowedRect );
-
-		OGL.fullscreen = TRUE;
-		OGL_ResizeWindow();
-	}
-	else
-	{
-		ChangeDisplaySettings( NULL, 0 );
-
-		ShowCursor( TRUE );
-
-		if (windowedMenu)
-			SetMenu( hWnd, windowedMenu );
-
-		if (hStatusBar)
-			ShowWindow( hStatusBar, SW_SHOW );
-
-		SetWindowLong( hWnd, GWL_STYLE, windowedStyle );
-		SetWindowLong( hWnd, GWL_EXSTYLE, windowedExStyle );
-		SetWindowPos( hWnd, NULL, windowedRect.left, windowedRect.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE );
-
-		OGL.fullscreen = FALSE;
-		OGL_ResizeWindow();
-	}
-
-	SetEvent( RSP.threadMsg[RSPMSG_INITTEXTURES] );
-	WaitForSingleObject( RSP.threadFinished, INFINITE );
-#else // RSPTHREAD
-# ifdef __LINUX__
-#  ifndef __GX__
-	SDL_WM_ToggleFullScreen( OGL.hScreen );
-#  endif // !__GX__
-# endif // __LINUX__
-#endif // !RSPTHREAD
 }
 
 EXPORT void CALL CloseDLL (void)
@@ -205,13 +80,6 @@ EXPORT void CALL CloseDLL (void)
 
 EXPORT void CALL DllAbout ( HWND hParent )
 {
-#ifndef __GX__
-#ifndef __LINUX__
-	MessageBox( hParent, "glN64 v0.4 by Orkin\n\nWebsite: http://gln64.emulation64.com/\n\nThanks to Clements, Rice, Gonetz, Malcolm, Dave2001, cryhlove, icepir8, zilmar, Azimer, and StrmnNrmn", pluginName, MB_OK | MB_ICONINFORMATION );
-#else
-	puts( "glN64 v0.4 by Orkin\nWebsite: http://gln64.emulation64.com/\n\nThanks to Clements, Rice, Gonetz, Malcolm, Dave2001, cryhlove, icepir8, zilmar, Azimer, and StrmnNrmn\nported by blight" );
-#endif
-#endif // !__GX__
 }
 
 EXPORT void CALL DllConfig ( HWND hParent )
@@ -236,35 +104,9 @@ EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 	PluginInfo->MemoryBswaped = TRUE;
 }
 
-#ifndef __LINUX__
-BOOL CALLBACK FindToolBarProc( HWND hWnd, LPARAM lParam )
-{
-	if (GetWindowLong( hWnd, GWL_STYLE ) & RBS_VARHEIGHT)
-	{
-		hToolBar = hWnd;
-		return FALSE;
-	}
-	return TRUE;
-}
-#endif // !__LINUX__
-
 EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-#ifndef __LINUX__
-	hWnd = Gfx_Info.hWnd;
-	hStatusBar = Gfx_Info.hStatusBar;
-	hToolBar = NULL;
-
-	EnumChildWindows( hWnd, FindToolBarProc,0 );
-#else // !__LINUX__
 	Config_LoadConfig();
-# ifndef __GX__
-	OGL.hScreen = NULL;
-# endif // !__GX__
-# ifdef RSPTHREAD
-	RSP.thread = NULL;
-# endif
-#endif // __LINUX__
 	DMEM = Gfx_Info.DMEM;
 	IMEM = Gfx_Info.IMEM;
 	RDRAM = Gfx_Info.RDRAM;
@@ -307,36 +149,7 @@ EXPORT void CALL MoveScreen (int xpos, int ypos)
 
 EXPORT void CALL ProcessDList(void)
 {
-#ifdef DEBUGON
-//	_break();
-#endif
-
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_PROCESSDLIST] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
-#ifdef __GX__
-#ifdef GLN64_SDLOG
-	sprintf(txtbuffer,"\nPROCESS D LIST!!\n\n");
-	DEBUG_print(txtbuffer,DBG_SDGECKOPRINT);
-#endif // GLN64_SDLOG
-#endif // __GX__
 	RSP_ProcessDList();
-#endif
-
-#ifdef DEBUGON
-//	_break();
-#endif
-
-#ifdef __GX__
-#ifdef SHOW_DEBUG
-	sprintf(txtbuffer,"RSP: VtxMP = %d; pDcnt = %d; Zprim = %d; noZprim = %d", OGL.GXnumVtxMP, cache.GXprimDepthCnt, cache.GXZTexPrimCnt, cache.GXnoZTexPrimCnt);
-	DEBUG_print(txtbuffer,DBG_RSPINFO);
-#endif
-#endif // __GX__
 }
 
 EXPORT void CALL ProcessRDPList(void)
@@ -368,87 +181,19 @@ EXPORT void CALL ProcessRDPList(void)
 
 EXPORT void CALL RomClosed (void)
 {
-#ifdef RSPTHREAD
-	int i;
-
-	if (RSP.thread)
-	{
-//		if (OGL.fullscreen)
-//			ChangeWindow();
-
-		if (RSP.busy)
-		{
-			RSP.halt = TRUE;
-			WaitForSingleObject( RSP.threadFinished, INFINITE );
-		}
-
-		SetEvent( RSP.threadMsg[RSPMSG_CLOSE] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-		for (i = 0; i < 4; i++)
-			if (RSP.threadMsg[i])
-				CloseHandle( RSP.threadMsg[i] );
-		CloseHandle( RSP.threadFinished );
-		CloseHandle( RSP.thread );
-	}
-
-	RSP.thread = NULL;
-#else
 	OGL_Stop();
-#endif
 	GBI_Destroy();
 
-#ifdef __GX__
 	GX_SetDrawSyncCallback(NULL);
-#endif // __GX__
-
-#ifdef DEBUG
-	CloseDebugDlg();
-#endif
 }
 
 EXPORT void CALL RomOpen (void)
 {
-#ifdef RSPTHREAD
-# ifndef __LINUX__
-	DWORD threadID;
-	int i;
-
-	// Create RSP message events
-	for (i = 0; i < 6; i++)
-	{
-		RSP.threadMsg[i] = CreateEvent( NULL, FALSE, FALSE, NULL );
-		if (RSP.threadMsg[i] == NULL)
-		{
-			MessageBox( hWnd, "Error creating video thread message events, closing video thread...", "glN64 Error", MB_OK | MB_ICONERROR );
-			return;
-		}
-	}
-
-	// Create RSP finished event
-	RSP.threadFinished = CreateEvent( NULL, FALSE, FALSE, NULL );
-	if (RSP.threadFinished == NULL)
-	{
-		MessageBox( hWnd, "Error creating video thread finished event, closing video thread...", "glN64 Error", MB_OK | MB_ICONERROR );
-		return;
-	}
-
-	RSP.thread = CreateThread( NULL, 4096, RSP_ThreadProc, NULL, NULL, &threadID );
-	WaitForSingleObject( RSP.threadFinished, INFINITE );
-# else // !__LINUX__
-# endif // __LINUX__
-#else
 	RSP_Init();
-#endif
 
 	OGL_ResizeWindow();
 
-#ifdef DEBUG
-	OpenDebugDlg();
-#endif
-
-#ifdef __GX__
 	GX_SetDrawSyncCallback(VI_GX_DrawSyncCallback);
-#endif // __GX__
 }
 
 EXPORT void CALL ShowCFB (void)
@@ -457,15 +202,7 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL UpdateScreen (void)
 {
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_UPDATESCREEN] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
 	VI_UpdateScreen();
-#endif
 }
 
 EXPORT void CALL ViStatusChanged (void)

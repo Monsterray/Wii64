@@ -13,11 +13,7 @@
 #include <gccore.h>
 #endif // __GX__
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-#endif
+#include "../main/winlnxdefs.h"
 
 #include <math.h>
 #include "glN64.h"
@@ -42,116 +38,22 @@ RSPInfo		RSP;
 
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 {
-//	f32 recip = 1.5258789e-05f;
-#ifndef __LINUX__
-	__asm {
-		mov		esi, dword ptr [RDRAM];
-		add		esi, dword ptr [address];
-		mov		edi, dword ptr [mtx];
-
-		mov		ecx, 4
-LoadLoop:
-		fild	word ptr [esi+02h]
-		movzx	eax, word ptr [esi+22h]
-		mov		dword ptr [edi], eax
-		fild	dword ptr [edi]
-		fmul	dword ptr [recip]
-		fadd
-		fstp	dword ptr [edi]
-
-		fild	word ptr [esi+00h]
-		movzx	eax, word ptr [esi+20h]
-		mov		dword ptr [edi+04h], eax
-		fild	dword ptr [edi+04h]
-		fmul	dword ptr [recip]
-		fadd
-		fstp	dword ptr [edi+04h]
-
-		fild	word ptr [esi+06h]
-		movzx	eax, word ptr [esi+26h]
-		mov		dword ptr [edi+08h], eax
-		fild	dword ptr [edi+08h]
-		fmul	dword ptr [recip]
-		fadd
-		fstp	dword ptr [edi+08h]
-
-		fild	word ptr [esi+04h]
-		movzx	eax, word ptr [esi+24h]
-		mov		dword ptr [edi+0Ch], eax
-		fild	dword ptr [edi+0Ch]
-		fmul	dword ptr [recip]
-		fadd
-		fstp	dword ptr [edi+0Ch]
-
-		add		esi, 08h
-		add		edi, 10h
-		loop	LoadLoop
-	}
-#else // !__LINUX__
-# ifdef X86_ASM
-	__asm__ __volatile__(
-	".intel_syntax noprefix"					"\n\t"
-	"LoadLoop:"									"\n\t"
-	"	fild	word ptr [esi+0x02]"			"\n\t"
-	"	movzx	eax, word ptr [esi+0x22]"		"\n\t"
-	"	mov		dword ptr [edi], eax"			"\n\t"
-	"	fild	dword ptr [edi]"				"\n\t"
-	"	fmul	%0"								"\n\t"
-	"	fadd"									"\n\t"
-	"	fstp	dword ptr [edi]"				"\n\t"
-
-	"	fild	word ptr [esi+0x00]"			"\n\t"
-	"	movzx	eax, word ptr [esi+0x20]"		"\n\t"
-	"	mov		dword ptr [edi+0x04], eax"		"\n\t"
-	"	fild	dword ptr [edi+0x04]"			"\n\t"
-	"	fmul	%0"								"\n\t"
-	"	fadd"									"\n\t"
-	"	fstp	dword ptr [edi+0x04]"			"\n\t"
-
-	"	fild	word ptr [esi+0x06]"			"\n\t"
-	"	movzx	eax, word ptr [esi+0x26]"		"\n\t"
-	"	mov		dword ptr [edi+0x08], eax"		"\n\t"
-	"	fild	dword ptr [edi+0x08]"			"\n\t"
-	"	fmul	%0"								"\n\t"
-	"	fadd"									"\n\t"
-	"	fstp	dword ptr [edi+0x08]"			"\n\t"
-
-	"	fild	word ptr [esi+0x04]"			"\n\t"
-	"	movzx	eax, word ptr [esi+0x24]"		"\n\t"
-	"	mov		dword ptr [edi+0x0C], eax"		"\n\t"
-	"	fild	dword ptr [edi+0x0C]"			"\n\t"
-	"	fmul	%0"								"\n\t"
-	"	fadd"									"\n\t"
-	"	fstp	dword ptr [edi+0x0C]"			"\n\t"
-
-	"	add		esi, 0x08"						"\n\t"
-	"	add		edi, 0x10"						"\n\t"
-	"	loop	LoadLoop"						"\n\t"
-	".att_syntax prefix"						"\n\t"
-	: /* no output */
-	: "f"(recip), "S"((int)RDRAM+address), "D"(mtx), "c"(4)
-	: "memory" );
-#elif defined(GEKKO) // X86_ASM
-	
 	struct _N64Matrix
 	{
 		SHORT integer[4][4];
 		WORD fraction[4][4];
 	} *n64Mat = (struct _N64Matrix *)&RDRAM[address];
-	
+
 	for(int i=0; i<4; ++i){
-		/*for(int j=0; j<4; ++j)
-			mtx[i][j] = (float)n64Mat->integer[i][j] + (float)n64Mat->fraction[i][j] * recip;*/
-		
 		__asm__ volatile(
 			"psq_l    3,   (%3*8)(%0), 0, 3 \n"
 			"psq_l    4,   (%3*8)(%1), 0, 7 \n"
 			"psq_l    5, (%3*8+4)(%0), 0, 3 \n"
 			"psq_l    6, (%3*8+4)(%1), 0, 7 \n"
-			
+
 			"ps_add  4, 3, 4     \n"
 			"ps_add  6, 5, 6     \n"
-			
+
 			"psq_st   4,   (%3*16)(%2), 0, 0 \n"
 			"psq_st   6, (%3*16+8)(%2), 0, 0 \n"
 			:: "r" (n64Mat->fraction), "r" (n64Mat->integer),
@@ -159,24 +61,6 @@ LoadLoop:
 			 : "fr2", "fr3", "fr4", "fr5", "fr6",
 			   "r0", "memory");
 	}
-	
-# else // GEKKO
-	struct _N64Matrix
-	{
-		SHORT integer[4][4];
-		WORD fraction[4][4];
-	} *n64Mat = (struct _N64Matrix *)&RDRAM[address];
-	int i, j;
-
-	for (i = 0; i < 4; i++)
-		for (j = 0; j < 4; j++)
-#  ifndef _BIG_ENDIAN
-			mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
-#  else // !_BIG_ENDIAN -> This should fix a Big Endian issue.
-			mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^0]) + (GLfloat)(n64Mat->fraction[i][j^0]) * recip;
-#  endif // _BIG_ENDIAN
-# endif // !( X86_ASM || GEKKO )
-#endif // __LINUX__
 }
 
 #ifdef RSPTHREAD
@@ -455,33 +339,11 @@ void RSP_Init()
         //u8 test;
 	//u32 testAddress;
 
-	// Calculate RDRAM size by intentionally causing an access violation
-#ifndef __LINUX__
-	__try
-	{
-
-		testAddress = 0;
-		while (TRUE)
-		{
-			test = RDRAM[testAddress];
-			testAddress++;
-		}
-	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
-		RDRAMSize = testAddress;
-	}
-#else // !__LINUX__
-# ifdef __GX__
-#  ifdef USE_EXPANSION
+#ifdef USE_EXPANSION
 	RDRAMSize = 1024 * 1024 * 8;
-#  else
+#else
 	RDRAMSize = 1024 * 1024 * 4;
-#  endif
-# else // __GX__
-	RDRAMSize = 1024 * 1024 * 8;
-# endif // !__GX__
-#endif // __LINUX__
+#endif
 
 	RSP.DList = 0;
 	RSP.uc_start = RSP.uc_dstart = 0;

@@ -15,12 +15,8 @@
 #include <stdio.h>
 #endif // __GX__
 
-#ifndef __LINUX__
-# include <windows.h>
-#else
-# include "../main/winlnxdefs.h"
-# include <stdlib.h>
-#endif // __LINUX__
+#include "../main/winlnxdefs.h"
+#include <stdlib.h>
 #include "OpenGL.h"
 #include "Combiner.h"
 #include "TEV_combiner.h"
