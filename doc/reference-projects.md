@@ -66,11 +66,14 @@ before and after the change -- same dispatch count (#768), same PC
 (`0x8009552C`), same preceding exception at dispatch #754
 (`PC=0x80000180`, the general exception vector). So this PIF-read gating
 bug is real but not what's actually stalling this ROM's boot; the actual
-hang is downstream of it. See `doc/subsystem-review.md` section 8 for
-the concrete next step (find what instruction/access at `0x8009552C`
-is looping, and why it never returns to the dynarec's outer dispatch
-loop -- the exception counter keeps climbing even after dispatch count
-freezes, meaning whatever's looping calls the exception path directly
-without going back through the C-level dispatcher, which also means
-the existing `DYNAREC_WATCHDOG_CYCLE_LIMIT` safety net in `Wrappers.c`
-can't catch this shape of hang either).
+hang is downstream of it.
+
+**Further correction, next session**: the "dispatch count frozen at
+#754/#8009552C" reading above turned out to be a `dynarec_trace` artifact,
+not a real freeze -- direct instrumentation showed the dynarec's outer C
+dispatch loop genuinely running (millions of real dispatches, not stuck)
+the whole time. See `doc/subsystem-review.md` section 8's "Correction to
+the 'linked-block native loop' theory" entry for the full, corrected
+picture and concrete next steps. Short version: this ROM dispatches
+millions of blocks without ever completing boot -- real, varied execution,
+not a frozen or simply-cycling loop -- and no fix has landed yet.
