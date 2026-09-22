@@ -1,7 +1,11 @@
 *.o
+*.d
 *.elf
 *.dol
 *.map
+
+# Local MCP server config (machine-specific paths, e.g. C:/ai/venvs/...)
+.mcp.json
 
 # Local build/test tooling and profiles (machine-specific, not for other contributors)
 .dev/

@@ -7,7 +7,7 @@ AS  := $(DEVKITPPC)/bin/powerpc-eabi-as
 
 
 LTO			 = -flto -fno-strict-aliasing # Uncomment to use link-time optimization
-DEBUG_FLAGS += #-DSHOW_DEBUG #-DPROFILE #-DSHOW_DEBUG #-DDEBUGON #-DPRINTGECKO #-DGLN64_SDLOG #-DNO_BT #-DPERF_PROF
+DEBUG_FLAGS += #-DSHOW_DEBUG #-DPROFILE #-DDEBUGON #-DPRINTGECKO #-DGLN64_SDLOG #-DNO_BT #-DPERF_PROF
 
 MACHDEP		+= -mcpu=750 -meabi -mhard-float 
 LDFLAGS		+= -O3 $(LTO) $(MACHDEP) -Wl,-Map,$(notdir $@).map -Wl,--cref $(LTO)
@@ -21,6 +21,7 @@ CXXFLAGS		+= \
 		-DUSE_RECOMP_CACHE -DPPC_DYNAREC -DFASTMEM -DFASTMEM_HOT_NOFLUSH -DNO_ASM \
 		-Wstrict-aliasing=3 -Wcast-align -Wlto-type-mismatch -Wodr \
 		-Wclobbered -Wvolatile-register-var -Winline -fno-toplevel-reorder -fno-strict-aliasing \
+		-MMD -MP \
 		$(DEBUG_FLAGS) $(FEATURES) #-fno-exceptions
 
 # := forces immediate expansion here, snapshotting CXXFLAGS's value now (Makefile.base
@@ -152,11 +153,25 @@ LIB		+= -logc -lm -lfat -ldb -lz -laesnd -logc -static
 
 ALL_OBJ		+= $(OBJ) $(OBJ_INPUT) $(OBJ_AUDIO) $(OBJ_RSPHLE) $(OBJ_PPC)
 
-ifeq ($(strip mupen64_GX_gfx/main.cpp),)
-	export LD	:=	$(CC)
-else
-	export LD	:=	$(CXX)
-endif
+# -MMD -MP (above) writes a .d file per object with its actual header
+# dependencies. Without this, a header-only change doesn't force its
+# dependents to recompile -- caused a real ODR-violation/stale-object bug
+# in an earlier session (MenuContext.h) that needed a full `make clean` to
+# fix. Missing on the first build (no .d files yet); "-include" ignores
+# that instead of erroring.
+-include $(ALL_OBJ:.o=.d)
+
+# The .d files above are read via -include, and each one is itself a rule
+# (its object target with real prerequisites). Since that happens before
+# "all:" is parsed, GNU Make's "first target in the first makefile" default
+# goal silently became the first .d file's object instead of "all" --
+# harmless-looking (a plain `make` with no target just did nothing, since
+# that one object was already up to date) but wrong. Pin it explicitly.
+.DEFAULT_GOAL := all
+
+# The final link is always C++ (the project links libstdc++-using code
+# regardless of plugin/platform), so this was never really conditional.
+export LD	:=	$(CXX)
 
 all:	$(DOL)
 
@@ -165,10 +180,15 @@ $(ELF):	$(ALL_OBJ)
 
 $(DOL): $(ELF)
 	elf2dol $(ELF) $(DOL)
-#	DolTool -d $(ELF)
+
+# Scoped to this project's own source directories -- "find ." from the repo
+# root would also delete .o/.d files under an unrelated in-progress build,
+# e.g. inside a .claude/worktrees/* checkout.
+CLEAN_DIRS	:= main menu libgui fileBrowser gui r4300 gc_memory gc_input \
+		   rsp_hle gc_audio vm Rice_GX glN64_GX TextureArchive
 
 clean:
-	find . -name '*.o' -print0 | xargs -0r rm -f
+	find $(CLEAN_DIRS) \( -name '*.o' -o -name '*.d' \) -print0 | xargs -0r rm -f
 
 menu/MenuResources.o:		menu/MenuResources.s
 		$(CC) -x assembler-with-cpp $(CFLAGS) -c -o $@ $<
