@@ -274,21 +274,46 @@ int fileBrowser_libfat_deinit(fileBrowser_file* f){
    save/load while a ROM was streaming would fclose() the ROM's handle out
    from under it. */
 static FILE* romFd;
+// Path romFd is currently open for. `if(!romFd)` alone used to gate the
+// open+stat below -- if a previous load left romFd open without going
+// through fileBrowser_libfatROM_deinit() (e.g. a failure path elsewhere
+// that doesn't call it), the NEXT load would skip both the open (silently
+// reading the WRONG file's data through the stale fd) and the stat
+// (leaving file->size at whatever readDir() set it to -- 0, since that no
+// longer stats each entry). Comparing the path makes this self-correcting
+// regardless of whether every caller remembered to deinit.
+static char romFdPath[FILE_BROWSER_MAX_PATH_LEN];
 int fileBrowser_libfatROM_deinit(fileBrowser_file* f){
 	if(romFd)
 		fclose(romFd);
 	romFd = NULL;
+	romFdPath[0] = 0;
 	return 0;
 }
 int fileBrowser_libfatROM_readFile(fileBrowser_file* file, void* buffer, unsigned int length){
-	if(!romFd) {
+	if(!romFd || strncmp(romFdPath, file->name, FILE_BROWSER_MAX_PATH_LEN) != 0) {
+		if(romFd) fclose(romFd);
 		romFd = fopen( file->name, "rb");
-		if(!romFd) return 0;
+		if(!romFd) { romFdPath[0] = 0; return 0; }
+		strncpy(romFdPath, file->name, FILE_BROWSER_MAX_PATH_LEN-1);
+		romFdPath[FILE_BROWSER_MAX_PATH_LEN-1] = 0;
+	}
+	// Separate from the open/reopen above: file->size lives in the
+	// *caller's* fileBrowser_file, freshly copied from a directory-listing
+	// entry that readDir() no longer stats (always 0 there, see the
+	// comment on romFdPath above) -- so it needs to be (re-)populated every
+	// time it isn't already known, not just when romFd itself needed to be
+	// reopened. Re-selecting the same ROM without going through deinit()
+	// would otherwise keep the stat skipped and file->size stuck at 0.
+	if(!file->size) {
 		struct stat fileInfo;
 		if(!stat(&file->name[0], &fileInfo)){
 			file->size = fileInfo.st_size;
 		}
 		else {
+			fclose(romFd);
+			romFd = NULL;
+			romFdPath[0] = 0;
 			return 0;
 		}
 	}
