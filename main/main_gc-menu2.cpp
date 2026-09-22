@@ -230,6 +230,12 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           then SD -- for screens that need to
                                           be reached but not played, such as
                                           the boxart display.
+     autonav=loadrom_sd                  Jump straight to Advanced -> Load ROM
+                                          -> Load from SD (FileBrowserFrame,
+                                          a completely separate directory
+                                          browser from the New ROM one above
+                                          -- shares fileBrowser_libfat_readDir
+                                          but not SelectRomFrame's code path).
      dynacore=dynarec|pureinterp|interp  Force the CPU core for this run only,
                                           without touching settings.cfg -- lets
                                           autoboot_rom be combined with a core
@@ -289,6 +295,8 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           checked against a real load, not
                                           just a fast scan. */
 extern "C" void DiagNav_SelectRomSD(void);
+extern "C" void DiagNav_LoadFromSD(void);
+extern "C" void DiagNav_LoadFromSD_SelectFirst(void);
 extern void Func_SR_SD(void);
 extern void Func_SR_Select1(void);
 extern void Func_ReturnFromSelectRomFrame(void);
@@ -298,6 +306,7 @@ extern bool sramWritten, eepromWritten, mempakWritten, flashramWritten;
 extern BOOL hasLoadedROM;
 extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
+static int g_diagAutonavLoadFromSD = 0; // 0=off, 1=open Load from SD, 2=also select the first entry (FileBrowserFrame, not SelectRomFrame)
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
@@ -315,6 +324,10 @@ static void apply_diag_automation(void) {
 			Autoboot::setPath(romPath);
 		} else if(strncmp(line, "autonav=selectrom_sd", 20) == 0) {
 			g_diagAutonavSelectRomSD = true;
+		} else if(strncmp(line, "autonav=loadrom_sd_select1", 26) == 0) {
+			g_diagAutonavLoadFromSD = 2;
+		} else if(strncmp(line, "autonav=loadrom_sd", 18) == 0) {
+			g_diagAutonavLoadFromSD = 1;
 		} else if(strncmp(line, "autonav=settings_general", 24) == 0) {
 			g_diagSettingsSubmenu = 0; // SettingsFrame::SUBMENU_GENERAL
 		} else if(strncmp(line, "autonav=settings_video", 22) == 0) {
@@ -534,6 +547,10 @@ int main(int argc, const char* argv[]) {
 	if(g_diagAutonavSelectRomSD)
 		DiagNav_SelectRomSD();
 	perfProf_mark("diag autonav: after DiagNav_SelectRomSD call");
+	if(g_diagAutonavLoadFromSD == 1)
+		DiagNav_LoadFromSD();
+	else if(g_diagAutonavLoadFromSD == 2)
+		DiagNav_LoadFromSD_SelectFirst();
 	for(int stress = 0; stress < g_diagStressSelectRom; stress++) {
 		perfProf_mark("stress_selectrom: enter");
 		Func_SR_SD();

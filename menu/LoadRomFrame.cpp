@@ -26,6 +26,7 @@
 #include "../libgui/FocusManager.h"
 #include "../libgui/CursorManager.h"
 #include "../libgui/MessageBox.h"
+#include "../main/perf_prof.h"
 
 extern "C" {
 #include "../fileBrowser/fileBrowser.h"
@@ -209,4 +210,21 @@ void Func_LoadFromUSB()
 void Func_ReturnFromLoadRomFrame()
 {
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
+}
+
+extern "C" void DiagNav_LoadFromSD()
+{
+	perfProf_mark("DiagNav_LoadFromSD: enter");
+	Func_LoadFromSD();
+	perfProf_mark("DiagNav_LoadFromSD: after Func_LoadFromSD");
+}
+
+extern void Func_Select1(void);
+extern "C" void DiagNav_LoadFromSD_SelectFirst()
+{
+	perfProf_mark("DiagNav_LoadFromSD_SelectFirst: enter");
+	Func_LoadFromSD();
+	perfProf_mark("DiagNav_LoadFromSD_SelectFirst: after Func_LoadFromSD");
+	Func_Select1();
+	perfProf_mark("DiagNav_LoadFromSD_SelectFirst: after Func_Select1");
 }
