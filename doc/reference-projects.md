@@ -57,5 +57,20 @@ bug) that then froze in place, with a sustained ~5x-normal guest exception
 rate, consistent with a spin-wait on PIF status that our emulation never
 resolves.
 
-Not yet implemented/tested as of this writing -- see conversation/commit
-history for whether this was tried and what happened.
+**Update: implemented and tested -- did NOT fix the Majora's Mask hang.**
+Applied as a real, independently-justified correctness fix (commit
+`2492df2`, `gc_memory/pif.c`) since it matches two mature reference
+implementations and Banjo-Kazooie still boots/plays fine with it. But
+`dynarec_trace=1` against Majora's Mask shows an *identical* freeze
+before and after the change -- same dispatch count (#768), same PC
+(`0x8009552C`), same preceding exception at dispatch #754
+(`PC=0x80000180`, the general exception vector). So this PIF-read gating
+bug is real but not what's actually stalling this ROM's boot; the actual
+hang is downstream of it. See `doc/subsystem-review.md` section 8 for
+the concrete next step (find what instruction/access at `0x8009552C`
+is looping, and why it never returns to the dynarec's outer dispatch
+loop -- the exception counter keeps climbing even after dispatch count
+freezes, meaning whatever's looping calls the exception path directly
+without going back through the C-level dispatcher, which also means
+the existing `DYNAREC_WATCHDOG_CYCLE_LIMIT` safety net in `Wrappers.c`
+can't catch this shape of hang either).
