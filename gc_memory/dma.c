@@ -126,10 +126,22 @@ void dma_pi_read()
 		{
 			if (flashRAMInfo.use_flashram != 1)
 			{
+				// pi_cart_addr_reg/pi_dram_addr_reg/pi_rd_len_reg are all
+				// guest-controlled. The dram side (pi_dram_addr_reg) was
+				// completely unmasked; the sram side used &0xFFFE (up to
+				// 0xFFFE), which overran the real 32KB sram[] buffer
+				// (see saveSram()/loadSram()'s explicit 0x8000 sizing) --
+				// fixed to &0x7FFE. Clamp the length against whichever
+				// side has less room left.
+				unsigned long sram_off = (pi_register.pi_cart_addr_reg-0x08000000)&0x7FFE;
+				unsigned long dram_off = pi_register.pi_dram_addr_reg & MEMMASK;
+				unsigned long len = (pi_register.pi_rd_len_reg & 0xFFFFFE)+2;
+				if (len > 0x8000UL - sram_off) len = 0x8000UL - sram_off;
+				if (len > MEM_SIZE - dram_off) len = MEM_SIZE - dram_off;
 				sramWritten = true;
-				memcpy(	&sram[((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFE)^S8],
-						&rdramb[(pi_register.pi_dram_addr_reg)^S8],
-						(pi_register.pi_rd_len_reg & 0xFFFFFE)+2);
+				memcpy(	&sram[sram_off^S8],
+						&rdramb[dram_off^S8],
+						len);
 				flashRAMInfo.use_flashram = -1;
 			}
 			else
@@ -203,9 +215,15 @@ void dma_pi_write()
 		{
 			if (flashRAMInfo.use_flashram != 1)
 			{
-				memcpy(	&rdramb[(pi_register.pi_dram_addr_reg)^S8],
-						&sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFE))^S8],
-						(pi_register.pi_wr_len_reg & 0xFFFFFE)+2);
+				// Mirror of the same masking fix in dma_pi_read() above.
+				unsigned long sram_off = (pi_register.pi_cart_addr_reg-0x08000000)&0x7FFE;
+				unsigned long dram_off = pi_register.pi_dram_addr_reg & MEMMASK;
+				unsigned long len = (pi_register.pi_wr_len_reg & 0xFFFFFE)+2;
+				if (len > 0x8000UL - sram_off) len = 0x8000UL - sram_off;
+				if (len > MEM_SIZE - dram_off) len = MEM_SIZE - dram_off;
+				memcpy(	&rdramb[dram_off^S8],
+						&sram[sram_off^S8],
+						len);
 				flashRAMInfo.use_flashram = -1;
 			}
 			else

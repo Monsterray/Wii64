@@ -46,6 +46,17 @@
 #include "ARAM.h"
 #endif
 static unsigned char *const flashram = (unsigned char*)(FLASHRAM_LO);
+// MEM2.h (HW_RVL) already defines this to the same 128KB; ARAM.h (GC) doesn't.
+#ifndef FLASHRAM_SIZE
+#define FLASHRAM_SIZE 0x20000
+#endif
+
+#ifdef USE_EXPANSION
+	#define MEM_SIZE (0x800000)
+#else
+	#define MEM_SIZE (0x400000)
+#endif
+#define MEMMASK		(MEM_SIZE-1)
 
 bool flashramWritten = false;
 _FlashRAMInfo flashRAMInfo;
@@ -116,14 +127,22 @@ void flashram_command(unsigned long command)
 	switch(command & 0xff000000)
 	{
 		case 0x4b000000:
-			flashRAMInfo.erase_offset = (command & 0xffff) * 128;
+			// (command & 0xffff) * 128 can reach ~8MB -- masked to stay
+			// within the fixed 128KB flashram[] buffer this indexes into
+			// (with up to a further +127 offset) once ERASE_MODE/WRITE_MODE
+			// actually execute below.
+			flashRAMInfo.erase_offset = ((command & 0xffff) * 128) & (FLASHRAM_SIZE - 128);
 		break;
 		case 0x78000000:
 			flashRAMInfo.mode = ERASE_MODE;
 			flashRAMInfo.status = 0x1111800800c20000LL;
 		break;
 		case 0xa5000000:
-			flashRAMInfo.erase_offset = (command & 0xffff) * 128;
+			// (command & 0xffff) * 128 can reach ~8MB -- masked to stay
+			// within the fixed 128KB flashram[] buffer this indexes into
+			// (with up to a further +127 offset) once ERASE_MODE/WRITE_MODE
+			// actually execute below.
+			flashRAMInfo.erase_offset = ((command & 0xffff) * 128) & (FLASHRAM_SIZE - 128);
 			flashRAMInfo.status = 0x1111800400c20000LL;
 		break;
 		case 0xb4000000:
@@ -182,13 +201,29 @@ void dma_read_flashram()
 	switch(flashRAMInfo.mode)
 	{
 		case STATUS_MODE:
-			rdram[pi_register.pi_dram_addr_reg/4] = (unsigned long)(flashRAMInfo.status >> 32);
-			rdram[pi_register.pi_dram_addr_reg/4+1] = (unsigned long)(flashRAMInfo.status);
+		{
+			// pi_dram_addr_reg is guest-controlled and otherwise unbounded --
+			// masked the same way the cart-ROM DMA path already does.
+			unsigned long dst = pi_register.pi_dram_addr_reg & MEMMASK;
+			rdram[dst/4] = (unsigned long)(flashRAMInfo.status >> 32);
+			rdram[dst/4+1] = (unsigned long)(flashRAMInfo.status);
+		}
 		break;
 		case READ_MODE:
-			for (i=0; i<(pi_register.pi_wr_len_reg & 0x0FFFFFE)+2; i++)
-				((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8] =
-				flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFE)*2+i)^S8];
+		{
+			// Both the RDRAM destination (pi_dram_addr_reg) and the length
+			// (pi_wr_len_reg, up to ~16MB) are guest-controlled; src is
+			// already masked to below FLASHRAM_SIZE by &0xFFFE. Clamp len
+			// against whichever side has less room left so this can't walk
+			// past either flashram[] or rdram[].
+			unsigned long dst = pi_register.pi_dram_addr_reg & MEMMASK;
+			unsigned long src = ((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFE)*2;
+			unsigned long len = (pi_register.pi_wr_len_reg & 0x0FFFFFE)+2;
+			if (len > FLASHRAM_SIZE - src) len = FLASHRAM_SIZE - src;
+			if (len > MEM_SIZE - dst) len = MEM_SIZE - dst;
+			for (i=0; i<(int)len; i++)
+				((unsigned char*)rdram)[(dst+i)^S8] = flashram[(src+i)^S8];
+		}
 		break;
 		default:
 			//printf("unknown dma_read_flashram:%x\n", flashRAMInfo.mode);
@@ -202,7 +237,9 @@ void dma_write_flashram()
 	switch(flashRAMInfo.mode)
 	{
 		case WRITE_MODE:
-			flashRAMInfo.write_pointer = pi_register.pi_dram_addr_reg;
+			// Masked -- read as rdram[write_pointer+i] for i in 0..127 by
+			// the WRITE_MODE execute case in flashram_command() above.
+			flashRAMInfo.write_pointer = pi_register.pi_dram_addr_reg & MEMMASK;
 		break;
 		default:
 			//printf("unknown dma_read_flashram:%x\n", flashRAMInfo.mode);
