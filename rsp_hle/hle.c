@@ -183,12 +183,6 @@ void rsp_break(struct hle_t* hle, unsigned int setbits)
     }
 }
 
-static void send_alist_to_audio_plugin(struct hle_t* hle)
-{
-	HleProcessAlistList(hle->user_defined);
-    rsp_break(hle, SP_STATUS_TASKDONE);
-}
-
 static void send_dlist_to_gfx_plugin(struct hle_t* hle)
 {
     /* Since GFX_INFO version 2, these bits are set before calling the ProcessDlistList function.
@@ -340,10 +334,7 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
 
     /* GFX: Twintris [misleading task->type == 0] */
     case 0x212ee:
-        if (hle->hle_gfx) {
-            return &send_dlist_to_gfx_plugin;
-        }
-        return NULL;
+        return &send_dlist_to_gfx_plugin;
 
     /* JPEG: found in Pokemon Stadium J */
     case 0x2c85a:
@@ -404,9 +395,6 @@ static ucode_func_t task_detection(struct hle_t* hle)
         uint32_t type = *dmem_u32(hle, TASK_TYPE);
 
         if (type == 2) {
-            if (hle->hle_aud) {
-                return &send_alist_to_audio_plugin;
-            }
             uc_pfunc = try_audio_task_detection(hle);
             if (uc_pfunc)
                 return uc_pfunc;
@@ -417,9 +405,7 @@ static ucode_func_t task_detection(struct hle_t* hle)
             return uc_pfunc;
 
         if (type == 1) {
-            if (hle->hle_gfx) {
-                return &send_dlist_to_gfx_plugin;
-            }
+            return &send_dlist_to_gfx_plugin;
         }
 
         return &unknown_task;

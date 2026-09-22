@@ -115,7 +115,11 @@ int fileBrowser_DVD_readDir(fileBrowser_file* ffile, fileBrowser_file** dir, int
 	for(i = 0; i < dvd_entries; ++i) {
 		// Create a temporary entry for this directory entry.
 		memset(direntry, 0, sizeof(fileBrowser_file));
-		strcpy(direntry->name, DVDToc[i].name );
+		// strncpy, not strcpy: DVDToc[i].name is DVD-supplied and not
+		// guaranteed to fit FILE_BROWSER_MAX_PATH_LEN -- an unchecked strcpy
+		// overflows direntry->name into the rest of the struct.
+		strncpy(direntry->name, DVDToc[i].name, FILE_BROWSER_MAX_PATH_LEN-1);
+		direntry->name[FILE_BROWSER_MAX_PATH_LEN-1] = 0;
 		direntry->discoffset = (uint64_t)(((uint64_t)DVDToc[i].sector)*2048);
 		direntry->offset = 0;
 		direntry->size   = DVDToc[i].size;

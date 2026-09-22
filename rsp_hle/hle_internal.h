@@ -57,9 +57,6 @@ struct hle_t
     /* for user convenience, this will be passed to "external" functions */
     void* user_defined;
 
-    int hle_gfx;
-    int hle_aud;
-
     /* alist.c */
     uint8_t alist_buffer[0x1000];
 

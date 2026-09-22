@@ -157,9 +157,6 @@ EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int* UNUSED(CycleCount)
     l_ProcessAlistList = Rsp_Info.ProcessAlistList;
     l_ProcessRdpList = Rsp_Info.ProcessRdpList;
     l_ShowCFB = Rsp_Info.ShowCFB;
-	
-    g_hle.hle_gfx = 1;
-    g_hle.hle_aud = 0;
 }
 
 EXPORT void CALL RomClosed(void)

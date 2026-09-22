@@ -258,9 +258,6 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	// In case we couldn't compile the whole function, use a pad
 	if(need_pad)
 		genJumpPad();
-#ifdef LAZY_GEN_CALLS
-	end_block();
-#endif
 	// Allocate the func buffers and copy the code
 	if(!func->code){
 		// We aren't recompiling from a hole
