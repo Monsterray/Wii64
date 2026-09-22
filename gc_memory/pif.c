@@ -57,8 +57,6 @@
 static unsigned char eeprom[0x800] __attribute__((aligned(32)));
 static unsigned char (*const mempack)[0x8000] = (unsigned char(*)[])(MEMPACK_LO);
 
-static unsigned long cic_challenge;
-
 bool eepromWritten = false;
 bool mempakWritten = false;
 
@@ -475,7 +473,6 @@ void update_pif_write()
 				PIF_RAMb[0x3F] = 0;
 			break;
 		}
-		cic_challenge=1;
 		return;
 	}
 	while (i<0x40)
@@ -509,7 +506,6 @@ void update_pif_write()
 		}
 		i++;
 	}
-	cic_challenge=0;
 	controllerCommand(-1, NULL);
 #ifdef DEBUG_PIF
 	print_pif();
@@ -518,13 +514,26 @@ void update_pif_write()
 
 void pif_reset_state()
 {
-	cic_challenge = 0;
 }
 
 void update_pif_read()
 {
 	int i=0, channel=0;
-	if (cic_challenge) return;
+	// Gate on PIF_RAMb[0x3F]'s CURRENT value, matching update_pif_write()'s
+	// own condition for entering its challenge/status branch -- not a
+	// persistent flag set by whatever the *previous* write happened to be.
+	// A prior version used a sticky `cic_challenge` flag set by ANY write
+	// with 0x3F > 1 (not just the real 0x02 challenge) and only cleared by
+	// a later full normal command loop; if CIC-6105 IPL3 wrote 0x3F=0x08
+	// (or anything else > 1) and then issued a read before any plain write
+	// happened to run that loop, every read silently no-op'd forever --
+	// exactly the shape of the CIC-6105 boot hang (Majora's Mask, Zelda OoT
+	// Master Quest): dynarec_trace showed genuine execution progress that
+	// then froze in place with a sustained elevated exception rate,
+	// consistent with the guest spinning on PIF status data that this read
+	// path was silently refusing to ever produce. Matches how PJ64 and
+	// mupen64plus-core both gate this (stateless, on the byte itself).
+	if (PIF_RAMb[0x3F] > 1) return;
 #ifdef DEBUG_PIF
 	//   printf("read\n");
 	print_pif();
