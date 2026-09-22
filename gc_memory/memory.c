@@ -1124,9 +1124,20 @@ void write_rdramFBd()
 	write_rdramd();
 }
 
+// readrdramreg[]/readpi[] are indexed directly by *address_low, a raw
+// byte-offset into the register block (readrdramreg[0x0], [0x4], [0x8],
+// ...), not by a sequential 0..N element index -- so the right bound is
+// the array's ELEMENT count, not its byte size. Comparing against
+// sizeof(readrdramreg)/sizeof(readpi) directly (as every site below used
+// to) compares an offset against a byte count ~4x too large on this
+// pointer-sized-4 platform, letting *address_low walk past the real
+// array and index/dereference whatever pointer garbage follows it in
+// static storage.
+#define RDRAMREG_COUNT (sizeof(readrdramreg)/sizeof(readrdramreg[0]))
+
 void read_rdramreg()
 {
-	if(*address_low >= sizeof(readrdramreg)) {
+	if(*address_low >= RDRAMREG_COUNT) {
 		word = trash;
 	}
 	else {
@@ -1136,7 +1147,7 @@ void read_rdramreg()
 
 void read_rdramregb()
 {
-	if((*address_low & 0xfffc) >= sizeof(readrdramreg)) {
+	if((*address_low & 0xfffc) >= RDRAMREG_COUNT) {
 		byte = trash & 0xFF;
 	}
 	else {
@@ -1147,7 +1158,7 @@ void read_rdramregb()
 
 void read_rdramregh()
 {
-	if((*address_low & 0xfffc) >= sizeof(readrdramreg)) {
+	if((*address_low & 0xfffc) >= RDRAMREG_COUNT) {
 		hword = trash & 0xFFFF;
 	}
 	else {
@@ -1158,7 +1169,7 @@ void read_rdramregh()
 
 void read_rdramregd()
 {
-	if(*address_low > sizeof(readrdramreg) - sizeof(long long int)) {
+	if((unsigned int)(*address_low + 4) >= RDRAMREG_COUNT) {
 		dword = trash;
 	}
 	else {
@@ -1169,7 +1180,7 @@ void read_rdramregd()
 
 void write_rdramreg()
 {
-	if(*address_low >= sizeof(readrdramreg)) {
+	if(*address_low >= RDRAMREG_COUNT) {
 		trash = word;
 	}
 	else {
@@ -1179,7 +1190,7 @@ void write_rdramreg()
 
 void write_rdramregb()
 {
-	if((*address_low & 0xfffc) >= sizeof(readrdramreg)) {
+	if((*address_low & 0xfffc) >= RDRAMREG_COUNT) {
 		trash = byte;
 	}
 	else {
@@ -1190,7 +1201,7 @@ void write_rdramregb()
 
 void write_rdramregh()
 {
-	if((*address_low & 0xfffc) >= sizeof(readrdramreg)) {
+	if((*address_low & 0xfffc) >= RDRAMREG_COUNT) {
 		trash = hword;
 	}
 	else {
@@ -1201,7 +1212,7 @@ void write_rdramregh()
 
 void write_rdramregd()
 {
-	if(*address_low > sizeof(readrdramreg) - sizeof(long long int)) {
+	if((unsigned int)(*address_low + 4) >= RDRAMREG_COUNT) {
 		trash = dword;
 	}
 	else {
@@ -2389,9 +2400,14 @@ void write_aid()
 	*readai[*address_low+4] = dword & 0xFFFFFFFF;
 }
 
+// Same fix as RDRAMREG_COUNT above, same reason: readpi[] is indexed by
+// raw byte-offset, so the bound needs to be the element count, not
+// sizeof(readpi) (the byte size -- ~4x too large here).
+#define READPI_COUNT (sizeof(readpi)/sizeof(readpi[0]))
+
 void read_pi()
 {
-	if(*address_low >= sizeof(readpi)) {
+	if(*address_low >= READPI_COUNT) {
 		word = trash;
 	}
 	else {
@@ -2401,7 +2417,7 @@ void read_pi()
 
 void read_pib()
 {
-	if((*address_low & 0xfffc) >= sizeof(readpi)) {
+	if((*address_low & 0xfffc) >= READPI_COUNT) {
 		byte = trash & 0xFF;
 	}
 	else {
@@ -2411,7 +2427,7 @@ void read_pib()
 
 void read_pih()
 {
-	if((*address_low & 0xfffc) >= sizeof(readpi)) {
+	if((*address_low & 0xfffc) >= READPI_COUNT) {
 		hword = trash & 0xFFFF;
 	}
 	else {
@@ -2421,7 +2437,7 @@ void read_pih()
 
 void read_pid()
 {
-	if(*address_low > sizeof(readpi) - sizeof(long long int)) {
+	if((unsigned int)(*address_low + 4) >= READPI_COUNT) {
 		dword = trash;
 	}
 	else {
@@ -2460,7 +2476,7 @@ void write_pi()
 			return;
 		break;
 	}
-	if(*address_low >= sizeof(readpi)) {
+	if(*address_low >= READPI_COUNT) {
 		trash = word;
 	}
 	else {
@@ -2523,7 +2539,7 @@ void write_pib()
 			return;
 		break;
 	}
-	if(*address_low >= sizeof(readpi)) {
+	if(*address_low >= READPI_COUNT) {
 		trash = byte;
 	}
 	else {
@@ -2575,7 +2591,7 @@ void write_pih()
 			return;
 		break;
 	}
-	if(*address_low >= sizeof(readpi)) {
+	if(*address_low >= READPI_COUNT) {
 		trash = hword;
 	}
 	else {
@@ -2609,7 +2625,7 @@ void write_pid()
 			return;
 		break;
 	}
-	if(*address_low > sizeof(readpi) - sizeof(long long int)) {
+	if((unsigned int)(*address_low + 4) >= READPI_COUNT) {
 		trash = dword & 0xFFFFFFFF;
 	}
 	else {
