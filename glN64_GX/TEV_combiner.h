@@ -78,11 +78,9 @@ struct TEVCombiner
 };
 
 void Init_TEV_combine();
-void Uninit_TEV_combine();
 void Update_TEV_combine_Colors( TEVCombiner* );
 TEVCombiner *Compile_TEV_combine( Combiner *color, Combiner *alpha );
 void BeginTextureUpdate_TEV_combine();
-void EndTextureUpdate_TEV_combine();
 void Set_TEV_combine( TEVCombiner *TEVcombiner );
 #endif
 

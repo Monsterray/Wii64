@@ -52,7 +52,6 @@ void RDP_GFX_DLInMem(Gfx *gfx)
     LOG_UCODE("#############################################");
 }
 
-extern Matrix ALIGN(16, dkrMatrixTransposed)
 void RSP_Mtx_DKR(Gfx *gfx)
 {   
     uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
@@ -122,9 +121,6 @@ void RSP_Mtx_DKR(Gfx *gfx)
     {
         mat = matToLoad;
     }
-
-    if( status.isSSEEnabled )
-        MatrixTranspose(&dkrMatrixTransposed, &mat);
 
     DEBUGGER_IF_DUMP(logMatrix,TRACE3("DKR Matrix: cmd=0x%X, idx = %d, mul=%d", dwCommand, index, mul));
     LOG_UCODE("    DKR Loading Mtx: %d, command=%d", index, dwCommand);

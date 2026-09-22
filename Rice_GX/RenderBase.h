@@ -82,7 +82,6 @@ extern EXTERNAL_VERTEX          g_vtxForExternal[MAX_VERTS];
 
 extern uint32   gRSPnumLights;
 extern Light    gRSPlights[16];
-extern Matrix   gRSPworldProjectTransported;
 extern Matrix   gRSPworldProject;
 extern N64Light gRSPn64lights[16];
 extern Matrix   gRSPmodelViewTop;

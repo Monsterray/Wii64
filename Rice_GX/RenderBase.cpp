@@ -153,11 +153,9 @@ float               gRSPfFogDivider;
 uint32          gRSPnumLights;
 Light   gRSPlights[16];
 
-ALIGN(16,Matrix  gRSPworldProjectTransported)
 ALIGN(16,Matrix  gRSPworldProject)
 ALIGN(16,Matrix  gRSPmodelViewTop)
 ALIGN(16,Matrix  gRSPmodelViewTopTranspose)
-ALIGN(16,Matrix  dkrMatrixTransposed)
 
 N64Light        gRSPn64lights[16];
 
@@ -1169,12 +1167,7 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
             g_normal.z = (char)b; //norma.nz;
 
             Vec3TransformNormal(g_normal, matWorldProject)
-#if !defined(NO_ASM)
-            if( status.isSSEEnabled )
-                g_dwVtxDifColor[i] = SSELightVert();
-            else
-#endif
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
+            g_dwVtxDifColor[i] = LightVert(g_normal, i);
         }
         else
         {
@@ -1731,12 +1724,6 @@ void UpdateCombinedMatrix()
         {
             gRSPworldProject = gRSPworldProject * reverseY;
         }
-#if !defined(NO_ASM)
-        if( status.isSSEEnabled )
-        {
-            MatrixTranspose(&gRSPworldProjectTransported, &gRSPworldProject);
-        }
-#endif
         gRSP.bCombinedMatrixIsUpdated = false;
 
 #ifdef __GX__

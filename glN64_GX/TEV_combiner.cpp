@@ -187,15 +187,6 @@ void Init_TEV_combine()	//Called at Combiner Init
 	}*/
 }
 
-void Uninit_TEV_combine()	//Never Called...
-{
-/*	for (int i = 0; i < OGL.maxTextureUnits; i++)
-	{
-		glActiveTextureARB( GL_TEXTURE0_ARB + i );
-		glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
-	}*/
-}
-
 void Update_TEV_combine_Colors( TEVCombiner *TEVcombiner )	//Called from OGL_UpdateStates()
 {
 	//Set Constant TEV registers
@@ -778,15 +769,6 @@ void BeginTextureUpdate_TEV_combine()	//Called from OGL_UpdateStates() before lo
 	{
 		glActiveTextureARB( GL_TEXTURE0_ARB + i );
 		glDisable( GL_TEXTURE_2D );
-	}*/
-}
-
-void EndTextureUpdate_TEV_combine()	//Never called - Set_texture_env_combine() is called instead.
-{
-/*	for (int i = 0; i < ((TexEnvCombiner*)combiner.current->compiled)->usedUnits; i++)
-	{
-		glActiveTextureARB( GL_TEXTURE0_ARB + i );
-		glEnable( GL_TEXTURE_2D );
 	}*/
 }
 
