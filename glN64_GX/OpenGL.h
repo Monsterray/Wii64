@@ -124,9 +124,7 @@ void OGL_ClearDepthBuffer();
 void OGL_ClearColorBuffer( float *color );
 void OGL_ResizeWindow();
 void OGL_SaveScreenshot();
-#ifdef __LINUX__
 void OGL_SwapBuffers();
-#endif // __LINUX__
 void OGL_ReadScreen( void **dest, long *width, long *height );
 #ifdef __GX__
 void OGL_GXinitDlist();

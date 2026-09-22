@@ -38,9 +38,7 @@ extern "C" {
 
 #include <math.h>
 
-#ifdef __LINUX__
 #include <stdlib.h>
-#endif
 
 gDPInfo gDP;
 char enablegDPUpdateColorImage = 0;

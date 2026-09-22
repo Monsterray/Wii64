@@ -35,21 +35,12 @@
 extern "C" {
 #include "../main/gamehacks.h"
 }
-#ifndef __LINUX__
-# include "Resource.h"
-#else
 #include <stdlib.h>
-# ifndef min
-#  define min(a,b) ((a) < (b) ? (a) : (b))
-# endif
-# ifndef max
-#  define max(a,b) ((a) > (b) ? (a) : (b))
-# endif
-#endif // !__LINUX__
-
-#ifdef DEBUG
-extern u32 uc_crc, uc_dcrc;
-extern char uc_str[256];
+#ifndef min
+# define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+# define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
 #define gSPFlushTriangles() \

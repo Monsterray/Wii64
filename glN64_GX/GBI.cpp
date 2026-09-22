@@ -43,17 +43,9 @@
 //#include "F5Indi_Naboo.h"
 #include "Types.h"
 #include "Debug.h"
-#ifndef __LINUX__
-# include "Resource.h"
-#else // !__LINUX__
-#ifndef __GX__
-# include <glib.h>
-# include <gtk/gtk.h>
-#endif // !__GX__
-# include <string.h>
-# include <unistd.h>
-# include <stdlib.h>
-#endif // __LINUX__
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <zlib.h>
 
 u32 uc_crc, uc_dcrc;
@@ -150,187 +142,7 @@ GBIInfo GBI;
 
 void GBI_Unknown( u32 w0, u32 w1 )
 {
-#ifdef DEBUG
-	if (Debug.level == DEBUG_LOW)
-		DebugMsg( DEBUG_LOW | DEBUG_UNKNOWN, "UNKNOWN GBI COMMAND 0x%02X", _SHIFTR( w0, 24, 8 ) );
-	if (Debug.level == DEBUG_MEDIUM)
-		DebugMsg( DEBUG_MEDIUM | DEBUG_UNKNOWN, "Unknown GBI Command 0x%02X", _SHIFTR( w0, 24, 8 ) );
-	else if (Debug.level == DEBUG_HIGH)
-		DebugMsg( DEBUG_HIGH | DEBUG_UNKNOWN, "// Unknown GBI Command 0x%02X", _SHIFTR( w0, 24, 8 ) );
-#endif
 }
-
-#ifndef __GX__
-#ifndef __LINUX__
-INT_PTR CALLBACK MicrocodeDlgProc( HWND hWndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam )
-{
-	switch (uMsg)
-	{
-		case WM_INITDIALOG:
-			for (int i = 0; i < numMicrocodeTypes; i++)
-			{
-				SendDlgItemMessage( hWndDlg, IDC_MICROCODE, CB_ADDSTRING, 0, (LPARAM)MicrocodeTypes[i] );
-			}
-			SendDlgItemMessage( hWndDlg, IDC_MICROCODE, CB_SETCURSEL, 0, 0 );
-
-			char text[1024];
-			sprintf( text, "Microcode CRC:\t\t0x%08x\r\nMicrocode Data CRC:\t0x%08x\r\nMicrocode Text:\t\t%s", uc_crc, uc_dcrc, uc_str );
-			SendDlgItemMessage( hWndDlg, IDC_TEXTBOX, WM_SETTEXT, NULL, (LPARAM)text );
-			return TRUE;
-
-		case WM_COMMAND:
-			switch (LOWORD(wParam))
-			{
-				case IDOK:
-					EndDialog( hWndDlg, SendDlgItemMessage( hWndDlg, IDC_MICROCODE, CB_GETCURSEL, 0, 0 ) );
-					return TRUE;
-
-				case IDCANCEL:
-					EndDialog( hWndDlg, NONE );
-					return TRUE;
-			}
-			break;
-	}
-
-	return FALSE;
-}
-#else // !__LINUX__
-static int selectedMicrocode = -1;
-static GtkWidget *microcodeWindow = 0;
-static GtkWidget *microcodeList = 0;
-
-static void okButton_clicked( GtkWidget *widget, void *data )
-{
-	gtk_widget_hide( microcodeWindow );
-	if (GTK_LIST(microcodeList)->selection != 0)
-	{
-		char *text = 0;
-		GtkListItem *item = GTK_LIST_ITEM(GTK_LIST(microcodeList)->selection->data);
-		GtkLabel *label = GTK_LABEL(GTK_BIN(item)->child);
-		gtk_label_get( label, &text );
-		if (text != 0)
-			for (int i = 0; i < numMicrocodeTypes; i++)
-				if (!strcmp( text, MicrocodeTypes[i] ))
-				{
-					selectedMicrocode = i;
-					return;
-				}
-	}
-
-	selectedMicrocode = NONE;
-}
-
-static void stopButton_clicked( GtkWidget *widget, void *data )
-{
-	gtk_widget_hide( microcodeWindow );
-	selectedMicrocode = NONE;
-}
-
-static gint
-delete_question_event(GtkWidget *widget, GdkEvent *event, gpointer data)
-{
-	return TRUE; // undeleteable
-}
-
-static int MicrocodeDialog()
-{
-	GtkWidget *infoLabel;
-	GtkWidget *infoFrame, *infoTable;
-	GtkWidget *crcInfoLabel, *crcDataInfoLabel, *textInfoLabel;
-	GtkWidget *crcLabel = NULL, *crcDataLabel = NULL, *textLabel = NULL;
-	GtkWidget *selectUcodeLabel;
-	//GtkWidget *microcodeLabel;
-	GtkWidget *okButton, *stopButton;
-	GList *ucodeList = 0;
-	char buf[1024];
-
-	if (!g_thread_supported())
-		g_thread_init( NULL );
-	gdk_threads_enter();
-
-	// create dialog
-	if (microcodeWindow == 0)
-	{
-		microcodeWindow = gtk_dialog_new();
-		gtk_signal_connect( GTK_OBJECT(microcodeWindow), "delete_event",
-		                    GTK_SIGNAL_FUNC(delete_question_event), (gpointer)NULL );
-		sprintf( buf, "%s - unknown microcode", pluginName );
-		gtk_window_set_title( GTK_WINDOW(microcodeWindow), buf );
-		gtk_container_set_border_width( GTK_CONTAINER(GTK_DIALOG(microcodeWindow)->vbox), 11 );
-
-		// ok button
-		okButton = gtk_button_new_with_label( "Ok" );
-		gtk_signal_connect_object( GTK_OBJECT(okButton), "clicked",
-                               GTK_SIGNAL_FUNC(okButton_clicked), NULL );
-		gtk_container_add( GTK_CONTAINER(GTK_DIALOG(microcodeWindow)->action_area), okButton );
-
-		// stop button
-		stopButton = gtk_button_new_with_label( "Stop" );
-		gtk_signal_connect_object( GTK_OBJECT(stopButton), "clicked",
-                               GTK_SIGNAL_FUNC(stopButton_clicked), NULL );
-		gtk_container_add( GTK_CONTAINER(GTK_DIALOG(microcodeWindow)->action_area), stopButton );
-
-		// info label
-		infoLabel = gtk_label_new( "Unknown microcode. Please notify Orkin, including the following information:" );
-		gtk_box_pack_start_defaults( GTK_BOX(GTK_DIALOG(microcodeWindow)->vbox), infoLabel );
-
-		// info frame
-		infoFrame = gtk_frame_new( "Microcode info" );
-		gtk_container_set_border_width( GTK_CONTAINER(infoFrame), 7 );
-		gtk_box_pack_start_defaults( GTK_BOX(GTK_DIALOG(microcodeWindow)->vbox), infoFrame );
-
-		infoTable = gtk_table_new( 3, 2, FALSE );
-		gtk_container_set_border_width( GTK_CONTAINER(infoTable), 7 );
-		gtk_table_set_col_spacings( GTK_TABLE(infoTable), 3 );
-		gtk_table_set_row_spacings( GTK_TABLE(infoTable), 3 );
-		gtk_container_add( GTK_CONTAINER(infoFrame), infoTable );
-
-		crcInfoLabel = gtk_label_new( "Microcode CRC:" );
-		crcDataInfoLabel = gtk_label_new( "Microcode Data CRC:" );
-		textInfoLabel = gtk_label_new( "Microcode Text:" );
-
-		crcLabel = gtk_label_new( "" );
-		crcDataLabel = gtk_label_new( "" );
-		textLabel = gtk_label_new( "" );
-
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), crcInfoLabel, 0, 1, 0, 1 );
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), crcLabel, 1, 2, 0, 1 );
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), crcDataInfoLabel, 0, 1, 1, 2 );
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), crcDataLabel, 1, 2, 1, 2 );
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), textInfoLabel, 0, 1, 2, 3 );
-		gtk_table_attach_defaults( GTK_TABLE(infoTable), textLabel, 1, 2, 2, 3 );
-
-		selectUcodeLabel = gtk_label_new( "You can manually select the closest matching microcode." );
-		for (int i = 0; i < numMicrocodeTypes; i++)
-			ucodeList = g_list_append( ucodeList, gtk_list_item_new_with_label( MicrocodeTypes[i] ) );
-		microcodeList = gtk_list_new();
-		gtk_list_set_selection_mode( GTK_LIST(microcodeList), GTK_SELECTION_SINGLE );
-		gtk_list_append_items( GTK_LIST(microcodeList), ucodeList );
-
-		gtk_box_pack_start_defaults( GTK_BOX(GTK_DIALOG(microcodeWindow)->vbox), selectUcodeLabel );
-		gtk_box_pack_start_defaults( GTK_BOX(GTK_DIALOG(microcodeWindow)->vbox), microcodeList );
-	}
-
-	snprintf( buf, 1024, "0x%8.8X", (unsigned int)uc_crc );
-        if(crcLabel) gtk_label_set_text( GTK_LABEL(crcLabel), buf );
-	snprintf( buf, 1024, "0x%8.8X", (unsigned int)uc_dcrc );
-	if(crcDataLabel) gtk_label_set_text( GTK_LABEL(crcDataLabel), buf );
-	if(textLabel) gtk_label_set_text( GTK_LABEL(textLabel), uc_str );
-
-	selectedMicrocode = -1;
-	gtk_widget_show_all( microcodeWindow );
-
-	while (selectedMicrocode == -1)
-	{
-//		if( gtk_main_iteration() )
-//			break;
-		usleep( 10000 );
-	}
-	gdk_threads_leave();
-	return selectedMicrocode;
-}
-#endif // __LINUX__
-#endif // !__GX__
 
 MicrocodeInfo *GBI_AddMicrocode()
 {
@@ -563,15 +375,8 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 	}
 
 	// Let the user choose the microcode
-#ifndef __LINUX__
-	current->type = DialogBox( hInstance, MAKEINTRESOURCE( IDD_MICROCODEDLG ), hWnd, MicrocodeDlgProc );
-#else // !__LINUX__
 	printf( "glN64: Warning - unknown ucode!!!\n" );
-# ifndef __GX__
 	//TODO: Make sure having ucode = NONE is ok
-	current->type = MicrocodeDialog();
-# endif // !__GX__
-#endif // __LINUX__
 	return current;
 }
 

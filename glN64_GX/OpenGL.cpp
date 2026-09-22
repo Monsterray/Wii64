@@ -153,11 +153,7 @@ void OGL_InitStates()
 											((i > (rand() >> 10)) << 0);
 	}
 
-#ifndef __LINUX__
-	SwapBuffers( wglGetCurrentDC() );
-#else
 	OGL_SwapBuffers();
-#endif
 }
 
 void OGL_UpdateScale()
@@ -172,41 +168,6 @@ void OGL_UpdateScale()
 
 void OGL_ResizeWindow()
 {
-#ifndef __LINUX__
-	RECT	windowRect, statusRect, toolRect;
-
-	if (OGL.fullscreen)
-	{
-		OGL.width = OGL.fullscreenWidth;
-		OGL.height = OGL.fullscreenHeight;
-		OGL.heightOffset = 0;
-
-		SetWindowPos( hWnd, NULL, 0, 0,	OGL.width, OGL.height, SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW );
-	}
-	else
-	{
-		OGL.width = OGL.windowedWidth;
-		OGL.height = OGL.windowedHeight;
-
-		GetClientRect( hWnd, &windowRect );
-		GetWindowRect( hStatusBar, &statusRect );
-
-		if (hToolBar)
-			GetWindowRect( hToolBar, &toolRect );
-		else
-			toolRect.bottom = toolRect.top = 0;
-
-		OGL.heightOffset = (statusRect.bottom - statusRect.top);
-		windowRect.right = windowRect.left + OGL.windowedWidth - 1;
-		windowRect.bottom = windowRect.top + OGL.windowedHeight - 1 + OGL.heightOffset;
-
-		AdjustWindowRect( &windowRect, GetWindowLong( hWnd, GWL_STYLE ), GetMenu( hWnd ) != NULL );
-
-		SetWindowPos( hWnd, NULL, 0, 0,	windowRect.right - windowRect.left + 1,
-						windowRect.bottom - windowRect.top + 1 + toolRect.bottom - toolRect.top + 1, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE );
-	}
-#else // !__LINUX__
-#endif // __LINUX__
 	// This is mainly initializing OGL.heightOffset because I don't think it's inited otherwise.
 	OGL.fullscreen = true;
 	OGL.fullscreenWidth = 640;
@@ -221,126 +182,6 @@ void OGL_ResizeWindow()
 
 bool OGL_Start()
 {
-#ifndef __GX__
-#ifndef __LINUX__
-	int		pixelFormat;
-
-	PIXELFORMATDESCRIPTOR pfd = {
-		sizeof(PIXELFORMATDESCRIPTOR),    // size of this pfd
-		1,                                // version number
-		PFD_DRAW_TO_WINDOW |              // support window
-		PFD_SUPPORT_OPENGL |              // support OpenGL
-		PFD_DOUBLEBUFFER,                 // double buffered
-		PFD_TYPE_RGBA,                    // RGBA type
-		32,								  // color depth
-		0, 0, 0, 0, 0, 0,                 // color bits ignored
-		0,                                // no alpha buffer
-		0,                                // shift bit ignored
-		0,                                // no accumulation buffer
-		0, 0, 0, 0,                       // accum bits ignored
-		32,								  // z-buffer
-		0,                                // no stencil buffer
-		0,                                // no auxiliary buffer
-		PFD_MAIN_PLANE,                   // main layer
-		0,                                // reserved
-		0, 0, 0                           // layer masks ignored
-	};
-
-	if ((OGL.hDC = GetDC( hWnd )) == NULL)
-	{
-		MessageBox( hWnd, "Error while getting a device context!", pluginName, MB_ICONERROR | MB_OK );
-		return FALSE;
-	}
-
-	if ((pixelFormat = ChoosePixelFormat( OGL.hDC, &pfd )) == 0)
-	{
-		MessageBox( hWnd, "Unable to find a suitable pixel format!", pluginName, MB_ICONERROR | MB_OK );
-		OGL_Stop();
-		return FALSE;
-	}
-
-	if ((SetPixelFormat( OGL.hDC, pixelFormat, &pfd )) == FALSE)
-	{
-		MessageBox( hWnd, "Error while setting pixel format!", pluginName, MB_ICONERROR | MB_OK );
-		OGL_Stop();
-		return FALSE;
-	}
-
-	if ((OGL.hRC = wglCreateContext( OGL.hDC )) == NULL)
-	{
-		MessageBox( hWnd, "Error while creating OpenGL context!", pluginName, MB_ICONERROR | MB_OK );
-		OGL_Stop();
-		return FALSE;
-	}
-
-	if ((wglMakeCurrent( OGL.hDC, OGL.hRC )) == FALSE)
-	{
-		MessageBox( hWnd, "Error while making OpenGL context current!", pluginName, MB_ICONERROR | MB_OK );
-		OGL_Stop();
-		return FALSE;
-	}
-#else // !__LINUX__
-	// init sdl & gl
-	const SDL_VideoInfo *videoInfo;
-	Uint32 videoFlags = 0;
-
-	if (OGL.fullscreen)
-	{
-		OGL.width = OGL.fullscreenWidth;
-		OGL.height = OGL.fullscreenHeight;
-	}
-	else
-	{
-		OGL.width = OGL.windowedWidth;
-		OGL.height = OGL.windowedHeight;
-	}
-
-
-	/* Initialize SDL */
-	printf( "[glN64]: (II) Initializing SDL video subsystem...\n" );
-	if (SDL_InitSubSystem( SDL_INIT_VIDEO ) == -1)
-	{
-		printf( "[glN64]: (EE) Error initializing SDL video subsystem: %s\n", SDL_GetError() );
-		return FALSE;
-	}
-
-	/* Video Info */
-	printf( "[glN64]: (II) Getting video info...\n" );
-	if (!(videoInfo = SDL_GetVideoInfo()))
-	{
-		printf( "[glN64]: (EE) Video query failed: %s\n", SDL_GetError() );
-		SDL_QuitSubSystem( SDL_INIT_VIDEO );
-		return FALSE;
-	}
-
-	/* Set the video mode */
-	videoFlags |= SDL_OPENGL | SDL_GL_DOUBLEBUFFER | SDL_HWPALETTE;
-
-	if (videoInfo->hw_available)
-		videoFlags |= SDL_HWSURFACE;
-	else
-		videoFlags |= SDL_SWSURFACE;
-
-	if (videoInfo->blit_hw)
-		videoFlags |= SDL_HWACCEL;
-
-	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-/*	SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 5 );
-	SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 5 );
-	SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 5 );*/
-	SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );	// 32 bit z-buffer
-
-	printf( "[glN64]: (II) Setting video mode %dx%d...\n", (int)OGL.width, (int)OGL.height );
-	if (!(OGL.hScreen = SDL_SetVideoMode( OGL.width, OGL.height, 0, videoFlags )))
-	{
-		printf( "[glN64]: (EE) Error setting videomode %dx%d: %s\n", (int)OGL.width, (int)OGL.height, SDL_GetError() );
-		SDL_QuitSubSystem( SDL_INIT_VIDEO );
-		return FALSE;
-	}
-
-	SDL_WM_SetCaption( pluginName, pluginName );
-#endif // __LINUX__
-#else // !__GX__
 	//Set 'window height' to efb dimensions
 	OGL.width = rmode->fbWidth;
 	OGL.height = rmode->efbHeight;
@@ -375,7 +216,6 @@ bool OGL_Start()
 	gDP.fillColor.dz = 0.0f;
 	gDP.primDepth.z = 0.0f;
 	gDP.primDepth.deltaZ = 0.0f;
-#endif // __GX__
 	OGL_InitExtensions();
 	OGL_InitStates();
 
@@ -394,27 +234,6 @@ void OGL_Stop()
 	Combiner_Destroy();
 	FrameBuffer_Destroy();
 	TextureCache_Destroy();
-
-#ifndef __GX__
-#ifndef __LINUX__
-	wglMakeCurrent( NULL, NULL );
-
-	if (OGL.hRC)
-	{
-		wglDeleteContext( OGL.hRC );
-		OGL.hRC = NULL;
-	}
-
-	if (OGL.hDC)
-	{
-		ReleaseDC( hWnd, OGL.hDC );
-		OGL.hDC = NULL;
-	}
-#else // !__LINUX__
-	SDL_QuitSubSystem( SDL_INIT_VIDEO );
-	OGL.hScreen = NULL;
-#endif // __LINUX__
-#endif // !__GX__
 }
 
 void OGL_UpdateCullFace()
@@ -1883,113 +1702,17 @@ void OGL_ClearColorBuffer( float *color )
 
 void OGL_SaveScreenshot()
 {
-#ifndef __LINUX__
-	BITMAPFILEHEADER fileHeader;
-	BITMAPINFOHEADER infoHeader;
-	HANDLE hBitmapFile;
-
-	char *pixelData = (char*)malloc( OGL.width * OGL.height * 3 );
-
-	glReadBuffer( GL_FRONT );
-	glReadPixels( 0, OGL.heightOffset, OGL.width, OGL.height, GL_BGR_EXT, GL_UNSIGNED_BYTE, pixelData );
-	glReadBuffer( GL_BACK );
-
-	infoHeader.biSize = sizeof( BITMAPINFOHEADER );
-	infoHeader.biWidth = OGL.width;
-	infoHeader.biHeight = OGL.height;
-	infoHeader.biPlanes = 1;
-	infoHeader.biBitCount = 24;
-	infoHeader.biCompression = BI_RGB;
-	infoHeader.biSizeImage = OGL.width * OGL.height * 3;
-	infoHeader.biXPelsPerMeter = 0;
-	infoHeader.biYPelsPerMeter = 0;
-	infoHeader.biClrUsed = 0;
-	infoHeader.biClrImportant = 0;
-
-	fileHeader.bfType = 19778;
-	fileHeader.bfSize = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER ) + infoHeader.biSizeImage;
-	fileHeader.bfReserved1 = fileHeader.bfReserved2 = 0;
-	fileHeader.bfOffBits = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER );
-
-	char filename[256];
-
-	CreateDirectory( screenDirectory, NULL );
-
-	int i = 0;
-	do
-	{
-		sprintf( filename, "%sscreen%02i.bmp", screenDirectory, i );
-		i++;
-
-		if (i > 99)
-			return;
-
-		hBitmapFile = CreateFile( filename, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL );
-	}
-	while (hBitmapFile == INVALID_HANDLE_VALUE);
-	
-	DWORD written;
-
-	WriteFile( hBitmapFile, &fileHeader, sizeof( BITMAPFILEHEADER ), &written, NULL );
-    WriteFile( hBitmapFile, &infoHeader, sizeof( BITMAPINFOHEADER ), &written, NULL );
-    WriteFile( hBitmapFile, pixelData, infoHeader.biSizeImage, &written, NULL );
-
- 	CloseHandle( hBitmapFile );
-	free( pixelData );
-#else // !__LINUX__
-#endif // __LINUX__
 }
 
-#ifdef __LINUX__
 void
 OGL_SwapBuffers()
 {
-#ifndef __GX__
-	static int frames[5] = { 0, 0, 0, 0, 0 };
-	static int framesIndex = 0;
-	static Uint32 lastTicks = 0;
-	Uint32 ticks = SDL_GetTicks();
-
-	frames[framesIndex]++;
-	if (ticks >= (lastTicks + 1000))
-	{
-		char caption[500];
-		float fps = 0.0;
-		for (int i = 0; i < 5; i++)
-			fps += frames[i];
-		fps /= 5.0;
-		snprintf( caption, 500, "%s - %.2f fps", pluginName, fps );
-		SDL_WM_SetCaption( caption, pluginName );
-		framesIndex = (framesIndex + 1) % 5;
-		frames[framesIndex] = 0;
-		lastTicks = ticks;
-	}
-
-	SDL_GL_SwapBuffers();
-#endif // !__GX__
 }
 
 void OGL_ReadScreen( void **dest, long *width, long *height )
 {
-#ifndef __GX__
-	*width = OGL.width;
-	*height = OGL.height;
-
-	*dest = malloc( OGL.height * OGL.width * 3 );
-	if (*dest == 0)
-		return;
-
-	GLint oldMode;
-	glGetIntegerv( GL_READ_BUFFER, &oldMode );
-	glReadBuffer( GL_FRONT );
-//	glReadBuffer( GL_BACK );
-	glReadPixels( 0, 0, OGL.width, OGL.height,
-	              GL_BGR, GL_UNSIGNED_BYTE, *dest );
-	glReadBuffer( oldMode );
-#endif // !__GX__ Note: This is a VCR function.
+	// Note: This is a VCR function, GX builds never used it.
 }
-
-#endif // __LINUX__
 
 #ifdef __GX__
 void OGL_GXinitDlist()
