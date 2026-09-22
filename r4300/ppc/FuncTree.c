@@ -25,8 +25,20 @@
 #include "Recompile.h"
 #include "../Recomp-Cache.h"
 
+#ifdef PERF_PROF
+#include <stdio.h>
+#include "../../main/perf_prof.h"
+static unsigned int g_maxTreeDepth = 0;
+#endif
+
 static inline PowerPC_func_node** _find(PowerPC_func_node** node, unsigned int addr){
+#ifdef PERF_PROF
+	unsigned int depth = 0;
+#endif
 	while(*node){
+#ifdef PERF_PROF
+		depth++;
+#endif
 		if(addr < (*node)->function->start_addr)
 			node = &(*node)->left;
 		else if(addr >= (*node)->function->end_addr)
@@ -34,6 +46,14 @@ static inline PowerPC_func_node** _find(PowerPC_func_node** node, unsigned int a
 		else
 			break;
 	}
+#ifdef PERF_PROF
+	if(depth > g_maxTreeDepth){
+		g_maxTreeDepth = depth;
+		char buf[48];
+		snprintf(buf, sizeof(buf), "FuncTree depth=%u", depth);
+		perfProf_mark(buf);
+	}
+#endif
 	return node;
 }
 

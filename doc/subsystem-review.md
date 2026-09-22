@@ -86,6 +86,21 @@ won't pick up a flag-only change) and reading perf.log's *content*, not just
 mtime, immediately after each check, since even then the host-visible copy
 may lag behind what the guest actually wrote.
 
+**Re-investigated and re-confirmed, this time with genuinely working
+instrumentation**: built with `.dev/build_profiling.sh` (real `-DPERF_PROF`,
+not the commented-out `DEBUG_FLAGS` copy) and read `perf.log` straight out of
+the raw `WiiSD.raw` image via `scripts/sdimage_read.py` (`.dev/wii64_diag.sh
+perf`'s method) after force-killing to release the file lock, rather than
+waiting on a clean-unmount sync-back that never comes. Booted to the idle
+main menu, sent a graceful `taskkill` (no `/F`) close request, waited 20+s
+(well past when the window itself goes blank), then force-killed and read
+the log: only the boot-time `diag autonav` marks are present, no
+`ShutdownWii: called` anywhere. Confirms the original finding for real this
+time -- the STM power-button event never reaches the guest on this headless
+close path, so `ShutdownWii()` never runs. Root-caused to Dolphin's side of
+the boundary, not fixable from this codebase; the `wii64_diag.sh` force-kill
+fallback remains the practical workaround.
+
 ## Investigated: froze at "Searching for ROMs" after clicking New ROM
 
 Reproduced live (not synthetically) -- a real instance the user was clicking
@@ -295,7 +310,7 @@ The save/load path itself needs re-testing now that the flag actually fires.
 - `glN64_GX/TEV_combiner.cpp:190-197,784-791` -- two dead functions, author's own comments say "Never Called". Zero call sites confirmed. **APPLIED** (both removed, including their header declarations).
 - `glN64_GX/CRC.cpp:42-101` -- `CRC_BuildTable()`/`CRC_Calculate()`/`CRC_CalculatePalette()` (CRC32-table impl) have zero call sites anywhere; actual hashing goes through `Hash_Calculate()` (XXH32) in the same file. ~60 dead lines. **APPLIED** (removed, along with their now-unused `Reflect()` helper and `CRCTable` buffer).
 - `glN64_GX/Config_linux.cpp:38-405` (~367 lines) -- GTK/SDL desktop config dialog, `#ifndef __GX__`, permanently dead (same pattern as Rice_GX's Config.cpp). **APPLIED** (deleted).
-- Large `#ifndef __LINUX__` (Windows-only) blocks are dead throughout since `__LINUX__` is always defined for glN64_GX builds -- e.g. `RSP.cpp:46-89` (Win32 inline-asm), `RSP.cpp:451-465` (SEH RDRAM-size probing), most of `glN64.cpp`'s `DllMain`/window-handle plumbing. Confirmed the scope: 25 occurrences across 12 files (`CRC.cpp`, `Combiner.cpp`, `FrameBuffer.cpp`, `GBI.cpp`, `N64.cpp`, `OpenGL.cpp`, `RSP.cpp`, `TEV_combiner.cpp`, `Textures.cpp`, `VI.cpp`, `gSP.cpp`, `glN64.cpp`) -- much larger and more scattered than the two Config-dialog deletions this pass did handle. Genuinely its own dedicated pass, not a quick-win bundle item -- left untouched.
+- Large `#ifndef __LINUX__` (Windows-only) blocks were dead throughout since `__LINUX__` is always defined for glN64_GX builds -- e.g. `RSP.cpp:46-89` (Win32 inline-asm), `RSP.cpp:451-465` (SEH RDRAM-size probing), most of `glN64.cpp`'s `DllMain`/window-handle plumbing. **APPLIED**: turned out larger than the original 25-occurrence/12-file estimate once headers were included -- 18 files total across three passes (`CRC.cpp/h`, `Combiner.cpp`, `FrameBuffer.cpp`, `N64.cpp`, `RSP.cpp/h`, `TEV_combiner.cpp`, `Textures.cpp`, `glN64.cpp/h`, `GBI.cpp`, `OpenGL.cpp/h`, `VI.cpp`, `gDP.cpp`, `gSP.cpp`, `3DMath.h`, `convert.h`). `convert.h` additionally carried a dead `X86_ASM` GCC-x86-asm path (never defined for this build) including a raw GAS-directive block duplicating the color-conversion lookup tables as x86 assembler data, itself gated by the same always-false condition. Verified with clean rebuilds of both plugin targets and real Banjo-Kazooie gameplay checks after each batch (matrix transforms, geometry, and texture color conversion all confirmed correct, not just successful compiles).
 
 **Fixes** (applied):
 - `glN64_GX/RSP.cpp:405-411` -- the main `RSP_ProcessDList()` command loop reads the next opcode with **no bounds check** against `RDRAMSize`. The sibling `_ProcessDListFactor5()` path a few lines above (`:258-264`) already has an explicit guard with a comment noting the upstream unguarded-read risk -- fixed there, not here. A malformed/truncated display list through the normal (non-Factor5) path can read past the end of RDRAM. **APPLIED**: same guard pattern as `_ProcessDListFactor5()`.
@@ -319,7 +334,7 @@ The save/load path itself needs re-testing now that the flag actually fires.
 
 **Future work**:
 - `ArchiveReader.cpp:118` -- `unsigned int width = info.width * 4 * 4; // FIXME: Look this up` -- unverified stride calculation.
-- `ArchiveReader.h:20-38` -- `SortedArray<T>::find()`'s binary search carries `// TODO: Verify correctness` on its own definition line, with the old linear-search implementation left commented out directly below instead of removed.
+- `ArchiveReader.h:20-38` -- `SortedArray<T>::find()`'s binary search carried `// TODO: Verify correctness` on its own definition line, with the old linear-search implementation left commented out directly below instead of removed. **APPLIED**: removed the dead commented-out fallback (the binary search itself is a standard implementation, nothing to verify further -- the TODO was about the leftover comment, not a real correctness doubt).
 
 ## 7. gc_memory
 
@@ -384,7 +399,11 @@ Tested one concrete hypothesis against this exact repro (see `doc/reference-proj
   - **Concrete next steps for a future session**: (a) get a long-duration address trace without relying on GX breadcrumbs -- write dispatch addresses to an SD file periodically instead (matching `perfProf_cpuSample()`'s file-append pattern in `main/perf_prof.c`) so a trace survives well past the cold-boot window; (b) if the working set really is much larger than 16 addresses, a large linear-scan ring buffer is the wrong tool -- it runs on every dispatch including normal gameplay, and scales badly (a back-of-envelope check: a few hundred comparisons per dispatch, at the ~470,000 dispatches/sec measured during this hang, is already a meaningful fraction of total CPU budget) -- a hash-based or sampled approach would be needed instead; (c) given real execution continues for millions of cycles without completing, reconsider whether this is a genuine algorithmic retry loop in translated game code (e.g. driven by wrong CIC-6105 emulated state feeding a real, long-running verification retry) rather than a dynarec-internals bug at all -- closer in spirit to the `pif.c` `cic_challenge` lead from the previous session (also tried, also not the fix, but not necessarily the wrong neighborhood).
 
 **Optimizations**:
-- `r4300/ppc/FuncTree.c:28-45` (`find_func`) -- plain unbalanced BST keyed by function start address, no rebalancing, runs on essentially every dynarec dispatch. Blocks compile in increasing-address order as code executes linearly, which is close to the BST's pathological insertion order -- degrades toward O(n) per lookup on pages with many functions (larger ROMs, like the CIC-6105 titles, stress this harder). A sorted array + binary search (functions per page bounded, change rarely) would bound this. **Deliberately not touched this pass**: restructuring the data structure itself (not a drop-in algorithm swap like the heapify fix below) touches every call site that holds a `PowerPC_func_node**`, with no profiling data yet proving real ROMs' pages actually hold enough functions for this to matter in practice. Needs real measurement first, not a guess.
+- `r4300/ppc/FuncTree.c:28-45` (`find_func`) -- plain unbalanced BST keyed by function start address, no rebalancing, runs on essentially every dynarec dispatch. Blocks compile in increasing-address order as code executes linearly, which is close to the BST's pathological insertion order -- degrades toward O(n) per lookup on pages with many functions (larger ROMs, like the CIC-6105 titles, stress this harder). A sorted array + binary search (functions per page bounded, change rarely) would bound this.
+
+  **Measured this pass**: added `PERF_PROF`-gated depth tracking to `_find()` (records a `perfProf_mark` whenever a new max lookup depth is observed -- zero cost in release builds, left in place as reusable diagnostic infra alongside the existing `perfProf_*` calls). A real Banjo-Kazooie session (`.dev/build_profiling.sh glN64_wii`, autobooted, ~90s of actual gameplay) hit **tree depth 31** -- i.e. a page whose function tree has degraded close to a 31-deep linked list, where a sorted array over the same ~31 functions would need only ~5 binary-search steps. Confirms the pathological-degradation theory with real evidence, not a guess.
+
+  **Still deliberately not touched this pass, now for a more specific reason**: `PowerPC_func_node`/the BST type is used for two structurally different roles, not one -- `blocks[page]->funcs` (the address-ordered, binary-searched page tree this finding is about) and `func->links_out` (`Recomp-Cache-Heap.c:147-163`'s `remove_outgoing_links`, a *different* tree of the same node type, per-function, only ever fully walked-and-freed, never searched by address). A correct rewrite needs to convert the first usage to a sorted array while leaving the second as a tree/list, plus update `handle_overlap()` (`Recompile.c:158`, direct `left`/`right` overlap-detection walk during insertion) and `free_tree()` (`Recompile.c:550`, recursive teardown) for the new representation -- real surgery on the recompile/cache-eviction hot path, not a drop-in swap. Now scoped with real measurement and a concrete call-site map; still needs its own dedicated pass with multi-ROM regression coverage before touching this correctness-critical code, not bundled into a cleanup sweep.
 - `r4300/Recomp-Cache-Heap.c:103-106,225-244,317-319,346-389` (`heapify`) -- rebuilds heap order via n-1 individual sift-ups (O(n log n)) instead of linear-time bottom-up heap-build (O(n)). **APPLIED**: switched to bottom-up (Floyd) construction, a drop-in replacement (every caller rebuilds from an arbitrary order, never a nearly-sorted array, so there's no correctness difference, only speed) -- see the code comment for why. `heapUp()`, the old top-down helper, became fully unused as a direct result and was removed with it. Verified: clean build, real Banjo-Kazooie session ran correctly, exercising `release()` (this function's main caller) repeatedly under normal cache-eviction pressure.
 
 **Cleanup**:
