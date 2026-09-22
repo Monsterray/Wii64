@@ -1311,8 +1311,25 @@ void write_rsp_memd()
 		read_nomemd();
 }
 
+// These dispatch functions run for any address in a device's MMIO range,
+// not just the addresses a real register actually occupies -- there was
+// no bounds check anywhere in this "systemic pattern" (read_vi/write_vi,
+// read_ai/write_ai, read_ri/write_ri, read_si*, read_rsp/write_rsp(_reg),
+// read_dp/write_dp, read_dps/write_dps): *address_low indexed straight
+// into a small pointer table with no guard, so a malformed/corrupted
+// access -- exactly the state after a wild jump -- reads and dereferences
+// whatever pointer garbage sits past the real table. In ordinary,
+// non-corrupted play, a real N64 instruction only ever targets a real
+// register, so *address_low is always already in range here and these
+// guards are inert; they only matter once something has already gone
+// wrong, same as the identical fix already applied to readrdramreg[]/
+// readpi[] (RDRAMREG_COUNT/READPI_COUNT above).
+#define RSPREG_COUNT (sizeof(readrspreg)/sizeof(readrspreg[0]))
+#define RSP_COUNT (sizeof(readrsp)/sizeof(readrsp[0]))
+
 void read_rsp_reg()
 {
+	if(*address_low >= RSPREG_COUNT) { word = trash; return; }
 	if(*address_low == 0x1C)
 		sp_register.sp_semaphore_reg = 1;
 	word = *(readrspreg[*address_low]);
@@ -1320,6 +1337,7 @@ void read_rsp_reg()
 
 void read_rsp_regb()
 {
+	if((*address_low & 0xfffc) >= RSPREG_COUNT) { byte = trash & 0xFF; return; }
 	switch(*address_low)
 	{
 		case 0x1c:
@@ -1334,6 +1352,7 @@ void read_rsp_regb()
 
 void read_rsp_regh()
 {
+	if((*address_low & 0xfffc) >= RSPREG_COUNT) { hword = trash & 0xFFFF; return; }
 	switch(*address_low)
 	{
 		case 0x1c:
@@ -1346,6 +1365,7 @@ void read_rsp_regh()
 
 void read_rsp_regd()
 {
+	if((unsigned int)(*address_low + 4) >= RSPREG_COUNT) { dword = trash; return; }
 	if(*address_low == 0x18)
 		sp_register.sp_semaphore_reg = 1;
 	dword = ((unsigned long long int)(*readrspreg[*address_low])<<32) | *readrspreg[*address_low+4];
@@ -1365,6 +1385,7 @@ void write_rsp_reg()
 			return;
 		break;
 	}
+	if(*address_low >= RSPREG_COUNT) return;
 	*readrspreg[*address_low] = word;
 	switch(*address_low)
 	{
@@ -1402,6 +1423,7 @@ void write_rsp_regb()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= RSPREG_COUNT) return;
 	*((unsigned char*)readrspreg[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 	switch(*address_low)
 	{
@@ -1442,6 +1464,7 @@ void write_rsp_regh()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= RSPREG_COUNT) return;
 	*((unsigned short*)((unsigned char*)readrspreg[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 	switch(*address_low)
 	{
@@ -1474,6 +1497,7 @@ void write_rsp_regd()
 			return;
 		break;
 	}
+	if(*address_low >= RSPREG_COUNT) return;
 	*readrspreg[*address_low] = dword >> 32;
 	*readrspreg[*address_low] = dword & 0xFFFFFFFF;
 	switch(*address_low)
@@ -1487,62 +1511,77 @@ void write_rsp_regd()
 
 void read_rsp()
 {
+	if(*address_low >= RSP_COUNT) { word = trash; return; }
 	word = *(readrsp[*address_low]);
 }
 
 void read_rspb()
 {
+	if((*address_low & 0xfffc) >= RSP_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readrsp[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
 void read_rsph()
 {
+	if((*address_low & 0xfffc) >= RSP_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readrsp[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
 void read_rspd()
 {
+	if((unsigned int)(*address_low + 4) >= RSP_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readrsp[*address_low])<<32) | *readrsp[*address_low+4];
 }
 
 void write_rsp()
 {
+	if(*address_low >= RSP_COUNT) return;
 	*readrsp[*address_low] = word;
 }
 
 void write_rspb()
 {
+	if((*address_low & 0xfffc) >= RSP_COUNT) return;
 	*((unsigned char*)readrsp[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 }
 
 void write_rsph()
 {
+	if((*address_low & 0xfffc) >= RSP_COUNT) return;
 	*((unsigned short*)((unsigned char*)readrsp[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 }
 
 void write_rspd()
 {
+	if((unsigned int)(*address_low + 4) >= RSP_COUNT) return;
 	*readrsp[*address_low] = dword >> 32;
 	*readrsp[*address_low+4] = dword & 0xFFFFFFFF;
 }
 
+#define DP_COUNT (sizeof(readdp)/sizeof(readdp[0]))
+#define DPS_COUNT (sizeof(readdps)/sizeof(readdps[0]))
+
 void read_dp()
 {
+	if(*address_low >= DP_COUNT) { word = trash; return; }
 	word = *(readdp[*address_low]);
 }
 
 void read_dpb()
 {
+	if((*address_low & 0xfffc) >= DP_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readdp[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
 void read_dph()
 {
+	if((*address_low & 0xfffc) >= DP_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readdp[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
 void read_dpd()
 {
+	if((unsigned int)(*address_low + 4) >= DP_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readdp[*address_low])<<32) | *readdp[*address_low+4];
 }
 
@@ -1563,6 +1602,7 @@ void write_dp()
 			return;
 		break;
 	}
+	if(*address_low >= DP_COUNT) return;
 	*readdp[*address_low] = word;
 	switch(*address_low)
 	{
@@ -1612,6 +1652,7 @@ void write_dpb()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= DP_COUNT) return;
 	*((unsigned char*)readdp[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 	switch(*address_low)
 	{
@@ -1655,6 +1696,7 @@ void write_dph()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= DP_COUNT) return;
 	*((unsigned short*)((unsigned char*)readdp[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 	switch(*address_low)
 	{
@@ -1685,6 +1727,7 @@ void write_dpd()
 			return;
 		break;
 	}
+	if((unsigned int)(*address_low + 4) >= DP_COUNT) return;
 	*readdp[*address_low] = dword >> 32;
 	*readdp[*address_low+4] = dword & 0xFFFFFFFF;
 	switch(*address_low)
@@ -1700,41 +1743,49 @@ void write_dpd()
 
 void read_dps()
 {
+	if(*address_low >= DPS_COUNT) { word = trash; return; }
 	word = *(readdps[*address_low]);
 }
 
 void read_dpsb()
 {
+	if((*address_low & 0xfffc) >= DPS_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readdps[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
 void read_dpsh()
 {
+	if((*address_low & 0xfffc) >= DPS_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readdps[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
 void read_dpsd()
 {
+	if((unsigned int)(*address_low + 4) >= DPS_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readdps[*address_low])<<32) | *readdps[*address_low+4];
 }
 
 void write_dps()
 {
+	if(*address_low >= DPS_COUNT) return;
 	*readdps[*address_low] = word;
 }
 
 void write_dpsb()
 {
+	if((*address_low & 0xfffc) >= DPS_COUNT) return;
 	*((unsigned char*)readdps[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 }
 
 void write_dpsh()
 {
+	if((*address_low & 0xfffc) >= DPS_COUNT) return;
 	*((unsigned short*)((unsigned char*)readdps[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 }
 
 void write_dpsd()
 {
+	if((unsigned int)(*address_low + 4) >= DPS_COUNT) return;
 	*readdps[*address_low] = dword >> 32;
 	*readdps[*address_low+4] = dword & 0xFFFFFFFF;
 }
@@ -1863,8 +1914,11 @@ inline void update_vi_current() {
 	vi_register.vi_current = (vi_register.vi_current&(~1))|r4300.vi_field;
 }
 
+#define VI_COUNT (sizeof(readvi)/sizeof(readvi[0]))
+
 void read_vi()
 {
+	if(*address_low >= VI_COUNT) { word = trash; return; }
 	switch(*address_low)
 	{
 		case 0x10:
@@ -1876,6 +1930,7 @@ void read_vi()
 
 void read_vib()
 {
+	if((*address_low & 0xfffc) >= VI_COUNT) { byte = trash & 0xFF; return; }
 	switch(*address_low)
 	{
 		case 0x10:
@@ -1890,6 +1945,7 @@ void read_vib()
 
 void read_vih()
 {
+	if((*address_low & 0xfffc) >= VI_COUNT) { hword = trash & 0xFFFF; return; }
 	switch(*address_low)
 	{
 		case 0x10:
@@ -1902,6 +1958,7 @@ void read_vih()
 
 void read_vid()
 {
+	if((unsigned int)(*address_low + 4) >= VI_COUNT) { dword = trash; return; }
 	switch(*address_low)
 	{
 		case 0x10:
@@ -1956,6 +2013,7 @@ void write_vi()
 			return;
 		break;
 				}
+	if(*address_low >= VI_COUNT) return;
 	*readvi[*address_low] = word;
 }
 
@@ -1999,6 +2057,7 @@ void write_vib()
 			return;
 		break;
 				}
+	if((*address_low & 0xfffc) >= VI_COUNT) return;
 	*((unsigned char*)readvi[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 }
 
@@ -2036,6 +2095,7 @@ void write_vih()
 			return;
 		break;
 				}
+	if((*address_low & 0xfffc) >= VI_COUNT) return;
 	*((unsigned short*)((unsigned char*)readvi[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 }
 
@@ -2068,6 +2128,7 @@ void write_vid()
 			return;
 		break;
 				}
+	if((unsigned int)(*address_low + 4) >= VI_COUNT) return;
 	*readvi[*address_low] = dword >> 32;
 	*readvi[*address_low+4] = dword & 0xFFFFFFFF;
 }
@@ -2092,6 +2153,8 @@ static unsigned long ai_remaining_dma_length(void)
 		/ ai_register.current_delay)) & ~7UL;
 }
 
+#define AI_COUNT (sizeof(readai)/sizeof(readai[0]))
+
 void read_ai()
 {
 	switch(*address_low)
@@ -2101,6 +2164,7 @@ void read_ai()
 		return;
 		break;
 	}
+	if(*address_low >= AI_COUNT) { word = trash; return; }
 	word = *(readai[*address_low]);
 }
 
@@ -2118,6 +2182,7 @@ void read_aib()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= AI_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readai[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
@@ -2133,6 +2198,7 @@ void read_aih()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= AI_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readai[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
@@ -2150,6 +2216,7 @@ void read_aid()
 			return;
 		break;
 	}
+	if((unsigned int)(*address_low + 4) >= AI_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readai[*address_low])<<32) | *readai[*address_low+4];
 }
 
@@ -2236,6 +2303,7 @@ void write_ai()
 			return;
 		break;
 	}
+	if(*address_low >= AI_COUNT) return;
 	*readai[*address_low] = word;
 }
 
@@ -2295,6 +2363,7 @@ void write_aib()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= AI_COUNT) return;
 	*((unsigned char*)readai[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 }
 
@@ -2348,6 +2417,7 @@ void write_aih()
 			return;
 		break;
 	}
+	if((*address_low & 0xfffc) >= AI_COUNT) return;
 	*((unsigned short*)((unsigned char*)readai[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 }
 
@@ -2396,6 +2466,7 @@ void write_aid()
 			return;
 		break;
 	}
+	if((unsigned int)(*address_low + 4) >= AI_COUNT) return;
 	*readai[*address_low] = dword >> 32;
 	*readai[*address_low+4] = dword & 0xFFFFFFFF;
 }
@@ -2634,64 +2705,79 @@ void write_pid()
 	}
 }
 
+#define RI_COUNT (sizeof(readri)/sizeof(readri[0]))
+#define SI_COUNT (sizeof(readsi)/sizeof(readsi[0]))
+
 void read_ri()
 {
+	if(*address_low >= RI_COUNT) { word = trash; return; }
 	word = *(readri[*address_low]);
 }
 
 void read_rib()
 {
+	if((*address_low & 0xfffc) >= RI_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readri[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
 void read_rih()
 {
+	if((*address_low & 0xfffc) >= RI_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readri[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
 void read_rid()
 {
+	if((unsigned int)(*address_low + 4) >= RI_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readri[*address_low])<<32) | *readri[*address_low+4];
 }
 
 void write_ri()
 {
+	if(*address_low >= RI_COUNT) return;
 	*readri[*address_low] = word;
 }
 
 void write_rib()
 {
+	if((*address_low & 0xfffc) >= RI_COUNT) return;
 	*((unsigned char*)readri[*address_low & 0xfffc] + ((*address_low&3)^S8) ) = byte;
 }
 
 void write_rih()
 {
+	if((*address_low & 0xfffc) >= RI_COUNT) return;
 	*((unsigned short*)((unsigned char*)readri[*address_low & 0xfffc] + ((*address_low&3)^S16) )) = hword;
 }
 
 void write_rid()
 {
+	if((unsigned int)(*address_low + 4) >= RI_COUNT) return;
 	*readri[*address_low] = dword >> 32;
 	*readri[*address_low+4] = dword & 0xFFFFFFFF;
 }
 
 void read_si()
 {
+	if(*address_low >= SI_COUNT) { word = trash; return; }
 	word = *(readsi[*address_low]);
 }
 
 void read_sib()
 {
+	if((*address_low & 0xfffc) >= SI_COUNT) { byte = trash & 0xFF; return; }
 	byte = *((unsigned char*)readsi[*address_low & 0xfffc] + ((*address_low&3)^S8) );
 }
 
 void read_sih()
 {
+	if((*address_low & 0xfffc) >= SI_COUNT) { hword = trash & 0xFFFF; return; }
 	hword = *((unsigned short*)((unsigned char*)readsi[*address_low & 0xfffc] + ((*address_low&3)^S16) ));
 }
 
 void read_sid()
 {
+	if((unsigned int)(*address_low + 4) >= SI_COUNT) { dword = trash; return; }
 	dword = ((unsigned long long int)(*readsi[*address_low])<<32) | *readsi[*address_low+4];
 }
 
