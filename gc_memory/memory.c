@@ -2896,30 +2896,22 @@ void write_sid()
 
 void read_flashram_status()
 {
-	//if (flashRAMInfo.use_flashram != -1 && *address_low == 0)
-	//{
-		flashRAMInfo.use_flashram = 1;
-		word = flashram_status();
-	//}
-	//else
-	//	printf("unknown read in read_flashram_status\n");
+	flashRAMInfo.use_flashram = 1;
+	word = flashram_status();
 }
 
 void read_flashram_statusb()
 {
-   //printf("read_flashram_statusb\n");
    byte = 0;
 }
 
 void read_flashram_statush()
 {
-   //printf("read_flashram_statush\n");
    hword = 0;
 }
 
 void read_flashram_statusd()
 {
-   //printf("read_flashram_statusd\n");
    dword = 0;
 }
 
@@ -2930,13 +2922,8 @@ void write_flashram_dummyd() {}
 
 void write_flashram_command()
 {
-	//if (flashRAMInfo.use_flashram != -1 && *address_low == 0)
-	//{
-		flashram_command(word);
-		flashRAMInfo.use_flashram = 1;
-	//}
-	//else
-	//	printf("unknown write in write_flashram_command\n");
+	flashram_command(word);
+	flashRAMInfo.use_flashram = 1;
 }
 
 void write_flashram_commandb(){}

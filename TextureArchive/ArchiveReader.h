@@ -27,14 +27,6 @@ public:
 			} else
 				min = index + 1;
 		}
-/*		for(int index = 0; index < size; index++) 
-		{
-			if(array[index] == entry)
-			{
-				entry = array[index];
-				return true;
-			}
-		}*/
 		return false;
 	}
 

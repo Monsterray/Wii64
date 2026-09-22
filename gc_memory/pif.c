@@ -192,7 +192,6 @@ void EepromCommand(BYTE *Command)
 					Command[12] = 0x00;
 				break;
 				case 1:
-					//RTC command in EepromCommand(): read block %d", Command[2]
 				break;
 				case 2:
 				{
@@ -213,13 +212,6 @@ void EepromCommand(BYTE *Command)
 				break;
 			}
 		break;
-		//case 8:
-			// write RTC block
-			//RTC write in EepromCommand(): %d not yet implemented", Command[2]
-			//break;
-	//default:
-	//printf("unknown command in EepromCommand : %x\n", Command[2]);
-	//break;
     }
 }
 
@@ -425,14 +417,14 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 								Command[0x25] = mempack_crc(&Command[5]);
 							}
 						}
-						break;
-						case PLUGIN_RAW:
-							controllerCommand(Control, Command);
-						break;
-						default:
-							Command[0x25] = mempack_crc(&Command[5]);
-						break;
 					}
+					break;
+					case PLUGIN_RAW:
+						controllerCommand(Control, Command);
+					break;
+					default:
+						Command[0x25] = mempack_crc(&Command[5]);
+					break;
 				}
 			}
 			else
