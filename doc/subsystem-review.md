@@ -277,15 +277,15 @@ The save/load path itself needs re-testing now that the flag actually fires.
 ### Rice_GX
 
 **Cleanup**:
-- Remaining `#if !defined(NO_ASM)` sites from the earlier cleanup pass -- **resolved/verified**. Two sites, both still compile-time dead and now provably pointless:
-  - `RenderBase.cpp:1172-1176` -- calls `SSELightVert()`, a function that **no longer exists anywhere in the codebase** (deleted earlier this session). Delete the whole `#if`/`#endif`.
-  - `RenderBase.cpp:1734-1739` -- writes `gRSPworldProjectTransported` (`RenderBase.h:85` extern), which is written only in this dead branch and read nowhere else -- a fully dead global.
-  - Related, not preprocessor-gated so missed by the earlier pass: `Rice_GX/RSP_GBI_Others.h:126-127` -- guarded by `status.isSSEEnabled`, permanently false since `isSSESupported()` is hardcoded `return false;`. `dkrMatrixTransposed` (`RenderBase.cpp:160`) is consequently dead too.
-- **New NO_ASM dead code the earlier pass missed**: `Rice_GX/FrameBuffer.cpp:597-749`'s `CalculateRDRAMCRC()` still carries the full x86 branch family (`__INTEL_COMPILER`, `__GNUC__ && __x86_64__ && !NO_ASM`, separate PIC/non-PIC inline asm) -- ~130 lines that can never compile since the `#ifdef NO_ASM` C fallback is what's live. Same class as what was already removed elsewhere.
-- `Rice_GX/Config.cpp:2100-3562` (~1460 lines) -- the entire GTK desktop config-dialog, `#ifndef __GX__`, permanently dead. Large but not urgent (mirrors glN64_GX's equivalent block).
+- Remaining `#if !defined(NO_ASM)` sites from the earlier cleanup pass -- **resolved/verified, both APPLIED**:
+  - `RenderBase.cpp:1172-1176` -- called `SSELightVert()`, a function with no declaration anywhere in the codebase. **APPLIED** (whole `#if`/`#endif` removed, live `else` branch kept unconditionally).
+  - `RenderBase.cpp:1734-1739` -- wrote `gRSPworldProjectTransported` (`RenderBase.h:85` extern), read nowhere else. **APPLIED** (dead branch and the now-fully-unused global both removed).
+  - Related, not preprocessor-gated so missed by the earlier pass: `Rice_GX/RSP_GBI_Others.h:126-127` -- guarded by `status.isSSEEnabled`, permanently false since `isSSESupported()` is hardcoded `return false;`. `dkrMatrixTransposed` (`RenderBase.cpp:160`) is consequently dead too. **APPLIED** (both removed).
+- **New NO_ASM dead code the earlier pass missed**: `Rice_GX/FrameBuffer.cpp:597-749`'s `CalculateRDRAMCRC()` still carries the full x86 branch family (`__INTEL_COMPILER`, `__GNUC__ && __x86_64__ && !NO_ASM`, separate PIC/non-PIC inline asm) -- ~130 lines that can never compile since the `#ifdef NO_ASM` C fallback is what's live. **APPLIED** (removed, kept the live `#ifdef NO_ASM` branch unconditionally).
+- `Rice_GX/Config.cpp:2100-3562` (~1460 lines) -- the entire GTK desktop config-dialog, `#ifndef __GX__`, permanently dead. Large but not urgent (mirrors glN64_GX's equivalent block). Left for a dedicated pass -- not touched here.
 
-**Fixes**:
-- `Rice_GX/TextureManager.cpp:71` -- `malloc(sizeof(heap_cntrl))` not NULL-checked before `__lwp_heap_init` dereferences it at startup.
+**Fixes** (applied):
+- `Rice_GX/TextureManager.cpp:71` -- `malloc(sizeof(heap_cntrl))` not NULL-checked before `__lwp_heap_init` dereferences it at startup. **APPLIED**: added `SAFE_CHECK(GXtexCache)`, the same macro already used 17 lines below in this same constructor for the same class of allocation.
 
 **Future work**:
 - `Rice_GX/TextureManager.cpp:1190` -- `return; //TODO: Find where used and implement for GX` acknowledged no-op stub.
@@ -295,18 +295,18 @@ The save/load path itself needs re-testing now that the flag actually fires.
 ### glN64_GX
 
 **Cleanup**:
-- `glN64_GX/TEV_combiner.cpp:190-197,784-791` -- two dead functions, author's own comments say "Never Called". Zero call sites confirmed.
-- `glN64_GX/CRC.cpp:42-101` -- `CRC_BuildTable()`/`CRC_Calculate()`/`CRC_CalculatePalette()` (CRC32-table impl) have zero call sites anywhere; actual hashing goes through `Hash_Calculate()` (XXH32) in the same file. ~60 dead lines.
-- `glN64_GX/Config_linux.cpp:38-405` (~367 lines) -- GTK/SDL desktop config dialog, `#ifndef __GX__`, permanently dead (same pattern as Rice_GX's Config.cpp).
-- Large `#ifndef __LINUX__` (Windows-only) blocks are dead throughout since `__LINUX__` is always defined for glN64_GX builds -- e.g. `RSP.cpp:46-89` (Win32 inline-asm), `RSP.cpp:451-465` (SEH RDRAM-size probing), most of `glN64.cpp`'s `DllMain`/window-handle plumbing. Expected given the project's macro rules; real bulk-deletable cruft if this plugin ever gets the Rice_GX treatment.
+- `glN64_GX/TEV_combiner.cpp:190-197,784-791` -- two dead functions, author's own comments say "Never Called". Zero call sites confirmed. **APPLIED** (both removed, including their header declarations).
+- `glN64_GX/CRC.cpp:42-101` -- `CRC_BuildTable()`/`CRC_Calculate()`/`CRC_CalculatePalette()` (CRC32-table impl) have zero call sites anywhere; actual hashing goes through `Hash_Calculate()` (XXH32) in the same file. ~60 dead lines. **APPLIED** (removed, along with their now-unused `Reflect()` helper and `CRCTable` buffer).
+- `glN64_GX/Config_linux.cpp:38-405` (~367 lines) -- GTK/SDL desktop config dialog, `#ifndef __GX__`, permanently dead (same pattern as Rice_GX's Config.cpp). Left for a dedicated pass -- not touched here.
+- Large `#ifndef __LINUX__` (Windows-only) blocks are dead throughout since `__LINUX__` is always defined for glN64_GX builds -- e.g. `RSP.cpp:46-89` (Win32 inline-asm), `RSP.cpp:451-465` (SEH RDRAM-size probing), most of `glN64.cpp`'s `DllMain`/window-handle plumbing. Expected given the project's macro rules; real bulk-deletable cruft if this plugin ever gets the Rice_GX treatment. Left for a dedicated pass -- not touched here.
 
-**Fixes**:
-- `glN64_GX/RSP.cpp:405-411` -- the main `RSP_ProcessDList()` command loop reads the next opcode with **no bounds check** against `RDRAMSize`. The sibling `_ProcessDListFactor5()` path a few lines above (`:258-264`) already has an explicit guard with a comment noting the upstream unguarded-read risk -- fixed there, not here. A malformed/truncated display list through the normal (non-Factor5) path can read past the end of RDRAM.
-- `glN64_GX/DepthBuffer.cpp:28-133` -- the depth-buffer linked list has no LRU cap (unlike the texture cache's `maxBytes`), can grow unbounded over a session. `DepthBuffer_AddTop()` (`:95`) also doesn't NULL-check its `malloc()` before dereferencing.
+**Fixes** (applied):
+- `glN64_GX/RSP.cpp:405-411` -- the main `RSP_ProcessDList()` command loop reads the next opcode with **no bounds check** against `RDRAMSize`. The sibling `_ProcessDListFactor5()` path a few lines above (`:258-264`) already has an explicit guard with a comment noting the upstream unguarded-read risk -- fixed there, not here. A malformed/truncated display list through the normal (non-Factor5) path can read past the end of RDRAM. **APPLIED**: same guard pattern as `_ProcessDListFactor5()`.
+- `glN64_GX/DepthBuffer.cpp:28-133` -- the depth-buffer linked list has no LRU cap (unlike the texture cache's `maxBytes`), can grow unbounded over a session. `DepthBuffer_AddTop()` (`:95`) also doesn't NULL-check its `malloc()` before dereferencing. **APPLIED**: capped at 16 entries, evicting the LRU (bottom) entry past that -- the list is already MRU-ordered (`DepthBuffer_MoveToTop()` runs on every cache hit), so this is the same shape of cap the texture cache already has. Added the missing NULL checks in `DepthBuffer_AddTop()` and its one call site.
 
-**Optimizations**:
-- `glN64_GX/Textures.cpp:2271-2303,1861-1880` -- the per-texture-tile-bind lookup (`TextureCache_Update`) does a linear walk over the *entire* MRU texture cache list, no hash/bucket index by CRC -- runs potentially many times per frame, cost scales with cache occupancy rather than O(1).
-- `glN64_GX/2xSAI.cpp:199-217` -- fetches each of 16 neighboring texels via a virtual `PixelIterator::operator[]` call -- 16 virtual dispatches per output pixel, comparatively expensive on PowerPC, for every texture while 2xSAI is on.
+**Optimizations** (deferred -- need dedicated visual-regression testing, not a quick pass):
+- `glN64_GX/Textures.cpp:2271-2303,1861-1880` -- the per-texture-tile-bind lookup (`TextureCache_Update`) does a linear walk over the *entire* MRU texture cache list, no hash/bucket index by CRC -- runs potentially many times per frame, cost scales with cache occupancy rather than O(1). Rewriting the cache's indexing is invasive; needs its own pass with real texture-heavy ROMs to verify no visual regression, not bundled into this cleanup sweep.
+- `glN64_GX/2xSAI.cpp:199-217` -- fetches each of 16 neighboring texels via a virtual `PixelIterator::operator[]` call -- 16 virtual dispatches per output pixel, comparatively expensive on PowerPC, for every texture while 2xSAI is on. Same reasoning -- deferred.
 
 **Future work**:
 - `glN64_GX/GBI.cpp:565-574` -- unrecognized microcode just `printf`s (USB Gecko only) and leaves type unset for `__GX__` builds; the fallback dialogs are `#ifndef`'d out. Own `//TODO: Make sure having ucode = NONE is ok` admits this was never verified on GX.
@@ -426,10 +426,28 @@ Every other register block maps a matching *pair* -- cached KSEG0 (`0x8...`) and
   needed for it specifically) -- not a second definition, not an
   uncommitted local edit. `perf_prof.h`'s "opt-in only" framing holds.
 - `Makefile.glN64` defines `-D__LINUX__` (glN64_GX builds only -- NOT
-  defined for Rice builds). This session's Rice_GX dead-code cleanup relied
-  on `NO_ASM` (universal) and GCC-builtin `_BIG_ENDIAN`, not `__LINUX__`, so
-  should be unaffected -- but worth a deliberate double-check during the
-  Rice_GX/glN64_GX pass (#6) rather than assuming.
+  defined for Rice builds). **Resolved during the Rice_GX/glN64_GX pass
+  (#6)**: that pass's dead-code removal used `NO_ASM` (universal) and
+  runtime-false `isSSEEnabled`/zero-call-site checks, never `__LINUX__` --
+  confirmed unaffected, not just assumed.
+- **New gotcha found while testing the `#1` header-dependency fix**:
+  `Makefile.Rice_wii` and `Makefile.glN64_wii` (and every other
+  plugin/platform pair) share object *filenames* (`main/main_gc-menu2.o`,
+  `menu/MenuContext.o`, etc.) despite compiling them with different
+  preprocessor defines (`-DRICE_GFX` vs `-DGLN64_GX -D__LINUX__`). Building
+  one target right after the other **without `make clean` in between**
+  produces a real, confusing failure: `-MMD -MP`'s dependency tracking only
+  watches source/header mtimes, not compiler flags, so it can leave a
+  target's object files built with the *other* target's flags, which
+  surfaced as linker "multiple definition" errors on unrelated-looking
+  symbols (`glN64_useFrameBufferTextures`, `renderCpuFramebuffer`, etc.)
+  when reproduced. Not new -- switching targets always needed a clean
+  first, per `.dev/build_profiling.sh`'s own comment -- but easy to forget
+  now that plain incremental rebuilds usually just work. No Makefile
+  change made for this (a legitimate `-j4` parallel build of the *same*
+  target must keep sharing objects); noting it so the next confusing
+  "multiple definition" error is recognized immediately as "did I clean
+  between targets" instead of re-investigated from scratch.
 
 **Future work**
 - 14 Makefiles for an 8-way (2 plugins x 4 platforms, minus one) build
