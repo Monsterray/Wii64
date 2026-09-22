@@ -1498,6 +1498,13 @@ void write_rsp_regd()
 		break;
 	}
 	if(*address_low >= RSPREG_COUNT) return;
+	// NOTE: this writes *address_low twice (high word then low word)
+	// instead of [*address_low] then [*address_low+4] like every other
+	// dword-write function in this file -- looks like the same bug
+	// write_pifd had, but changing it to the "correct" two-slot form
+	// broke real gameplay (a real ROM booted to a blank white screen
+	// instead of rendering), so whatever this actually does, it's load
+	// bearing. Left as-is; see doc/subsystem-review.md.
 	*readrspreg[*address_low] = dword >> 32;
 	*readrspreg[*address_low] = dword & 0xFFFFFFFF;
 	switch(*address_low)
