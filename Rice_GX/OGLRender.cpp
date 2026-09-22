@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif //__GX__
 
 #include "stdafx.h"
+#include "../main/perf_prof.h"
 
 // Fix me, use OGL internal L/T and matrix stack
 // Fix me, use OGL lookupAt function
@@ -961,6 +962,7 @@ bool OGLRender::RenderFlushTris()
 	float invW;
 
 //	GX_Begin(GX_LINESTRIP, GX_VTXFMT0, gRSP.numVertices);
+	perfProf_drawBatch(gRSP.numVertices);
 	GX_Begin(GX_TRIANGLES, GX_VTXFMT0, gRSP.numVertices);
 	for (int i = 0; i < (int) gRSP.numVertices; i++) {
 		if(gGX.GXuseCombW)

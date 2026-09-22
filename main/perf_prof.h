@@ -31,6 +31,8 @@ void perfProf_visSample(float vis);
 void perfProf_fpsSample(float fps);
 void perfProf_exceptionOccurred(void);
 void perfProf_cacheReset(void);
+void perfProf_drawBatch(unsigned int verts);
+void perfProf_texStall(void);
 void perfProf_cpuSample(void);
 void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersUs);
 void perfProf_menuFpsSample(float fps);
@@ -54,6 +56,8 @@ void perfProf_menuFpsSample(float fps);
 #define perfProf_fpsSample(fps)
 #define perfProf_exceptionOccurred()
 #define perfProf_cacheReset()
+#define perfProf_drawBatch(verts)
+#define perfProf_texStall()
 #define perfProf_cpuSample()
 #define perfProf_dirScan(entries, readDirUs, headersUs)
 #define perfProf_menuFpsSample(fps)

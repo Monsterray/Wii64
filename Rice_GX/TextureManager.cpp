@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "stdafx.h"
+#include "../main/perf_prof.h"
 
 #ifdef __GX__
 # ifdef HW_RVL
@@ -781,6 +782,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
 			//If dwCRC or dwPalCRC has changed, the texel data is reconverted and overwrites the old GX texture
 			//So, finish drawing before the GX texture is overwritten and then invalidate the Texture memory
 			//TODO: include PalCRC in the texture lookup
+			perfProf_texStall();
 			GX_DrawDone();
 			GX_InvalidateTexAll();
 #endif

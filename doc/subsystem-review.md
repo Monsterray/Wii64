@@ -144,6 +144,47 @@ hanging, both with the offending entry present and skipped.
 same missing bounds check, fed from the DVD TOC instead of a recursive scan.
 **APPLIED**: `strncpy` + explicit null-terminate.
 
+## Investigated: porting WiiStation's optimizations
+
+WiiStation (`C:/projects/WiiStation`) shares this project's lineage
+(libgui, GX present path, perf_prof). Its optimization work was reviewed
+against Wii64. Most of it is already present here or does not apply:
+
+- Blocking `GX_DrawDone()` at present (WiiStation `GPU_CPU_PLAN`/Phase 4.1):
+  already avoided. Both plugins present with `GX_SetDrawSync` +
+  `VI_GX_DrawSyncCallback`. `VI_GX_clearEFB()`, the one blocking present
+  helper, has no callers.
+- Scheduler re-walks per block (WiiStation `c38d4d1`): not applicable.
+  `gen_interupt()` runs only when `cp0_cycle_count` reaches the soonest
+  event of a sorted queue.
+- Probe and log cost in hot paths (`c0e9c07`, `77c807a`): not present.
+  `start_section`/`end_section` compile out without `PROFILE`, Rice
+  `DEBUGGER_*`/`TRACE*` need `_DEBUG`, and the `DecodedMux` prints are `#if 0`.
+- Storage read-ahead (`49088ad`): not applicable. The Wii build loads the
+  whole ROM into MEM2 (paged through the VM above 16 MB) before boot.
+- CPU framebuffer blit: already write-gather + tiled asm
+  (`VI_GX_renderCpuFramebuffer`).
+- Frame limiter debt (`b9098e1`): `new_vi()` schedules absolutely within each
+  500 ms window and forgives debt only at the window reset. Same shape,
+  bounded; not changed.
+
+Two candidates were measured with new `PERF_PROF` counters
+(`perfProf_drawBatch`, `perfProf_texStall`, on the `cpu:` line), in
+Banjo-Kazooie gameplay:
+
+- Per-batch vertex-format resend (WiiStation Phase 4.3). libogc2's
+  `GX_SetVtxDesc`/`GX_SetVtxAttrFmt` set dirty bits with no compare, so each
+  triangle batch re-emits VCD/VAT/XF (~40 bytes). Measured ~130 batches per
+  frame (~6 triangles each) on both plugins: ~5 KB FIFO and well under 1% CPU
+  per frame. Not worth a state cache that 19 `GX_ClearVtxDesc` sites would
+  have to invalidate.
+- Rice `GX_DrawDone()` before an in-place texture overwrite on CRC mismatch
+  (`TextureManager.cpp`): 2 stalls in ~38 s. Not a real cost.
+
+Not ported, hardware-only: WiiStation's locked-cache plan and its Broadway
+PMC probe (`PERF_PROF_PMC`). Dolphin models neither cache misses nor LC DMA
+timing, so neither can be judged here.
+
 ## Investigated and fixed: New ROM menu slowdown
 
 Used the new profiling tooling end to end for this one: `.dev/build_profiling.sh`

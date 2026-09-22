@@ -135,11 +135,31 @@ void perfProf_cacheReset(void)
 	g_perfCacheResetCount++;
 }
 
+/* Triangle batches (each one re-sends the full GX vertex descriptor/format)
+   and the vertices they carry; texStalls = GX_DrawDone pipeline drains before
+   an in-place texture overwrite (Rice CRC-mismatch path). */
+static unsigned int g_perfDrawBatches = 0;
+static unsigned int g_perfDrawVerts = 0;
+static unsigned int g_perfTexStalls = 0;
+
+void perfProf_drawBatch(unsigned int verts)
+{
+	g_perfDrawBatches++;
+	g_perfDrawVerts += verts;
+}
+
+void perfProf_texStall(void)
+{
+	g_perfTexStalls++;
+}
+
 void perfProf_cpuSample(void)
 {
 	FILE* f = fopen("sd:/wii64/perf.log", "a");
 	if (!f) return;
-	fprintf(f, "cpu: exceptions=%u cacheResets=%u\n", g_perfExceptionCount, g_perfCacheResetCount);
+	fprintf(f, "cpu: exceptions=%u cacheResets=%u batches=%u verts=%u texStalls=%u\n",
+		g_perfExceptionCount, g_perfCacheResetCount,
+		g_perfDrawBatches, g_perfDrawVerts, g_perfTexStalls);
 	fclose(f);
 }
 

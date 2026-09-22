@@ -13,6 +13,7 @@
 #include <gccore.h>
 extern "C" {
 #include "../main/gamehacks.h"
+#include "../main/perf_prof.h"
 }
 #include "../gui/DEBUG.h"
 #include <math.h>
@@ -1043,6 +1044,7 @@ void OGL_DrawTriangles()
 #endif
 
 
+	perfProf_drawBatch(OGL.numVertices);
 	GX_Begin(GX_TRIANGLES, GX_VTXFMT0, OGL.numVertices);
 	for (int i = 0; i < OGL.numVertices; i++) {
 		if(OGL.GXuseCombW)
