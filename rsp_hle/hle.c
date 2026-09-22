@@ -128,13 +128,18 @@ void hle_execute(struct hle_t* hle)
 
     if (!match)
     {
+        /* Bounds check moved before the write it guards -- it used to run
+           after infos[count] was already written and count incremented, so
+           a 17th distinct ucode signature corrupted memory past infos[]
+           (cached_ucodes is the last member of the global hle_t) before the
+           assert could catch it. */
+        assert(cached_ucodes->count < CACHED_UCODES_MAX_SIZE);
         info = &cached_ucodes->infos[cached_ucodes->count];
         info->uc_start = uc_start;
         info->uc_dstart = uc_dstart;
         info->uc_dsize = uc_dsize;
         info->uc_pfunc = task_detection(hle);
         cached_ucodes->count++;
-        assert(cached_ucodes->count <= CACHED_UCODES_MAX_SIZE);
         assert(info->uc_pfunc != NULL);
     }
 

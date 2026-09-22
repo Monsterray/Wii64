@@ -92,7 +92,7 @@ unsigned int MALLOC_MEM2 = 0;
 // -- Initialization functions --
 static void Initialise(void);
 static void gfx_info_init(void);
-static void audio_info_init(void);
+static BOOL audio_info_init(void);
 static void rsp_info_init(void);
 void control_info_init(void);
 // -- End init functions --
@@ -672,7 +672,14 @@ int loadROM(fileBrowser_file* rom){
 		gfx_set_window( 0, 0, 640, rmode->efbHeight);
 
 	gfx_info_init();
-	audio_info_init();
+	if(!audio_info_init()){
+		// AESND_AllocateVoice() failed -- voice stays NULL, and every later
+		// RomOpen/AiLenChanged/pauseAudio/resumeAudio/CloseDLL call would
+		// pass that NULL straight into AESND_Set*/AESND_FreeVoice. Abort
+		// the load instead, same as the rom_read failure above.
+		hasLoadedROM = FALSE;
+		return -1;
+	}
 	rsp_info_init();
 
 	perfProf_mark("loadROM: before romOpen_gfx");
@@ -754,7 +761,7 @@ static void gfx_info_init(void){
 	initiateGFX(gfx_info);
 }
 
-static void audio_info_init(void){
+static BOOL audio_info_init(void){
 	audio_info.MemoryBswaped = TRUE;
 	audio_info.HEADER = (BYTE*)&ROM_HEADER;
 	audio_info.RDRAM = (BYTE*)rdram;
@@ -768,7 +775,7 @@ static void audio_info_init(void){
 	audio_info.AI_DACRATE_REG = &(ai_register.ai_dacrate);
 	audio_info.AI_BITRATE_REG = &(ai_register.ai_bitrate);
 	audio_info.CheckInterrupts = check_interupt;
-	initiateAudio(audio_info);
+	return initiateAudio(audio_info);
 }
 
 void control_info_init(void){
