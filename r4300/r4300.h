@@ -101,7 +101,6 @@ extern unsigned long long int debug_count;
 extern unsigned long dynacore;
 extern unsigned long interpcore;
 extern int rounding_mode, trunc_mode, round_mode, ceil_mode, floor_mode;
-//extern char invalid_code[0x100000];
 extern unsigned long jump_to_address;
 extern int no_audio_delay;
 extern int randomize_interrupt;

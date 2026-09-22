@@ -36,8 +36,6 @@
    while cycles remain before the next event, >= 0 once it is due. */
 #define cp0_cycle_count ((int)((unsigned int)Count - r4300.next_interrupt))
 
-void compare_interupt();
-void gen_dp();
 void init_interupt();
 
 void gen_interupt();

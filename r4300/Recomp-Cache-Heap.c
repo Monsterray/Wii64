@@ -70,16 +70,6 @@ static void heapSwap(int i, int j){
 	cacheHeap[j] = t;
 }
 
-static void heapUp(int i){
-	// While the given element is out of order
-	while(i && cacheHeap[i]->func->lru < cacheHeap[HEAP_PARENT(i)]->func->lru){
-		// Swap the child with its parent
-		heapSwap(i, HEAP_PARENT(i));
-		// Consider its new position
-		i = HEAP_PARENT(i);
-	}
-}
-
 static void heapDown(int i){
 	// While the given element is out of order
 	while(1){
@@ -100,9 +90,16 @@ static void heapDown(int i){
 	}
 }
 
+// Bottom-up (Floyd) construction: sift-down from the last non-leaf node to
+// the root, O(n) total instead of the O(n log n) that sifting every element
+// up from a leaf gives. Same result -- a valid min-heap by func->lru over
+// whatever's currently in cacheHeap[0..heapSize) -- every call site rebuilds
+// from an arbitrary order (an LRU-counter wraparound, or "whatever release()
+// left behind"), not a nearly-sorted array, so there's no correctness
+// difference, only speed. Hot: called on every code-cache-full eviction.
 static void heapify(void){
 	int i;
-	for(i=1; i<heapSize; ++i) heapUp(i);
+	for(i=(heapSize>>1)-1; i>=0; --i) heapDown(i);
 }
 
 static void heapPush(CacheMetaNode* node)

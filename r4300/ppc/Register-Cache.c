@@ -24,7 +24,6 @@
 #include "Register-Cache.h"
 #include "PowerPC.h"
 #include "Wrappers.h"
-#include <string.h>
 
 // -- GPR mappings --
 static RegState regMap[34];

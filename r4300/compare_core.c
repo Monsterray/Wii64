@@ -84,16 +84,16 @@ void compare_core()
 			pipe_opened = 1;
 		}
 
-		memset(comp_reg, 0x13, 4*sizeof(long));
-		fread(comp_reg, 4, sizeof(long), f);
+		memset(comp_reg, 0x13, sizeof(long));
+		fread(comp_reg, sizeof(long), 1, f);
 		if(memcmp(&r4300.pc, comp_reg, 4))
 			display_error("PC");
 		memset(comp_reg, 0x13, 32*sizeof(long long int));
-		fread(comp_reg, 32, sizeof(long long int), f);
+		fread(comp_reg, sizeof(long long int), 32, f);
 		if(memcmp(r4300.gpr, comp_reg, 32 * sizeof(long long int)))
 			display_error("gpr");
 		memset(comp_reg, 0x13, 32*sizeof(long));
-		fread(comp_reg, 32, sizeof(long), f);
+		fread(comp_reg, sizeof(long), 32, f);
 		if(memcmp(r4300.reg_cop0, comp_reg, 32 * sizeof(long)))
 			display_error("cop0");
 		old_op = op;
@@ -104,9 +104,9 @@ void compare_core()
 			pipe_opened = 1;
 		}
 
-		fwrite(&r4300.pc, 4, sizeof(long), f);
-		fwrite(r4300.gpr, 32, sizeof(long long int), f);
-		fwrite(r4300.reg_cop0, 32, sizeof(long), f);
+		fwrite(&r4300.pc, sizeof(long), 1, f);
+		fwrite(r4300.gpr, sizeof(long long int), 32, f);
+		fwrite(r4300.reg_cop0, sizeof(long), 32, f);
 	}
 }
 #endif

@@ -180,7 +180,11 @@ void dynarec(unsigned int address){
 		
 		if(!blocks[address>>12]){
 			blocks[address>>12] = calloc(1, sizeof(PowerPC_block));
-			if(!blocks[address>>12]) {
+			// Retry until it succeeds -- see Recompile.c's matching fix and
+			// the RecompCache_Alloc fix this mirrors: a single release(1)
+			// that can't free enough leaves this NULL and the next line
+			// writes through it.
+			while(!blocks[address>>12]) {
 				release(1);
 				blocks[address>>12] = calloc(1, sizeof(PowerPC_block));
 			}

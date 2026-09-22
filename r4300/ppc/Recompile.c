@@ -140,8 +140,12 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	code_length = 0;
 
 	// Create a PowerPC_func for this function
+	// Retry until it succeeds, matching every other allocation in this
+	// file/Recomp-Cache-Heap.c -- this used to retry release(1) exactly
+	// once, same bug RecompCache_Alloc had (a single release() that can't
+	// free enough leaves func NULL and the next line writes through it).
 	PowerPC_func* func = calloc(1, sizeof(PowerPC_func));
-	if(!func) {
+	while(!func) {
 		release(1);
 		func = calloc(1, sizeof(PowerPC_func));
 	}
@@ -163,7 +167,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 		   (*node)->function->end_addr == func->end_addr){
 			// (*node)->function is a hole in func
 			PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-			if(!hole) {
+			while(!hole) {
 				release(1);
 				hole = malloc(sizeof(PowerPC_func_hole_node));
 			}
@@ -180,6 +184,10 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 			(*node)->function->holes = NULL;
 			// Add it to the freed_funcs list
 			struct func_list* freed = malloc(sizeof(struct func_list));
+			while(!freed) {
+				release(1);
+				freed = malloc(sizeof(struct func_list));
+			}
 			freed->func = (*node)->function, freed->next = freed_funcs;
 			freed_funcs = freed;
 			// Free the hole
@@ -189,7 +197,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 				  func->end_addr == (*node)->function->end_addr){
 			// func is a hole in fn->function
 			PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-			if(!hole) {
+			while(!hole) {
 				release(1);
 				hole = malloc(sizeof(PowerPC_func_hole_node));
 			}
@@ -214,6 +222,10 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 				  func->end_addr   > (*node)->function->start_addr){
 			// Add it to the freed_funcs list
 			struct func_list* freed = malloc(sizeof(struct func_list));
+			while(!freed) {
+				release(1);
+				freed = malloc(sizeof(struct func_list));
+			}
 			freed->func = (*node)->function, freed->next = freed_funcs;
 			freed_funcs = freed;
 			// We have some other non-containment overlap
@@ -303,7 +315,7 @@ void init_block(PowerPC_block* ppc_block){
 		invalid_code_set(paddr>>12, 0);
 		if(!blocks[paddr>>12]){
 			blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
-			if(!blocks[paddr>>12]) {
+			while(!blocks[paddr>>12]) {
 				release(1);
 				blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
 			}
@@ -315,7 +327,7 @@ void init_block(PowerPC_block* ppc_block){
 		invalid_code_set(paddr>>12, 0);
 		if(!blocks[paddr>>12]){
 			blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
-			if(!blocks[paddr>>12]) {
+			while(!blocks[paddr>>12]) {
 				release(1);
 				blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
 			}
@@ -327,7 +339,7 @@ void init_block(PowerPC_block* ppc_block){
 		invalid_code_set(paddr>>12, 0);
 		if(!blocks[paddr>>12]){
 		     blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
-			 if(!blocks[paddr>>12]) {
+			 while(!blocks[paddr>>12]) {
 				release(1);
 				blocks[paddr>>12] = calloc(1, sizeof(PowerPC_block));
 			}
