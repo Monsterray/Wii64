@@ -17,6 +17,13 @@ timers Timers = {0.0, 0.0, 0, 1, 0, 100};
 float VILimit = 60.0;
 double VILimitMicroseconds = 1000000.0/60.0;
 
+/* Guest VIs since the current game started (loadROM() and a chain zero it), and the
+   count a chained game stops at (0 = never). Counting guest VIs rather than wall time is
+   what makes two runs of the same game comparable, in Dolphin and on hardware alike. */
+unsigned int diag_vi_count = 0;
+unsigned int diag_stop_vi = 0;
+extern void stop_it(void);
+
 int GetVILimit(void)
 {
 	switch (ROM_HEADER.Country_code&0xFF)
@@ -126,6 +133,10 @@ void new_vi(void) {
 	start_section(IDLE_SECTION);
 //	if ( (!Config.showVIS) && (!Config.limitFps) ) return;
 	VI_Counter++;
+	if (++diag_vi_count == 1)
+		perfProf_clockStart(); // wall time and PMCs count gameplay, not the load before it
+	if (diag_vi_count >= diag_stop_vi && diag_stop_vi)
+		stop_it();
 
 	CurrentFPSTime = ticks_to_microsecs(gettick());
 
@@ -141,6 +152,7 @@ void new_vi(void) {
 				time = (int)(CalculatedTime - CurrentFPSTime);
 				if (time>0&&time<1000000) {
 					usleep(time);
+					perfProf_limiterSleep(time);
 				}
 				CurrentFPSTime = CurrentFPSTime + time;
 			}

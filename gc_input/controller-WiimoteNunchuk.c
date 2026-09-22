@@ -27,23 +27,12 @@
 #include <math.h>
 #include <wiiuse/wpad.h>
 #include "controller.h"
+#include "n64_analog.h"
 
-#ifndef PI
-#define PI 3.14159f
-#endif
-
-enum { STICK_X, STICK_Y };
-static int getStickValue(joystick_t* j, int axis, int maxAbsValue){
-	double angle = PI * j->ang/180.0f;
-	double magnitude = (j->mag > 1.0f) ? 1.0f :
-	                    (j->mag < -1.0f) ? -1.0f : j->mag;
-	double value;
-	if(axis == STICK_X)
-		value = magnitude * sin( angle );
-	else
-		value = magnitude * cos( angle );
-	return (int)(value * maxAbsValue);
-}
+/* The Nunchuk stick as calibrated fractions (n64_analog.h) rather than wiiuse's
+   angle/magnitude clamped to a circle. */
+#define JS_FRAC_X(j) stick_frac((j)->pos.x, (j)->min.x, (j)->center.x, (j)->max.x)
+#define JS_FRAC_Y(j) stick_frac((j)->pos.y, (j)->min.y, (j)->center.y, (j)->max.y)
 
 enum {
 	NUNCHUK_AS_ANALOG = 0, IR_AS_ANALOG = 1,
@@ -139,8 +128,12 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config,
 	c->U_CBUTTON    = isHeld(config->CU);
 
 	if(config->analog->mask == NUNCHUK_AS_ANALOG){
-		c->X_AXIS = getStickValue(&wpad->exp.nunchuk.js, STICK_X, 80);
-		c->Y_AXIS = getStickValue(&wpad->exp.nunchuk.js, STICK_Y, 80);
+		joystick_t* j = &wpad->exp.nunchuk.js;
+		signed char x, y;
+		cal_stick(j->pos.x, j->pos.y, j->min.x, j->min.y, j->center.x, j->center.y,
+		          j->max.x, j->max.y, &x, &y);
+		c->X_AXIS = x;
+		c->Y_AXIS = y;
 	} else if(config->analog->mask == IR_AS_ANALOG){
 		if(wpad->ir.smooth_valid){
 			last_x = c->X_AXIS = 8*((short)(wpad->ir.sx - 512))/25;
@@ -157,14 +150,12 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config,
 		c->X_AXIS = 5*(512 - wpad->accel.y)/8;
 		c->Y_AXIS = 5*(wpad->accel.z - 512)/8;
 	} else if(config->analog->mask == BUTTON_AS_ANALOG){
-		if(b & WPAD_BUTTON_DOWN)
-			c->X_AXIS = +80;
-		else if(b & WPAD_BUTTON_UP)
-			c->X_AXIS = -80;
-		if(b & WPAD_BUTTON_RIGHT)
-			c->Y_AXIS = +80;
-		else if(b & WPAD_BUTTON_LEFT)
-			c->Y_AXIS = -80;
+		// Wiimote held sideways: its d-pad down is right, right is up.
+		signed char x, y;
+		button_stick(!!(b & WPAD_BUTTON_DOWN) - !!(b & WPAD_BUTTON_UP),
+		             !!(b & WPAD_BUTTON_RIGHT) - !!(b & WPAD_BUTTON_LEFT), &x, &y);
+		c->X_AXIS = x;
+		c->Y_AXIS = y;
 	}
 	if(config->invertedY) c->Y_AXIS = -c->Y_AXIS;
 
@@ -223,13 +214,13 @@ static unsigned int getButtonsWM(WPADData* controller){
 
 static unsigned int getButtonsWMN(WPADData* controller){
 	unsigned int b = controller->btns_h;
-	s8 stickX      = getStickValue(&controller->exp.nunchuk.js, STICK_X, 7);
-	s8 stickY      = getStickValue(&controller->exp.nunchuk.js, STICK_Y, 7);
-	
-	if(stickX    < -3) b |= NUNCHUK_L;
-	if(stickX    >  3) b |= NUNCHUK_R;
-	if(stickY    >  3) b |= NUNCHUK_U;
-	if(stickY    < -3) b |= NUNCHUK_D;
+	float stickX = JS_FRAC_X(&controller->exp.nunchuk.js);
+	float stickY = JS_FRAC_Y(&controller->exp.nunchuk.js);
+
+	if(stickX < -0.5f) b |= NUNCHUK_L;
+	if(stickX >  0.5f) b |= NUNCHUK_R;
+	if(stickY >  0.5f) b |= NUNCHUK_U;
+	if(stickY < -0.5f) b |= NUNCHUK_D;
 	
 	return b;
 }

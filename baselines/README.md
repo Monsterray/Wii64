@@ -10,7 +10,34 @@ baselines/<id>/perf.log      the captured PERF_PROF perf.log
 baselines/<id>/notes.md      what this run was, how it was captured, the numbers in one page
 ```
 
-## Capturing a run
+## Chained runs (the main kind now)
+
+A chain (`diag.cfg` `chain=` lines, `scripts/chains/`) runs several games in one boot, each
+for a fixed number of its own VIs, and leaves one `game:` line per game in `perf.log`, a
+screenshot per game (`xfb_NN.bin`) and a pad trace when there was pad input. Same chain,
+same build: exceptions and recompiles repeat to within a count or two under Dolphin, so a
+bigger move is the build. See `doc/hardware-session.md` for running one on a Wii.
+
+```bash
+.dev/build_profiling.sh glN64_wii && cp wii64-glN64.dol .dev/wii64-glN64-prof.dol
+.dev/wii64_diag.sh chain .dev/wii64-glN64-prof.dol scripts/chains/all.txt .dev/runs/all_glN64
+python scripts/baseline_add.py --chain .dev/runs/all_glN64 --plugin glN64     --id 2026-09-22_dolphin_all_glN64 --purpose "all.txt, stock settings"
+python scripts/chain_compare.py 2026-09-22_dolphin_all_glN64 .dev/runs/<new run>
+```
+
+```
+baselines/games.csv          one row per game per chained baseline (platform, plugin, build, speed, idle %, ...)
+baselines/<id>/              perf.log, diag.cfg (the chain), run.log, padtrace_NN.csv, notes.md
+baselines/media/<id>/        xfb_NN.png screenshots -- kept out of git (.gitignore), as in WiiStation
+```
+
+`games.csv` columns worth knowing: `speed` = guest VIs per wall second / the ROM's VI rate
+(1.00 = full speed); `idle_pct` = share of wall time the frame limiter slept, the headroom;
+`ipc` = instructions per cycle from Broadway's counters (hardware only, 0 in Dolphin);
+`underruns` = audible audio gaps; `treeDepthMax` = the dynarec's worst function-tree
+lookup depth; `flush_us` = what writing `perf.log` itself cost.
+
+## Capturing a single run
 
 Needs a PERF_PROF build (release builds compile every probe to a no-op):
 

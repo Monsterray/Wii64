@@ -2,14 +2,23 @@
    Performance probes, modeled on WiiStation's perf-probe pattern
    (Gamecube/perf_prof.c there): compiled in only when PERF_PROF is defined
    (pass -DPERF_PROF to make, or use .dev/build_profiling.sh), a no-op
-   otherwise so release builds pay nothing. Writes sd:/wii64/perf.log,
-   truncated once per boot and appended to on every ROM-browser page fill
-   and every ~500ms during actual gameplay (visSample/fpsSample, hooked
-   into main/timers.c's new_vi()/new_frame() -- the same VI-interrupt-rate
-   and completed-display-list-rate numbers the in-game "Show FPS" overlay
-   displays) -- read it back with scripts/sdimage_read.py + compare with
-   scripts/perf_compare.py (see baselines/README.md), no live input
-   required to get the numbers back out.
+   otherwise so release builds pay nothing. Writes sd:/wii64/perf.log --
+   read it back with scripts/sdimage_read.py, split a chained run with
+   scripts/chain_table.py, compare with scripts/perf_compare.py (see
+   baselines/README.md).
+
+   Cost rules (from WiiStation's measured mistakes -- a probe that costs more
+   than what it measures makes the number meaningless):
+   - hot-path probes are one integer op; no gettime() or 64-bit divide per call;
+   - nothing touches the SD card during gameplay except the sample buffer's
+     flush, once per PERF_FLUSH_SAMPLES samples, and that flush times itself
+     (flush_us on the game: line) so its cost is visible, not hidden;
+   - marks (perfProf_mark) still write immediately: they exist for hangs, where
+     a buffered line would be lost with the hang.
+
+   Per game (loadROM -> perfProf_gameBegin, chain end -> perfProf_gameEnd) the
+   totals below restart from zero, so a chain of games gives one comparable
+   game: line per game.
  */
 #ifndef PERF_PROF_H
 #define PERF_PROF_H
@@ -33,9 +42,19 @@ void perfProf_exceptionOccurred(void);
 void perfProf_cacheReset(void);
 void perfProf_drawBatch(unsigned int verts);
 void perfProf_texStall(void);
+void perfProf_recompile(void);
+void perfProf_treeDepth(unsigned int depth);
+void perfProf_limiterSleep(long us);
+void perfProf_audioUnderrun(void);
+void perfProf_audioOverrun(void);
+void perfProf_padRaw(int sx, int sy, int cx, int cy, unsigned int btns);
+void perfProf_padRead(int control, unsigned int value);
 void perfProf_cpuSample(void);
 void perfProf_dirScan(int entries, unsigned int readDirUs, unsigned int headersUs);
 void perfProf_menuFpsSample(float fps);
+void perfProf_gameBegin(void);
+void perfProf_clockStart(void);
+void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const char* how);
 
 #ifdef __cplusplus
 }
@@ -46,21 +65,31 @@ void perfProf_menuFpsSample(float fps);
 
 #else /* !PERF_PROF */
 
-#define perfProf_reset()
-#define perfProf_pageBegin(numTiles, loadLimit)
-#define perfProf_tileLoaded(index, wasReal, initUs, loadUs, flushUs)
-#define perfProf_pageEnd(invalidateUs, totalUs)
-#define perfProf_selfTest()
-#define perfProf_mark(label)
-#define perfProf_visSample(vis)
-#define perfProf_fpsSample(fps)
-#define perfProf_exceptionOccurred()
-#define perfProf_cacheReset()
-#define perfProf_drawBatch(verts)
-#define perfProf_texStall()
-#define perfProf_cpuSample()
-#define perfProf_dirScan(entries, readDirUs, headersUs)
-#define perfProf_menuFpsSample(fps)
+#define perfProf_reset() ((void)0)
+#define perfProf_pageBegin(numTiles, loadLimit) ((void)0)
+#define perfProf_tileLoaded(index, wasReal, initUs, loadUs, flushUs) ((void)0)
+#define perfProf_pageEnd(invalidateUs, totalUs) ((void)0)
+#define perfProf_selfTest() ((void)0)
+#define perfProf_mark(label) ((void)0)
+#define perfProf_visSample(vis) ((void)0)
+#define perfProf_fpsSample(fps) ((void)0)
+#define perfProf_exceptionOccurred() ((void)0)
+#define perfProf_cacheReset() ((void)0)
+#define perfProf_drawBatch(verts) ((void)0)
+#define perfProf_texStall() ((void)0)
+#define perfProf_recompile() ((void)0)
+#define perfProf_treeDepth(depth) ((void)0)
+#define perfProf_limiterSleep(us) ((void)0)
+#define perfProf_audioUnderrun() ((void)0)
+#define perfProf_audioOverrun() ((void)0)
+#define perfProf_padRaw(sx, sy, cx, cy, btns) ((void)0)
+#define perfProf_padRead(control, value) ((void)0)
+#define perfProf_cpuSample() ((void)0)
+#define perfProf_dirScan(entries, readDirUs, headersUs) ((void)0)
+#define perfProf_menuFpsSample(fps) ((void)0)
+#define perfProf_gameBegin() ((void)0)
+#define perfProf_clockStart() ((void)0)
+#define perfProf_gameEnd(n, total, vis, rom, how) ((void)(how))
 #define PERF_NOW() (0)
 #define PERF_US(start) (0)
 

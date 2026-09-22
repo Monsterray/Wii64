@@ -1,0 +1,4 @@
+# Two short games: the check that a chain still boots its second game, files both,
+# and powers off. Any build; PERF_PROF for the table.
+chain=900 sd:/wii64/roms/Super Mario 64.v64
+chain=900 sd:/wii64/roms/Banjo-Kazooie.V64

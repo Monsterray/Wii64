@@ -46,6 +46,7 @@
 #include "../main/winlnxdefs.h"
 #include <gccore.h>
 #include <string.h>
+#include "../main/perf_prof.h"
 #include <aesndlib.h>
 
 #include "AudioPlugin.h"
@@ -72,6 +73,13 @@ static AESNDPB *voice;
 char audioEnabled;
 char scalePitch = 0;
 
+#ifdef PERF_PROF
+/* Audible gaps, for perf_prof: the DSP asked for the next buffer and there was none.
+   Counted once per gap (fed -> starved), and only after this game's audio has started --
+   before a game first writes AI, every DSP frame is "starved" and means nothing. */
+static int streamStarted, starved;
+#endif
+
 static void aesnd_callback(AESNDPB *pb, uint32_t state)
 {
 	if (state == VOICE_STATE_STREAM) {
@@ -81,6 +89,12 @@ static void aesnd_callback(AESNDPB *pb, uint32_t state)
 			if (read_ptr >= end_ptr)
 				read_ptr = buffer;
 			buffered -= DSP_STREAMBUFFER_SIZE;
+#ifdef PERF_PROF
+			starved = 0;
+		} else if (streamStarted && !starved) {
+			starved = 1;
+			perfProf_audioUnderrun();
+#endif
 		}
 	}
 }
@@ -91,6 +105,9 @@ static void reset_buffer(void)
 	read_ptr = buffer;
 	buffered = 0;
 	memset(buffer, 0, BUFFER_SIZE);
+#ifdef PERF_PROF
+	streamStarted = starved = 0;
+#endif
 }
 
 EXPORT void CALL AiDacrateChanged(int SystemType)
@@ -137,7 +154,11 @@ EXPORT void CALL AiLenChanged(void)
 					write_ptr = buffer;
 				buffered += size;
 			} while (length > 0);
-		}
+#ifdef PERF_PROF
+			streamStarted = 1;
+#endif
+		} else
+			perfProf_audioOverrun();
 
 #ifdef RVL_LIBWIIDRC
 		if (scalePitch)

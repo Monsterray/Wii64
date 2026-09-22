@@ -28,26 +28,20 @@
 #include <math.h>
 #include <wiiuse/wpad.h>
 #include "controller.h"
+#include "n64_analog.h"
 #include "../gui/DEBUG.h"
 
-#ifndef PI
-#define PI 3.14159f
-#endif
+/* A stick as calibrated fractions (n64_analog.h). This used to go through wiiuse's
+   angle/magnitude, divide the magnitude by 0.667 and cut a 10% dead zone per axis: full
+   deflection arrived at two thirds of the throw, the last third did nothing, and small
+   movements snapped to the axes. */
+#define JS_FRAC_X(j) stick_frac((j)->pos.x, (j)->min.x, (j)->center.x, (j)->max.x)
+#define JS_FRAC_Y(j) stick_frac((j)->pos.y, (j)->min.y, (j)->center.y, (j)->max.y)
 
-enum { STICK_X, STICK_Y };
-static int getStickValue(joystick_t* j, float maxMag, int axis, int maxAbsValue){
-	double angle = PI * j->ang/180.0f;
-	double magnitude = (j->mag/maxMag > 1.0f) ? 1.0f :
-	                    (j->mag/maxMag < -1.0f) ? -1.0f : j->mag/maxMag;
-	double value;
-	if(axis == STICK_X)
-		value = magnitude * sin( angle );
-	else
-		value = magnitude * cos( angle );
-	if(value < -0.1f) value = (value+0.1f)*1.111f;
-	else if(value > 0.1f) value = (value-0.1f)*1.111f;
-	else value = 0.f;
-	return (int)(value * maxAbsValue);
+static void js_stick(joystick_t* j, signed char* x, signed char* y)
+{
+	cal_stick(j->pos.x, j->pos.y, j->min.x, j->min.y, j->center.x, j->center.y,
+	          j->max.x, j->max.y, x, y);
 }
 
 enum {
@@ -104,24 +98,24 @@ static button_t menu_combos[] = {
 	{ 2, CLASSIC_CTRL_BUTTON_HOME, "Home" },
 };
 
-static unsigned int getButtons(classic_ctrl_t* controller, float maxLMag, float maxRMag)
+static unsigned int getButtons(classic_ctrl_t* controller)
 {
 	unsigned int b = (unsigned short)controller->btns;
-	s8 stickX      = getStickValue(&controller->ljs, maxLMag, STICK_X, 7);
-	s8 stickY      = getStickValue(&controller->ljs, maxLMag, STICK_Y, 7);
-	s8 substickX   = getStickValue(&controller->rjs, maxRMag, STICK_X, 7);
-	s8 substickY   = getStickValue(&controller->rjs, maxRMag, STICK_Y, 7);
-	
-	if(stickX    < -3) b |= L_STICK_L;
-	if(stickX    >  3) b |= L_STICK_R;
-	if(stickY    >  3) b |= L_STICK_U;
-	if(stickY    < -3) b |= L_STICK_D;
-	
-	if(substickX < -3) b |= R_STICK_L;
-	if(substickX >  3) b |= R_STICK_R;
-	if(substickY >  3) b |= R_STICK_U;
-	if(substickY < -3) b |= R_STICK_D;
-	
+	float stickX    = JS_FRAC_X(&controller->ljs);
+	float stickY    = JS_FRAC_Y(&controller->ljs);
+	float substickX = JS_FRAC_X(&controller->rjs);
+	float substickY = JS_FRAC_Y(&controller->rjs);
+
+	if(stickX    < -0.5f) b |= L_STICK_L;
+	if(stickX    >  0.5f) b |= L_STICK_R;
+	if(stickY    >  0.5f) b |= L_STICK_U;
+	if(stickY    < -0.5f) b |= L_STICK_D;
+
+	if(substickX < -0.5f) b |= R_STICK_L;
+	if(substickX >  0.5f) b |= R_STICK_R;
+	if(substickY >  0.5f) b |= R_STICK_U;
+	if(substickY < -0.5f) b |= R_STICK_D;
+
 	return b;
 }
 
@@ -151,8 +145,6 @@ static int available(int Control) {
 	}
 }
 
-#define DEFAULT_MAX_MAG 0.667f
-
 static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 {
 	if(wpadNeedScan){ WPAD_ScanPads(); wpadNeedScan = 0; }
@@ -164,13 +156,7 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	if(!available(Control))
 		return 0;
 
-	//Look up BT address
-	//wiimote* WPAD_GetWiimotes(s32 chan)
-	//wiimote* wm = WPAD_GetWiimote(Control);
-	float maxLMag = DEFAULT_MAX_MAG;
-	float maxRMag = DEFAULT_MAX_MAG;
-
-	unsigned int b = getButtons(&wpad->exp.classic, maxLMag, maxRMag);
+	unsigned int b = getButtons(&wpad->exp.classic);
 	inline int isHeld(button_tp button){
 		return (b & button->mask) == button->mask;
 	}
@@ -193,25 +179,16 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	c->D_CBUTTON    = isHeld(config->CD);
 	c->U_CBUTTON    = isHeld(config->CU);
 
-	if(config->analog->mask == L_STICK_AS_ANALOG){
-		c->X_AXIS = getStickValue(&wpad->exp.classic.ljs, maxLMag, STICK_X, 80);
-		c->Y_AXIS = getStickValue(&wpad->exp.classic.ljs, maxLMag, STICK_Y, 80);
-		//sprintf(txtbuffer,"GetKeys: ctr %d, ang %f, mag %f, max %f, posx %x, posy %x, x %d, y %d", Control, wpad->exp.classic.ljs.ang, wpad->exp.classic.ljs.mag, maxLMag, wpad->exp.classic.ljs.pos.x, wpad->exp.classic.ljs.pos.y, c->X_AXIS, c->Y_AXIS);
-	} else if(config->analog->mask == R_STICK_AS_ANALOG){
-		c->X_AXIS = getStickValue(&wpad->exp.classic.rjs, maxRMag, STICK_X, 80);
-		c->Y_AXIS = getStickValue(&wpad->exp.classic.rjs, maxRMag, STICK_Y, 80);
-		//sprintf(txtbuffer,"GetKeys: ctr %d, ang %f, mag %f, max %f, posx %x, posy %x, x %d, y %d", Control, wpad->exp.classic.rjs.ang, wpad->exp.classic.rjs.mag, maxRMag, wpad->exp.classic.rjs.pos.x, wpad->exp.classic.rjs.pos.y, c->X_AXIS, c->Y_AXIS);
-	} else if(config->analog->mask == BUTTON_AS_ANALOG){
-		if(b & CLASSIC_CTRL_BUTTON_RIGHT)
-			c->X_AXIS = +80;
-		else if(b & CLASSIC_CTRL_BUTTON_LEFT)
-			c->X_AXIS = -80;
-		if(b & CLASSIC_CTRL_BUTTON_UP)
-			c->Y_AXIS = +80;
-		else if(b & CLASSIC_CTRL_BUTTON_DOWN)
-			c->Y_AXIS = -80;
-	}
-	if(config->invertedY) c->Y_AXIS = -c->Y_AXIS;
+	signed char x = 0, y = 0;
+	if(config->analog->mask == L_STICK_AS_ANALOG)
+		js_stick(&wpad->exp.classic.ljs, &x, &y);
+	else if(config->analog->mask == R_STICK_AS_ANALOG)
+		js_stick(&wpad->exp.classic.rjs, &x, &y);
+	else if(config->analog->mask == BUTTON_AS_ANALOG)
+		button_stick(!!(b & CLASSIC_CTRL_BUTTON_RIGHT) - !!(b & CLASSIC_CTRL_BUTTON_LEFT),
+		             !!(b & CLASSIC_CTRL_BUTTON_UP) - !!(b & CLASSIC_CTRL_BUTTON_DOWN), &x, &y);
+	c->X_AXIS = x;
+	c->Y_AXIS = config->invertedY ? -y : y;
 
 	//DEBUG_print(txtbuffer,DBG_RSPINFO1+Control);
 

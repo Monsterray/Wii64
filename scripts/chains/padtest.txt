@@ -1,0 +1,8 @@
+# The live stick check: from VI 600 port 1 reads the generated sweep (every raw value of
+# every stick axis, the main stick's rim, every button alone, repeating). 4 VIs a step:
+# a game that drops below 30 fps polls less often than a 2-VI step moves, and misses
+# steps (seen: SM64 at 27 fps saw 240 of 256 raw values at 2 VIs). One pass ~6300 VIs.
+# Super Mario 64 reads the pad every frame from the title screen on.
+# Then: python scripts/padtest.py <out dir>/padtrace_01.csv
+chain=7200 sd:/wii64/roms/Super Mario 64.v64
+padsweep=600,4

@@ -24,8 +24,11 @@
 
 
 #include <string.h>
+#include <math.h>
 #include <ogc/pad.h>
 #include "controller.h"
+#include "n64_analog.h"
+#include "../main/perf_prof.h"
 
 enum {
 	ANALOG_AS_ANALOG = 1, C_STICK_AS_ANALOG = 2,
@@ -79,24 +82,93 @@ static button_t menu_combos[] = {
 
 u32 gc_connected;
 
-static unsigned int getButtons(int Control)
+/* One reading of a pad: everything the driver uses comes from here, so a stand-in
+   (padsweep below) replaces the whole reading at the one point a real pad is read. */
+typedef struct { u32 btns; s8 sx, sy, cx, cy; } gc_raw_t;
+
+/* diag.cfg padsweep=<vi>[,<hold>] (main_gc-menu2.cpp): from guest VI padsweep_vi of each
+   game on, port 1 reads this generated sweep instead of the pad, one step per
+   padsweep_hold VIs -- two by default (a 30 fps game polls every other VI); use 4 for a
+   game that drops below 30 fps, or it misses steps. Main stick X end to end, main stick Y, C-stick X, C-stick
+   Y (every raw value), the main stick's rim (one degree per step, along the octagonal
+   gate a real pad has), then each button alone. Repeats, so a sweep started before a
+   game finished loading still catches a whole pass. */
+unsigned int padsweep_vi, padsweep_hold = 2;
+extern unsigned int diag_vi_count;
+
+static const u32 sweep_buttons[] = {
+	PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y, PAD_TRIGGER_Z, PAD_TRIGGER_L,
+	PAD_TRIGGER_R, PAD_BUTTON_START, PAD_BUTTON_UP, PAD_BUTTON_DOWN, PAD_BUTTON_LEFT,
+	PAD_BUTTON_RIGHT,
+};
+#define SWEEP_AXIS 256
+#define SWEEP_RIM  360
+#define SWEEP_BTN  16	// held for half of it, released for the other half
+
+static void padsweep(gc_raw_t* r)
 {
-	unsigned int b = PAD_ButtonsHeld(Control);
-	s8 stickX      = PAD_StickX(Control);
-	s8 stickY      = PAD_StickY(Control);
-	s8 substickX   = PAD_SubStickX(Control);
-	s8 substickY   = PAD_SubStickY(Control);
-	
-	if(stickX    < -48) b |= ANALOG_L;
-	if(stickX    >  48) b |= ANALOG_R;
-	if(stickY    >  48) b |= ANALOG_U;
-	if(stickY    < -48) b |= ANALOG_D;
-	
-	if(substickX < -48) b |= C_STICK_L;
-	if(substickX >  48) b |= C_STICK_R;
-	if(substickY >  48) b |= C_STICK_U;
-	if(substickY < -48) b |= C_STICK_D;
-	
+	unsigned int nb = sizeof(sweep_buttons) / sizeof(sweep_buttons[0]);
+	unsigned int step = (diag_vi_count - padsweep_vi) / padsweep_hold;
+	step %= 4 * SWEEP_AXIS + SWEEP_RIM + nb * SWEEP_BTN;
+	memset(r, 0, sizeof(*r));
+	if (step < 4 * SWEEP_AXIS) {
+		s8 v = (s8)((int)(step % SWEEP_AXIS) - 128);
+		switch (step / SWEEP_AXIS) {
+			case 0: r->sx = v; break;
+			case 1: r->sy = v; break;
+			case 2: r->cx = v; break;
+			case 3: r->cy = v; break;
+		}
+		return;
+	}
+	step -= 4 * SWEEP_AXIS;
+	if (step < SWEEP_RIM) {
+		float a = step * (3.14159265f / 180.0f);
+		float ca = fabsf(cosf(a)), sa = fabsf(sinf(a));
+		float rim = GC_MAIN_FULL * src_gate_radius(atan2f(fminf(ca, sa), fmaxf(ca, sa)));
+		r->sx = (s8)lroundf(rim * cosf(a));
+		r->sy = (s8)lroundf(rim * sinf(a));
+		return;
+	}
+	step -= SWEEP_RIM;
+	if (step % SWEEP_BTN < SWEEP_BTN / 2)
+		r->btns = sweep_buttons[step / SWEEP_BTN];
+}
+
+static int sweeping(int Control)
+{
+	return Control == 0 && padsweep_vi && diag_vi_count >= padsweep_vi;
+}
+
+static void gc_read(int Control, gc_raw_t* r)
+{
+	if (sweeping(Control)) {
+		padsweep(r);
+	} else {
+		r->btns = PAD_ButtonsHeld(Control);
+		r->sx = PAD_StickX(Control);
+		r->sy = PAD_StickY(Control);
+		r->cx = PAD_SubStickX(Control);
+		r->cy = PAD_SubStickY(Control);
+	}
+	if (Control == 0)
+		perfProf_padRaw(r->sx, r->sy, r->cx, r->cy, r->btns);
+}
+
+static unsigned int getButtons(const gc_raw_t* r)
+{
+	unsigned int b = r->btns;
+
+	if(r->sx < -48) b |= ANALOG_L;
+	if(r->sx >  48) b |= ANALOG_R;
+	if(r->sy >  48) b |= ANALOG_U;
+	if(r->sy < -48) b |= ANALOG_D;
+
+	if(r->cx < -48) b |= C_STICK_L;
+	if(r->cx >  48) b |= C_STICK_R;
+	if(r->cy >  48) b |= C_STICK_U;
+	if(r->cy < -48) b |= C_STICK_D;
+
 	return b;
 }
 
@@ -106,10 +178,12 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	BUTTONS* c = Keys;
 	memset(c, 0, sizeof(BUTTONS));
 
-	controller_GC.available[Control] = (gc_connected & (1<<Control)) ? 1 : 0;
+	controller_GC.available[Control] = (gc_connected & (1<<Control)) || sweeping(Control);
 	if (!controller_GC.available[Control]) return 0;
 
-	unsigned int b = getButtons(Control);
+	gc_raw_t r;
+	gc_read(Control, &r);
+	unsigned int b = getButtons(&r);
 	inline int isHeld(button_tp button){
 		return (b & button->mask) == button->mask;
 	}
@@ -132,23 +206,16 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	c->D_CBUTTON    = isHeld(config->CD);
 	c->U_CBUTTON    = isHeld(config->CU);
 
-	if(config->analog->mask == ANALOG_AS_ANALOG){
-		c->X_AXIS = 5*PAD_StickX(Control)/6;
-		c->Y_AXIS = 5*PAD_StickY(Control)/6;
-	} else if(config->analog->mask == C_STICK_AS_ANALOG){
-		c->X_AXIS = 5*PAD_SubStickX(Control)/6;
-		c->Y_AXIS = 5*PAD_SubStickY(Control)/6;
-	} else if(config->analog->mask == BUTTON_AS_ANALOG){
-		if(b & PAD_BUTTON_RIGHT)
-			c->X_AXIS = +80;
-		else if(b & PAD_BUTTON_LEFT)
-			c->X_AXIS = -80;
-		if(b & PAD_BUTTON_UP)
-			c->Y_AXIS = +80;
-		else if(b & PAD_BUTTON_DOWN)
-			c->Y_AXIS = -80;
-	}
-	if(config->invertedY) c->Y_AXIS = -c->Y_AXIS;
+	signed char x = 0, y = 0;
+	if(config->analog->mask == ANALOG_AS_ANALOG)
+		gc_stick(r.sx, r.sy, GC_MAIN_FULL, &x, &y);
+	else if(config->analog->mask == C_STICK_AS_ANALOG)
+		gc_stick(r.cx, r.cy, GC_CSTICK_FULL, &x, &y);
+	else if(config->analog->mask == BUTTON_AS_ANALOG)
+		button_stick(!!(b & PAD_BUTTON_RIGHT) - !!(b & PAD_BUTTON_LEFT),
+		             !!(b & PAD_BUTTON_UP) - !!(b & PAD_BUTTON_DOWN), &x, &y);
+	c->X_AXIS = x;
+	c->Y_AXIS = config->invertedY ? -y : y;
 
 	// Return whether the exit button(s) are pressed
 	return isHeld(config->exit);
@@ -218,4 +285,6 @@ static void refreshAvailable(void){
 	int i;
 	for(i=0; i<4; ++i)
 		controller_GC.available[i] = (gc_connected & (1<<i));
+	if(padsweep_vi) // the sweep stands in for a pad on port 1, plugged in or not
+		controller_GC.available[0] = 1;
 }

@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <malloc.h>
+#include <fat.h>
 #ifdef DEBUGON
 # include <debug.h>
 #endif
@@ -293,7 +294,46 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           doc/subsystem-review.md's New ROM
                                           menu slowdown writeup) can be
                                           checked against a real load, not
-                                          just a fast scan. */
+                                          just a fast scan.
+     chain=<vis>[,padsweep=<vi>] <rom>   One line per game: run each for
+                                          <vis> guest VIs, one after another,
+                                          in one boot, then power off. On
+                                          hardware, moving the SD card is the
+                                          slow part, so one boot collects
+                                          every game. Each game starts from
+                                          VI 0 with native saves neither
+                                          loaded nor written (autosave off),
+                                          so runs compare across sessions;
+                                          other diag.cfg lines apply to every
+                                          game. Per game: a game: line and an
+                                          "=== chain n/N end ===" line in
+                                          perf.log (PERF_PROF builds), the
+                                          last displayed frame in
+                                          xfb_NN.bin, and padtrace_NN.csv when
+                                          the game read a pad. A game that
+                                          stops producing VIs is cut off by
+                                          a host-retrace watchdog (3x its
+                                          length + 60 s) and marked
+                                          how=timeout. scripts/chain_table.py
+                                          reads it all back. ,padsweep=<vi>
+                                          runs the pad sweep (below) in that
+                                          game only.
+     padsweep=<vi>[,<hold>]              From guest VI <vi> of each game on,
+                                          the GameCube driver on port 1 reads
+                                          a generated sweep instead of the
+                                          pad: each stick axis end to end,
+                                          the stick's rim, then every button
+                                          alone, <hold> VIs per step
+                                          (default 2), repeating. It stands
+                                          in for the raw PAD_* reading, so
+                                          everything after it runs as for a
+                                          real pad -- in Dolphin and on a Wii
+                                          alike. padsweep_hold=<n> sets the
+                                          step length alone (for a chain's
+                                          per-game ,padsweep=).
+                                          scripts/padtest.py checks
+                                          padtrace_NN.csv. See
+                                          doc/controller-testing.md. */
 extern "C" void DiagNav_SelectRomSD(void);
 extern "C" void DiagNav_LoadFromSD(void);
 extern "C" void DiagNav_LoadFromSD_SelectFirst(void);
@@ -312,6 +352,62 @@ static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
 static int g_diagTestSelectLoad = 0; // 1 = click the first ROM in the SD browser listing at boot, 0 = off
+
+/* chain= -- see the doc comment above. */
+#define CHAIN_MAX 32
+static struct { unsigned int vis, padsweep; char rom[192]; } g_chain[CHAIN_MAX];
+static int g_chainN, g_chainI;
+static unsigned int g_padsweepAll; // padsweep= for every game; chain=<vis>,padsweep=<vi> for one
+static volatile unsigned int g_retraces, g_chainDeadline;
+static volatile bool g_chainTimedOut;
+extern "C" unsigned int diag_vi_count, diag_stop_vi;
+extern "C" unsigned int padsweep_vi, padsweep_hold;
+extern int autobootROM(const char* path);
+extern bool autobootQuiet;
+
+static void chainArm(int i) {
+	diag_vi_count = 0;
+	diag_stop_vi = g_chain[i].vis;
+	padsweep_vi = g_chain[i].padsweep ? g_chain[i].padsweep : g_padsweepAll;
+	g_chainTimedOut = false;
+	g_chainDeadline = g_retraces + 3 * g_chain[i].vis + 60 * 60;
+}
+
+/* The frame on screen when the game stopped, raw from the XFB (YUYV, fbWidth x xfbHeight
+   after a 16-byte "WXFB" w h 0 header): a hardware run can't be screenshotted, and this
+   is what says what a row of numbers was measured on. */
+static void chainSnapshot(int n) {
+	char name[40];
+	void* xfb = VIDEO_GetCurrentFramebuffer();
+	if (!xfb) return;
+	snprintf(name, sizeof(name), "sd:/wii64/xfb_%02d.bin", n);
+	FILE* f = fopen(name, "wb");
+	if (!f) return;
+	u32 hdr[4] = { 0x57584642, vmode->fbWidth, vmode->xfbHeight, 0 };
+	fwrite(hdr, sizeof(hdr), 1, f);
+	fwrite(xfb, 2, vmode->fbWidth * vmode->xfbHeight, f);
+	fclose(f);
+}
+
+/* A chained game has come back from go(): file its results and boot the next; after the
+   last, power off. Returns true while there is another game to run. */
+static bool chainNext(void) {
+	if (!g_chainN || g_chainI >= g_chainN) return false;
+	const char* how = !diag_vi_count ? "load_failed" : g_chainTimedOut ? "timeout" : "vis";
+	if (diag_vi_count) chainSnapshot(g_chainI + 1);
+	perfProf_gameEnd(g_chainI + 1, g_chainN, diag_vi_count, g_chain[g_chainI].rom, how);
+	if (++g_chainI < g_chainN) {
+		chainArm(g_chainI);
+		autobootROM(g_chain[g_chainI].rom);
+		return true;
+	}
+	diag_stop_vi = 0;
+	// Unmount first: a Wii that powers off with the FAT cache dirty loses the log.
+	fatUnmount("sd");
+	fatUnmount("usb");
+	SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+	return false;
+}
 
 static void apply_diag_automation(void) {
 	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
@@ -349,9 +445,28 @@ static void apply_diag_automation(void) {
 			g_diagTestSaveLoad = 1;
 		} else if(strncmp(line, "test_selectload=1", 17) == 0) {
 			g_diagTestSelectLoad = 1;
+		} else if(strncmp(line, "chain=", 6) == 0 && g_chainN < CHAIN_MAX) {
+			// chain=<vis>[,padsweep=<vi>] <rom path>
+			char* p = line + 6;
+			g_chain[g_chainN].vis = strtoul(p, &p, 10);
+			g_chain[g_chainN].padsweep = 0;
+			if(*p == ',') sscanf(p, ",padsweep=%u", &g_chain[g_chainN].padsweep);
+			p = strchr(p, ' ');
+			if(p && g_chain[g_chainN].vis && sscanf(p + 1, "%191[^\r\n]", g_chain[g_chainN].rom) == 1)
+				g_chainN++;
+		} else if(sscanf(line, "padsweep_hold=%u", &padsweep_hold) == 1) {
+			if(!padsweep_hold) padsweep_hold = 2; // step length for per-game ,padsweep= too
+		} else if(sscanf(line, "padsweep=%u,%u", &g_padsweepAll, &padsweep_hold) >= 1) {
+			padsweep_vi = g_padsweepAll;
+			if(!padsweep_hold) padsweep_hold = 2;
 		}
 	}
 	fclose(f);
+	if(g_chainN) {
+		autobootQuiet = true;
+		Autoboot::setPath(g_chain[0].rom);
+		chainArm(0);
+	}
 }
 
 void load_config(const char *loaded_path) {
@@ -396,6 +511,8 @@ void load_config(const char *loaded_path) {
 		}
 		if(g_diagDynacoreOverride != -1) // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
 			dynacore = g_diagDynacoreOverride;
+		if(g_chainN) // a chain never loads or writes the card's real saves
+			autoSave = AUTOSAVE_DISABLE;
 		sprintf(configFile_file.name, "%s%s", prefix, "controlG.cfg");
 		f = fopen( configFile_file.name, "r" );  //attempt to open file
 		if(f) {
@@ -435,6 +552,11 @@ void load_config(const char *loaded_path) {
 
 extern "C" void ScanPADSandReset(u32 _) {
 	drcNeedScan = padNeedScan = wpadNeedScan = 1;
+	// Host retraces keep coming when a guest hangs; guest VIs may not.
+	if(++g_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
+		g_chainTimedOut = true;
+		stop_it();
+	}
 	if(!((*(u32*)0xCC003000)>>16))
 		stop_it();
 }
@@ -525,7 +647,8 @@ int main(int argc, const char* argv[]) {
 #else
 	load_config("sd");
 #endif
-	MenuContext *menu = new MenuContext(vmode);
+	MenuContext *menu = new MenuContext(vmode); // runs an autoboot ROM, chain game 1 included
+	while (chainNext()) {}
 	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
 	//Switch to MiniMenu if active
 	if (miniMenuActive)
@@ -709,6 +832,8 @@ int loadROM(fileBrowser_file* rom){
 
 	cpu_init();
 	perfProf_mark("loadROM: after cpu_init");
+	diag_vi_count = 0;
+	perfProf_gameBegin();
 
   if(autoSave==AUTOSAVE_ENABLE) {
     switch (nativeSaveDevice)

@@ -26,3 +26,6 @@ CLAUDE.md
 .continue/
 
 __pycache__/
+
+# Baseline screenshots: large binary media, kept out of git as in WiiStation
+baselines/media/

@@ -1,0 +1,9 @@
+Dolphin exited after 305s (powered off)
+  # rom                                how            vis  wall s speed  idle   fps     exc  recomp tree  undr  ovr   ipc   pad png
+-----------------------------------------------------------------------------------------------------------------------------------
+  1 Super Mario 64.v64                 vis           3600    60.0  1.00   41%  28.2   27303    1567   15     7    0  0.00     4 xfb_01.png
+  2 Banjo-Kazooie.V64                  vis           3600    60.1  1.00   58%  21.6   22438    2351   32     3    0  0.00     0 xfb_02.png
+  3 Zelda Ocarina of Time Master Quest vis           3600    71.4  0.84   51%   0.2  139800     480    9   845    0  0.00     0 xfb_03.png
+  4 Legend of Zelda, The - Majora's Ma vis           3600    72.0  1.00   84%   0.2  144446     565   10     1    0  0.00     0 xfb_04.png
+
+flush cost: 19.7 ms over 26 flushes

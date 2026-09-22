@@ -48,6 +48,7 @@
 #include "../main/rom.h"
 #include "../fileBrowser/fileBrowser.h"
 #include "Saves.h"
+#include "../main/perf_prof.h"
 
 #ifdef HW_RVL
 #include "MEM2.h"
@@ -304,6 +305,7 @@ void internal_ReadController(int Control, BYTE *Command)
 				BUTTONS Keys;
 				getKeys(Control, &Keys);
 				*((unsigned long *)(Command + 3)) = Keys.Value;
+				perfProf_padRead(Control, Keys.Value);
 			}
 		break;
 		case 2: // read controller pack

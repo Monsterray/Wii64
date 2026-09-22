@@ -37,6 +37,7 @@
 #include "../Invalid_Code.h"
 #include "../interupt.h"
 #include "Recompile.h"
+#include "../../main/perf_prof.h"
 #include "../Recomp-Cache.h"
 #include "Wrappers.h"
 
@@ -131,6 +132,7 @@ void set_jump_special(int which, int new_jump){
 
 // Converts a sequence of MIPS instructions to a PowerPC block
 PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
+	perfProf_recompile();
 	src_first = ppc_block->mips_code + ((addr&0xfff)>>2);
 	addr_first = ppc_block->start_address + (addr&0xfff);
 	code_addr = NULL; // Just to make sure this isn't used here

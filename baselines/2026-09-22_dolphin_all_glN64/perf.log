@@ -1,0 +1,1365 @@
+--- wii64 perf log ---
+selftest:
+  raw[0]=51237175848905996
+  raw[1]=51237175848905996
+  raw[2]=51237175848906010
+  raw[3]=51237175848906023
+  raw[4]=51237175848906036
+  delta[0]=0us
+  delta[1]=0us
+  delta[2]=0us
+  delta[3]=0us
+mark: loadROM: enter
+mark: loadROM: before rom_read
+mark: ROMCache_load: enter
+mark: ROMCache_load: before first read
+mark: ROMCache_load: first read returned
+mark: ROMCache_load: byte_swap_type set
+mark: ROMCache_load: first byte_swap done
+mark: ROMCache_load: loop exited normally
+mark: loadROM: after rom_read
+mark: loadROM: before init_memory
+mark: loadROM: after init_memory
+mark: loadROM: before romOpen_gfx
+mark: loadROM: after romOpen_gfx / before romOpen_audio
+mark: loadROM: after romOpen_audio / before romOpen_input
+mark: loadROM: after romOpen_input / before cpu_init
+mark: loadROM: after cpu_init
+menufps: 5.7
+fps: 0.0
+vis: 0.0
+cpu: exceptions=0 cacheResets=0 batches=0 verts=0 texStalls=0 recompiles=0 underruns=0 overruns=0 sleep_us=0
+vis: 60.0
+cpu: exceptions=240 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=189 underruns=2 overruns=0 sleep_us=268031
+vis: 60.0
+cpu: exceptions=540 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=198 underruns=2 overruns=0 sleep_us=750315
+vis: 60.0
+cpu: exceptions=840 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=204 underruns=2 overruns=0 sleep_us=1232841
+vis: 60.0
+cpu: exceptions=1135 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=204 underruns=2 overruns=0 sleep_us=1715829
+fps: 0.5
+vis: 60.0
+cpu: exceptions=1431 cacheResets=1 batches=414 verts=9387 texStalls=0 recompiles=468 underruns=3 overruns=0 sleep_us=2018031
+fps: 20.6
+vis: 60.0
+cpu: exceptions=1588 cacheResets=1 batches=2484 verts=56322 texStalls=0 recompiles=475 underruns=3 overruns=0 sleep_us=2445418
+fps: 29.8
+vis: 60.0
+cpu: exceptions=1752 cacheResets=1 batches=4554 verts=103257 texStalls=0 recompiles=478 underruns=3 overruns=0 sleep_us=2869581
+fps: 30.1
+vis: 60.0
+cpu: exceptions=1894 cacheResets=1 batches=6624 verts=150192 texStalls=0 recompiles=478 underruns=3 overruns=0 sleep_us=3304037
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2036 cacheResets=1 batches=8694 verts=197127 texStalls=0 recompiles=478 underruns=3 overruns=0 sleep_us=3737504
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2178 cacheResets=1 batches=10767 verts=244080 texStalls=0 recompiles=489 underruns=3 overruns=0 sleep_us=4169671
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2319 cacheResets=1 batches=12574 verts=284835 texStalls=0 recompiles=498 underruns=3 overruns=0 sleep_us=4607374
+vis: 60.0
+cpu: exceptions=2638 cacheResets=1 batches=12574 verts=284835 texStalls=0 recompiles=675 underruns=4 overruns=0 sleep_us=4818493
+vis: 60.0
+cpu: exceptions=2728 cacheResets=1 batches=12574 verts=284835 texStalls=0 recompiles=733 underruns=4 overruns=0 sleep_us=5038693
+vis: 60.0
+cpu: exceptions=2818 cacheResets=1 batches=12574 verts=284835 texStalls=0 recompiles=784 underruns=4 overruns=0 sleep_us=5314536
+fps: 3.9
+vis: 60.0
+cpu: exceptions=2961 cacheResets=1 batches=13906 verts=302151 texStalls=0 recompiles=910 underruns=6 overruns=0 sleep_us=5543205
+fps: 15.2
+vis: 60.0
+cpu: exceptions=3118 cacheResets=1 batches=18796 verts=366456 texStalls=0 recompiles=910 underruns=6 overruns=0 sleep_us=5733598
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3273 cacheResets=1 batches=23669 verts=430407 texStalls=0 recompiles=927 underruns=6 overruns=0 sleep_us=5924366
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3436 cacheResets=1 batches=28531 verts=494274 texStalls=0 recompiles=927 underruns=6 overruns=0 sleep_us=6115921
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3591 cacheResets=1 batches=33396 verts=558159 texStalls=0 recompiles=927 underruns=6 overruns=0 sleep_us=6321709
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3762 cacheResets=1 batches=38262 verts=622050 texStalls=0 recompiles=927 underruns=6 overruns=0 sleep_us=6505626
+fps: 29.9
+vis: 60.0
+cpu: exceptions=3974 cacheResets=1 batches=43123 verts=685911 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=6668482
+fps: 30.0
+vis: 60.0
+cpu: exceptions=4197 cacheResets=1 batches=47987 verts=749790 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=6808614
+fps: 30.0
+vis: 60.0
+cpu: exceptions=4424 cacheResets=1 batches=52855 verts=813693 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=6949827
+fps: 30.1
+vis: 60.0
+cpu: exceptions=4644 cacheResets=1 batches=57716 verts=877554 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7097648
+fps: 29.9
+vis: 60.0
+cpu: exceptions=4858 cacheResets=1 batches=62577 verts=941415 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7252113
+fps: 30.1
+vis: 60.0
+cpu: exceptions=5077 cacheResets=1 batches=67449 verts=1005342 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7402467
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5294 cacheResets=1 batches=72310 verts=1069203 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7549244
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5520 cacheResets=1 batches=77176 verts=1133094 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7689939
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5753 cacheResets=1 batches=82039 verts=1196967 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7827710
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5984 cacheResets=1 batches=86908 verts=1260876 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=7963412
+fps: 30.0
+vis: 60.0
+cpu: exceptions=6202 cacheResets=1 batches=91773 verts=1324761 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=8110820
+fps: 28.1
+vis: 60.0
+cpu: exceptions=6428 cacheResets=1 batches=96313 verts=1384383 texStalls=0 recompiles=928 underruns=6 overruns=0 sleep_us=8264915
+fps: 27.1
+vis: 60.0
+cpu: exceptions=6660 cacheResets=1 batches=100531 verts=1439760 texStalls=0 recompiles=930 underruns=6 overruns=0 sleep_us=8419320
+fps: 28.2
+vis: 60.0
+cpu: exceptions=6895 cacheResets=1 batches=105067 verts=1499358 texStalls=0 recompiles=930 underruns=6 overruns=0 sleep_us=8563840
+vis: 60.0
+cpu: exceptions=7119 cacheResets=1 batches=109936 verts=1563267 texStalls=0 recompiles=930 underruns=6 overruns=0 sleep_us=8694298
+fps: 30.0
+vis: 60.0
+cpu: exceptions=7347 cacheResets=1 batches=114796 verts=1627122 texStalls=0 recompiles=930 underruns=6 overruns=0 sleep_us=8831156
+fps: 29.0
+vis: 60.0
+cpu: exceptions=7581 cacheResets=1 batches=119011 verts=1682481 texStalls=0 recompiles=930 underruns=6 overruns=0 sleep_us=8985943
+fps: 26.2
+vis: 60.0
+cpu: exceptions=7813 cacheResets=1 batches=123229 verts=1737858 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9133527
+fps: 26.0
+vis: 60.0
+cpu: exceptions=8069 cacheResets=1 batches=127446 verts=1793229 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9279600
+fps: 26.3
+vis: 60.0
+cpu: exceptions=8313 cacheResets=1 batches=131991 verts=1852881 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9419199
+fps: 26.5
+vis: 60.0
+cpu: exceptions=8556 cacheResets=1 batches=136529 verts=1912491 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9555913
+fps: 28.7
+vis: 60.0
+cpu: exceptions=8791 cacheResets=1 batches=141067 verts=1972101 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9696849
+fps: 29.0
+vis: 60.0
+cpu: exceptions=9024 cacheResets=1 batches=145937 verts=2036016 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9826845
+fps: 30.0
+vis: 60.0
+cpu: exceptions=9251 cacheResets=1 batches=150475 verts=2095626 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=9974188
+fps: 29.0
+vis: 60.0
+cpu: exceptions=9479 cacheResets=1 batches=155342 verts=2159523 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10120620
+vis: 60.0
+cpu: exceptions=9766 cacheResets=1 batches=161826 verts=2244687 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10303367
+fps: 30.1
+vis: 60.0
+cpu: exceptions=9981 cacheResets=1 batches=166689 verts=2308560 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10456515
+fps: 30.0
+vis: 60.0
+cpu: exceptions=10199 cacheResets=1 batches=171231 verts=2368194 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10614474
+fps: 29.0
+vis: 60.0
+cpu: exceptions=10434 cacheResets=1 batches=176098 verts=2432091 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10750102
+fps: 27.5
+vis: 60.0
+cpu: exceptions=10664 cacheResets=1 batches=180312 verts=2487444 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=10904754
+fps: 28.1
+vis: 60.0
+cpu: exceptions=10896 cacheResets=1 batches=184854 verts=2547078 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11044028
+fps: 27.8
+vis: 60.0
+cpu: exceptions=11133 cacheResets=1 batches=189393 verts=2606694 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11177417
+fps: 27.4
+vis: 60.0
+cpu: exceptions=11359 cacheResets=1 batches=193932 verts=2666310 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11327368
+fps: 27.1
+vis: 60.0
+cpu: exceptions=11596 cacheResets=1 batches=198151 verts=2721693 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11479533
+fps: 28.4
+vis: 60.0
+cpu: exceptions=11829 cacheResets=1 batches=202689 verts=2781303 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11625627
+fps: 26.9
+vis: 60.0
+cpu: exceptions=12060 cacheResets=1 batches=207228 verts=2840919 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11769128
+fps: 28.7
+vis: 60.0
+cpu: exceptions=12289 cacheResets=1 batches=212096 verts=2904822 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=11900127
+fps: 29.3
+vis: 60.0
+cpu: exceptions=12514 cacheResets=1 batches=216632 verts=2964420 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12042488
+fps: 28.8
+vis: 60.0
+cpu: exceptions=12744 cacheResets=1 batches=221170 verts=3024030 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12181913
+fps: 27.1
+vis: 60.0
+cpu: exceptions=12980 cacheResets=1 batches=225716 verts=3083688 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12330662
+fps: 29.1
+vis: 60.0
+cpu: exceptions=13212 cacheResets=1 batches=230578 verts=3147555 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12463646
+fps: 28.1
+vis: 60.0
+cpu: exceptions=13444 cacheResets=1 batches=235125 verts=3207219 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12605364
+fps: 28.7
+vis: 60.0
+cpu: exceptions=13684 cacheResets=1 batches=239660 verts=3266811 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12740975
+fps: 28.8
+vis: 60.0
+cpu: exceptions=13914 cacheResets=1 batches=244201 verts=3326439 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=12877291
+fps: 29.0
+vis: 60.0
+cpu: exceptions=14151 cacheResets=1 batches=249070 verts=3390348 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13005508
+fps: 28.1
+vis: 60.0
+cpu: exceptions=14395 cacheResets=1 batches=253605 verts=3449940 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13136445
+fps: 25.7
+vis: 60.0
+cpu: exceptions=14642 cacheResets=1 batches=257825 verts=3505329 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13285592
+vis: 60.0
+cpu: exceptions=14888 cacheResets=1 batches=262690 verts=3569214 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13408585
+fps: 30.0
+vis: 60.0
+cpu: exceptions=15116 cacheResets=1 batches=267231 verts=3628842 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13552189
+fps: 29.0
+vis: 60.0
+cpu: exceptions=15349 cacheResets=1 batches=272099 verts=3692745 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13687902
+fps: 29.0
+vis: 60.0
+cpu: exceptions=15582 cacheResets=1 batches=276958 verts=3756594 texStalls=0 recompiles=934 underruns=6 overruns=0 sleep_us=13822792
+fps: 30.0
+vis: 60.0
+cpu: exceptions=15811 cacheResets=1 batches=281839 verts=3820575 texStalls=0 recompiles=939 underruns=6 overruns=0 sleep_us=13965070
+fps: 30.0
+vis: 60.0
+cpu: exceptions=16091 cacheResets=1 batches=283469 verts=3841920 texStalls=0 recompiles=1005 underruns=6 overruns=0 sleep_us=14162058
+fps: 7.0
+vis: 60.0
+cpu: exceptions=16353 cacheResets=1 batches=285365 verts=3886848 texStalls=0 recompiles=1408 underruns=8 overruns=0 sleep_us=14320078
+fps: 33.8
+vis: 60.0
+cpu: exceptions=16574 cacheResets=1 batches=288906 verts=3970878 texStalls=0 recompiles=1408 underruns=8 overruns=0 sleep_us=14580635
+fps: 29.8
+vis: 60.0
+cpu: exceptions=16830 cacheResets=1 batches=292212 verts=4045632 texStalls=0 recompiles=1462 underruns=8 overruns=0 sleep_us=14803064
+fps: 30.1
+vis: 60.0
+cpu: exceptions=17055 cacheResets=1 batches=295540 verts=4119330 texStalls=0 recompiles=1463 underruns=8 overruns=0 sleep_us=15047459
+fps: 30.0
+vis: 60.0
+cpu: exceptions=17288 cacheResets=1 batches=298765 verts=4192410 texStalls=0 recompiles=1463 underruns=8 overruns=0 sleep_us=15292963
+fps: 30.0
+vis: 60.0
+cpu: exceptions=17515 cacheResets=1 batches=301982 verts=4265442 texStalls=0 recompiles=1463 underruns=8 overruns=0 sleep_us=15541305
+fps: 29.9
+vis: 60.0
+cpu: exceptions=17733 cacheResets=1 batches=305192 verts=4338432 texStalls=0 recompiles=1464 underruns=8 overruns=0 sleep_us=15800713
+fps: 30.0
+vis: 60.0
+cpu: exceptions=17950 cacheResets=1 batches=308402 verts=4411422 texStalls=0 recompiles=1466 underruns=8 overruns=0 sleep_us=16063683
+fps: 29.9
+vis: 60.0
+cpu: exceptions=18188 cacheResets=1 batches=311684 verts=4484844 texStalls=0 recompiles=1466 underruns=8 overruns=0 sleep_us=16296953
+fps: 30.0
+vis: 60.0
+cpu: exceptions=18438 cacheResets=1 batches=314894 verts=4557834 texStalls=0 recompiles=1466 underruns=8 overruns=0 sleep_us=16529351
+vis: 60.0
+cpu: exceptions=18683 cacheResets=1 batches=318104 verts=4630824 texStalls=0 recompiles=1466 underruns=8 overruns=0 sleep_us=16769040
+fps: 30.0
+vis: 60.0
+cpu: exceptions=18928 cacheResets=1 batches=321376 verts=4704186 texStalls=0 recompiles=1477 underruns=8 overruns=0 sleep_us=16996065
+fps: 30.0
+vis: 60.0
+cpu: exceptions=19170 cacheResets=1 batches=324771 verts=4778286 texStalls=0 recompiles=1477 underruns=8 overruns=0 sleep_us=17221614
+fps: 30.0
+vis: 60.0
+cpu: exceptions=19410 cacheResets=1 batches=328377 verts=4856028 texStalls=0 recompiles=1508 underruns=8 overruns=0 sleep_us=17426864
+fps: 29.9
+vis: 60.0
+cpu: exceptions=19657 cacheResets=1 batches=332194 verts=4941570 texStalls=0 recompiles=1508 underruns=8 overruns=0 sleep_us=17633882
+fps: 30.0
+vis: 60.0
+cpu: exceptions=19911 cacheResets=1 batches=336004 verts=5027070 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=17837782
+fps: 30.0
+vis: 60.0
+cpu: exceptions=20154 cacheResets=1 batches=339814 verts=5112570 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=18049489
+fps: 30.0
+vis: 60.0
+cpu: exceptions=20388 cacheResets=1 batches=343624 verts=5198070 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=18257428
+fps: 29.9
+vis: 60.0
+cpu: exceptions=20621 cacheResets=1 batches=347434 verts=5283570 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=18469528
+fps: 30.1
+vis: 60.0
+cpu: exceptions=20863 cacheResets=1 batches=351251 verts=5369112 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=18682813
+fps: 30.0
+vis: 60.0
+cpu: exceptions=21111 cacheResets=1 batches=355076 verts=5454702 texStalls=0 recompiles=1509 underruns=8 overruns=0 sleep_us=18889772
+fps: 30.0
+vis: 60.0
+cpu: exceptions=21357 cacheResets=1 batches=358895 verts=5540256 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=19094652
+fps: 30.0
+vis: 60.0
+cpu: exceptions=21605 cacheResets=1 batches=362778 verts=5626194 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=19295523
+fps: 30.0
+vis: 60.0
+cpu: exceptions=21849 cacheResets=1 batches=366727 verts=5712528 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=19501515
+fps: 30.1
+vis: 60.0
+cpu: exceptions=22074 cacheResets=1 batches=370524 verts=5797950 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=19724808
+fps: 30.0
+vis: 60.0
+cpu: exceptions=22306 cacheResets=1 batches=374331 verts=5883432 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=19955547
+fps: 29.9
+vis: 60.0
+cpu: exceptions=22560 cacheResets=1 batches=378031 verts=5968272 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=20163768
+fps: 30.0
+vis: 60.0
+cpu: exceptions=22808 cacheResets=1 batches=381697 verts=6052908 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=20382041
+fps: 30.0
+vis: 60.0
+cpu: exceptions=23044 cacheResets=1 batches=385355 verts=6137496 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=20602812
+fps: 30.0
+vis: 60.0
+cpu: exceptions=23280 cacheResets=1 batches=389009 verts=6222060 texStalls=0 recompiles=1526 underruns=8 overruns=0 sleep_us=20822591
+fps: 30.0
+vis: 60.0
+cpu: exceptions=23528 cacheResets=1 batches=392684 verts=6306750 texStalls=0 recompiles=1542 underruns=8 overruns=0 sleep_us=21037472
+fps: 30.0
+vis: 60.0
+cpu: exceptions=23768 cacheResets=1 batches=396371 verts=6391680 texStalls=0 recompiles=1542 underruns=8 overruns=0 sleep_us=21252977
+fps: 29.9
+vis: 60.0
+cpu: exceptions=24008 cacheResets=1 batches=400170 verts=6477744 texStalls=0 recompiles=1542 underruns=8 overruns=0 sleep_us=21461311
+fps: 30.1
+vis: 60.0
+cpu: exceptions=24247 cacheResets=1 batches=403935 verts=6563604 texStalls=0 recompiles=1542 underruns=8 overruns=0 sleep_us=21681295
+fps: 30.0
+vis: 60.0
+cpu: exceptions=24486 cacheResets=1 batches=407700 verts=6649464 texStalls=0 recompiles=1545 underruns=8 overruns=0 sleep_us=21904201
+fps: 30.3
+vis: 60.0
+cpu: exceptions=24706 cacheResets=1 batches=410613 verts=6717216 texStalls=0 recompiles=1545 underruns=8 overruns=0 sleep_us=22170963
+fps: 30.0
+vis: 60.0
+cpu: exceptions=24938 cacheResets=1 batches=412256 verts=6757854 texStalls=0 recompiles=1545 underruns=8 overruns=0 sleep_us=22467350
+fps: 29.8
+vis: 60.0
+cpu: exceptions=25185 cacheResets=1 batches=414451 verts=6810468 texStalls=0 recompiles=1547 underruns=8 overruns=0 sleep_us=22727828
+fps: 30.0
+vis: 60.0
+cpu: exceptions=25428 cacheResets=1 batches=418168 verts=6896040 texStalls=0 recompiles=1548 underruns=8 overruns=0 sleep_us=22945478
+fps: 30.1
+vis: 60.0
+cpu: exceptions=25673 cacheResets=1 batches=421326 verts=6959274 texStalls=0 recompiles=1548 underruns=8 overruns=0 sleep_us=23179719
+fps: 30.0
+vis: 60.0
+cpu: exceptions=25908 cacheResets=1 batches=424426 verts=7020804 texStalls=0 recompiles=1549 underruns=8 overruns=0 sleep_us=23413729
+fps: 30.0
+vis: 60.0
+cpu: exceptions=26151 cacheResets=1 batches=427451 verts=7081884 texStalls=0 recompiles=1549 underruns=8 overruns=0 sleep_us=23651256
+fps: 29.8
+vis: 60.0
+cpu: exceptions=26396 cacheResets=1 batches=431067 verts=7158714 texStalls=0 recompiles=1564 underruns=8 overruns=0 sleep_us=23866500
+fps: 30.1
+vis: 60.0
+cpu: exceptions=26633 cacheResets=1 batches=434797 verts=7244364 texStalls=0 recompiles=1565 underruns=8 overruns=0 sleep_us=24088718
+fps: 30.0
+vis: 60.0
+cpu: exceptions=26886 cacheResets=1 batches=438487 verts=7329774 texStalls=0 recompiles=1565 underruns=8 overruns=0 sleep_us=24311314
+vis: 60.0
+cpu: exceptions=27141 cacheResets=1 batches=442180 verts=7415256 texStalls=0 recompiles=1567 underruns=8 overruns=0 sleep_us=24529395
+fps: 30.0
+game: n=1/4 how=vis vis=3600 vi_rate=60 wall_us=60002191 sleep_us=24679195 avg_vis=59.50 avg_fps=28.22 exceptions=27300 cacheResets=1 recompiles=1567 batches=444650 verts=7472436 texStalls=0 treeDepthMax=15 underruns=8 overruns=0 pmc1=43729595308 pmc2=0 pmc3=0 pmc4=0 mmcr0=00000042 mmcr1=00000000 heap_used=11323768 heap_free=6024 arena1_free=421872 arena2_free=54302592 flushes=6 flush_us=4141 padtrace=6 rom=sd:/wii64/roms/Super Mario 64.v64
+=== chain 1/4 end vis=3600 how=vis rom=sd:/wii64/roms/Super Mario 64.v64 ===
+mark: loadROM: enter
+mark: loadROM: before rom_read
+mark: ROMCache_load: enter
+mark: ROMCache_load: before first read
+mark: ROMCache_load: first read returned
+mark: ROMCache_load: byte_swap_type set
+mark: ROMCache_load: first byte_swap done
+menufps: 0.0
+menufps: 59.8
+mark: ROMCache_load: loop exited normally
+mark: loadROM: after rom_read
+mark: loadROM: before init_memory
+mark: loadROM: after init_memory
+mark: loadROM: before romOpen_gfx
+mark: loadROM: after romOpen_gfx / before romOpen_audio
+mark: loadROM: after romOpen_audio / before romOpen_input
+mark: loadROM: after romOpen_input / before cpu_init
+mark: loadROM: after cpu_init
+menufps: 1.0
+fps: 2.5
+vis: 5.2
+cpu: exceptions=0 cacheResets=0 batches=0 verts=0 texStalls=0 recompiles=0 underruns=0 overruns=0 sleep_us=0
+vis: 53.8
+cpu: exceptions=34 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=138 underruns=0 overruns=0 sleep_us=0
+vis: 60.0
+cpu: exceptions=64 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=138 underruns=0 overruns=0 sleep_us=281305
+vis: 59.5
+cpu: exceptions=334 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=375 underruns=0 overruns=0 sleep_us=505514
+vis: 60.0
+cpu: exceptions=550 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=629 underruns=1 overruns=0 sleep_us=789143
+fps: 0.4
+vis: 60.0
+cpu: exceptions=752 cacheResets=1 batches=44 verts=2262 texStalls=0 recompiles=1899 underruns=2 overruns=0 sleep_us=907140
+vis: 60.0
+cpu: exceptions=903 cacheResets=1 batches=44 verts=2262 texStalls=0 recompiles=1902 underruns=2 overruns=0 sleep_us=1169491
+fps: 1.3
+vis: 60.0
+cpu: exceptions=1094 cacheResets=1 batches=476 verts=16800 texStalls=0 recompiles=1995 underruns=2 overruns=0 sleep_us=1457107
+fps: 30.0
+vis: 60.0
+cpu: exceptions=1275 cacheResets=1 batches=1302 verts=38046 texStalls=0 recompiles=2006 underruns=2 overruns=0 sleep_us=1786423
+fps: 30.0
+vis: 60.0
+cpu: exceptions=1464 cacheResets=1 batches=2343 verts=60582 texStalls=0 recompiles=2009 underruns=2 overruns=0 sleep_us=2107376
+fps: 30.0
+vis: 60.0
+cpu: exceptions=1641 cacheResets=1 batches=3405 verts=83244 texStalls=0 recompiles=2009 underruns=2 overruns=0 sleep_us=2431110
+fps: 30.0
+vis: 60.0
+cpu: exceptions=1822 cacheResets=1 batches=4460 verts=105570 texStalls=0 recompiles=2012 underruns=2 overruns=0 sleep_us=2754614
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2014 cacheResets=1 batches=5526 verts=127626 texStalls=0 recompiles=2012 underruns=2 overruns=0 sleep_us=3076091
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2202 cacheResets=1 batches=6552 verts=149442 texStalls=0 recompiles=2029 underruns=2 overruns=0 sleep_us=3397618
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2381 cacheResets=1 batches=7776 verts=179742 texStalls=0 recompiles=2029 underruns=2 overruns=0 sleep_us=3702076
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2588 cacheResets=1 batches=9397 verts=218808 texStalls=0 recompiles=2036 underruns=2 overruns=0 sleep_us=3962784
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2771 cacheResets=1 batches=11054 verts=250794 texStalls=0 recompiles=2047 underruns=2 overruns=0 sleep_us=4245581
+fps: 30.0
+vis: 60.0
+cpu: exceptions=2948 cacheResets=1 batches=12559 verts=275484 texStalls=0 recompiles=2063 underruns=2 overruns=0 sleep_us=4554593
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3120 cacheResets=1 batches=13817 verts=298692 texStalls=0 recompiles=2063 underruns=2 overruns=0 sleep_us=4882555
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3295 cacheResets=1 batches=14884 verts=320754 texStalls=0 recompiles=2064 underruns=2 overruns=0 sleep_us=5217566
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3479 cacheResets=1 batches=15921 verts=342636 texStalls=0 recompiles=2064 underruns=2 overruns=0 sleep_us=5546559
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3670 cacheResets=1 batches=16962 verts=365454 texStalls=0 recompiles=2064 underruns=2 overruns=0 sleep_us=5863831
+fps: 30.0
+vis: 60.0
+cpu: exceptions=3858 cacheResets=1 batches=18284 verts=402726 texStalls=0 recompiles=2064 underruns=2 overruns=0 sleep_us=6152970
+fps: 30.0
+vis: 60.0
+cpu: exceptions=4064 cacheResets=1 batches=19621 verts=440088 texStalls=0 recompiles=2065 underruns=2 overruns=0 sleep_us=6436514
+fps: 29.8
+vis: 60.0
+cpu: exceptions=4260 cacheResets=1 batches=22199 verts=475314 texStalls=0 recompiles=2081 underruns=2 overruns=0 sleep_us=6683831
+fps: 29.8
+vis: 60.0
+cpu: exceptions=4453 cacheResets=1 batches=27306 verts=517206 texStalls=0 recompiles=2081 underruns=2 overruns=0 sleep_us=6864863
+fps: 30.0
+vis: 60.0
+cpu: exceptions=4642 cacheResets=1 batches=32614 verts=560304 texStalls=0 recompiles=2081 underruns=2 overruns=0 sleep_us=7046159
+fps: 30.0
+vis: 60.0
+cpu: exceptions=4839 cacheResets=1 batches=37661 verts=601836 texStalls=0 recompiles=2082 underruns=2 overruns=0 sleep_us=7236030
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5031 cacheResets=1 batches=42768 verts=643728 texStalls=0 recompiles=2083 underruns=2 overruns=0 sleep_us=7425102
+fps: 30.0
+vis: 59.6
+cpu: exceptions=5238 cacheResets=1 batches=47984 verts=688098 texStalls=0 recompiles=2083 underruns=2 overruns=0 sleep_us=7597706
+fps: 30.0
+vis: 60.0
+cpu: exceptions=5437 cacheResets=1 batches=52337 verts=739146 texStalls=0 recompiles=2084 underruns=2 overruns=0 sleep_us=7806353
+vis: 60.0
+cpu: exceptions=5640 cacheResets=1 batches=54386 verts=776370 texStalls=0 recompiles=2095 underruns=2 overruns=0 sleep_us=8092844
+fps: 30.1
+vis: 60.0
+cpu: exceptions=5818 cacheResets=1 batches=56338 verts=813012 texStalls=0 recompiles=2095 underruns=2 overruns=0 sleep_us=8411114
+fps: 30.1
+vis: 60.0
+cpu: exceptions=5994 cacheResets=1 batches=57060 verts=842274 texStalls=0 recompiles=2098 underruns=2 overruns=0 sleep_us=8778847
+fps: 30.0
+vis: 60.0
+cpu: exceptions=6168 cacheResets=1 batches=57735 verts=871254 texStalls=0 recompiles=2098 underruns=2 overruns=0 sleep_us=9150883
+fps: 30.0
+vis: 60.0
+cpu: exceptions=6347 cacheResets=1 batches=58150 verts=886818 texStalls=0 recompiles=2130 underruns=2 overruns=0 sleep_us=9558605
+fps: 30.0
+vis: 60.0
+cpu: exceptions=6513 cacheResets=1 batches=58355 verts=894186 texStalls=0 recompiles=2277 underruns=2 overruns=0 sleep_us=9904781
+vis: 60.0
+cpu: exceptions=6700 cacheResets=1 batches=58355 verts=894186 texStalls=0 recompiles=2277 underruns=2 overruns=0 sleep_us=10170640
+vis: 60.0
+cpu: exceptions=6848 cacheResets=1 batches=58355 verts=894186 texStalls=0 recompiles=2283 underruns=2 overruns=0 sleep_us=10432664
+vis: 60.0
+cpu: exceptions=6994 cacheResets=1 batches=58355 verts=894186 texStalls=0 recompiles=2287 underruns=2 overruns=0 sleep_us=10704882
+vis: 60.0
+cpu: exceptions=7139 cacheResets=1 batches=58355 verts=894186 texStalls=0 recompiles=2288 underruns=2 overruns=0 sleep_us=10974031
+fps: 2.2
+vis: 60.0
+cpu: exceptions=7296 cacheResets=1 batches=58362 verts=894501 texStalls=0 recompiles=2301 underruns=2 overruns=0 sleep_us=11228839
+fps: 11.2
+vis: 60.0
+cpu: exceptions=7477 cacheResets=1 batches=59423 verts=910563 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=11566485
+fps: 19.3
+vis: 60.0
+cpu: exceptions=7644 cacheResets=1 batches=60638 verts=928761 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=11926082
+fps: 20.0
+vis: 60.0
+cpu: exceptions=7806 cacheResets=1 batches=62008 verts=949101 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=12314128
+vis: 60.0
+cpu: exceptions=7974 cacheResets=1 batches=63378 verts=969441 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=12702218
+fps: 20.0
+vis: 60.0
+cpu: exceptions=8139 cacheResets=1 batches=65008 verts=994809 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=13075067
+fps: 20.0
+vis: 60.0
+cpu: exceptions=8307 cacheResets=1 batches=66458 verts=1017075 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=13465070
+fps: 20.1
+vis: 60.0
+cpu: exceptions=8471 cacheResets=1 batches=67018 verts=1023165 texStalls=0 recompiles=2315 underruns=2 overruns=0 sleep_us=13882688
+fps: 20.0
+vis: 60.0
+cpu: exceptions=8649 cacheResets=1 batches=67753 verts=1035627 texStalls=0 recompiles=2318 underruns=2 overruns=0 sleep_us=14273016
+fps: 19.8
+vis: 60.0
+cpu: exceptions=8811 cacheResets=1 batches=69863 verts=1095117 texStalls=0 recompiles=2323 underruns=2 overruns=0 sleep_us=14593753
+fps: 19.3
+vis: 60.0
+cpu: exceptions=8988 cacheResets=1 batches=72172 verts=1149417 texStalls=0 recompiles=2323 underruns=2 overruns=0 sleep_us=14917157
+fps: 20.0
+vis: 60.0
+cpu: exceptions=9151 cacheResets=1 batches=73962 verts=1190325 texStalls=0 recompiles=2323 underruns=2 overruns=0 sleep_us=15234243
+fps: 15.4
+vis: 60.0
+cpu: exceptions=9315 cacheResets=1 batches=75752 verts=1235004 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=15541367
+fps: 20.0
+vis: 60.0
+cpu: exceptions=9480 cacheResets=1 batches=77672 verts=1284234 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=15883900
+fps: 20.0
+vis: 60.0
+cpu: exceptions=9653 cacheResets=1 batches=79592 verts=1333464 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=16225197
+fps: 20.0
+vis: 60.0
+cpu: exceptions=9815 cacheResets=1 batches=81512 verts=1382694 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=16573362
+fps: 20.0
+vis: 60.0
+cpu: exceptions=9984 cacheResets=1 batches=83432 verts=1431924 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=16912156
+fps: 20.0
+vis: 60.0
+cpu: exceptions=10146 cacheResets=1 batches=85352 verts=1481154 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=17258075
+fps: 20.0
+vis: 60.0
+cpu: exceptions=10314 cacheResets=1 batches=87272 verts=1530384 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=17606194
+vis: 60.0
+cpu: exceptions=10558 cacheResets=1 batches=89960 verts=1599306 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=18033752
+fps: 20.3
+vis: 60.0
+cpu: exceptions=10743 cacheResets=1 batches=91880 verts=1648536 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=18360065
+fps: 20.0
+vis: 60.0
+cpu: exceptions=10915 cacheResets=1 batches=93800 verts=1697766 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=18689237
+fps: 20.0
+vis: 60.0
+cpu: exceptions=11094 cacheResets=1 batches=95720 verts=1746996 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=19013347
+fps: 20.0
+vis: 60.0
+cpu: exceptions=11274 cacheResets=1 batches=97755 verts=1797936 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=19321087
+fps: 20.0
+vis: 60.0
+cpu: exceptions=11461 cacheResets=1 batches=100091 verts=1852134 texStalls=0 recompiles=2325 underruns=2 overruns=0 sleep_us=19610876
+fps: 20.0
+vis: 60.0
+cpu: exceptions=11659 cacheResets=1 batches=102451 verts=1906524 texStalls=0 recompiles=2326 underruns=2 overruns=0 sleep_us=19883941
+fps: 20.0
+vis: 60.0
+cpu: exceptions=11856 cacheResets=1 batches=104811 verts=1960914 texStalls=0 recompiles=2326 underruns=2 overruns=0 sleep_us=20188201
+fps: 20.0
+vis: 60.0
+cpu: exceptions=12036 cacheResets=1 batches=107171 verts=2015304 texStalls=0 recompiles=2326 underruns=2 overruns=0 sleep_us=20493482
+fps: 20.0
+vis: 60.0
+cpu: exceptions=12228 cacheResets=1 batches=109228 verts=2064366 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=20741055
+fps: 16.0
+vis: 60.0
+cpu: exceptions=12420 cacheResets=1 batches=112158 verts=2137296 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=21006903
+fps: 20.0
+vis: 60.0
+cpu: exceptions=12613 cacheResets=1 batches=115088 verts=2210226 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=21259515
+fps: 20.0
+vis: 59.9
+cpu: exceptions=12803 cacheResets=1 batches=118475 verts=2291943 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=21496809
+fps: 19.9
+vis: 59.9
+cpu: exceptions=12994 cacheResets=1 batches=122059 verts=2377443 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=21729183
+fps: 20.0
+vis: 60.0
+cpu: exceptions=13182 cacheResets=1 batches=125298 verts=2451801 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=21981365
+fps: 20.1
+vis: 60.0
+cpu: exceptions=13390 cacheResets=1 batches=128308 verts=2518761 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=22226188
+fps: 20.0
+vis: 60.0
+cpu: exceptions=13580 cacheResets=1 batches=131318 verts=2585721 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=22492772
+fps: 20.0
+vis: 60.0
+cpu: exceptions=13771 cacheResets=1 batches=134260 verts=2651406 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=22755653
+fps: 20.0
+vis: 60.0
+cpu: exceptions=13969 cacheResets=1 batches=137268 verts=2718354 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=23018812
+fps: 20.0
+vis: 60.0
+cpu: exceptions=14168 cacheResets=1 batches=140932 verts=2798628 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=23254172
+fps: 20.0
+vis: 60.0
+cpu: exceptions=14363 cacheResets=1 batches=144602 verts=2878938 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=23482130
+fps: 20.0
+vis: 60.0
+cpu: exceptions=14567 cacheResets=1 batches=148272 verts=2959248 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=23718647
+fps: 20.0
+vis: 60.0
+cpu: exceptions=14758 cacheResets=1 batches=151420 verts=3029490 texStalls=0 recompiles=2327 underruns=2 overruns=0 sleep_us=23982304
+fps: 20.0
+vis: 60.0
+cpu: exceptions=14970 cacheResets=1 batches=153924 verts=3084744 texStalls=0 recompiles=2330 underruns=2 overruns=0 sleep_us=24254714
+fps: 19.9
+vis: 59.9
+cpu: exceptions=15159 cacheResets=1 batches=156966 verts=3156453 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=24499568
+fps: 20.0
+vis: 59.9
+cpu: exceptions=15352 cacheResets=1 batches=160394 verts=3240477 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=24724491
+fps: 20.0
+vis: 60.0
+cpu: exceptions=15540 cacheResets=1 batches=163828 verts=3324537 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=24959508
+fps: 20.0
+vis: 60.0
+cpu: exceptions=15728 cacheResets=1 batches=167258 verts=3408597 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=25195030
+fps: 20.0
+vis: 59.9
+cpu: exceptions=15919 cacheResets=1 batches=170694 verts=3492741 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=25423219
+fps: 20.0
+vis: 59.9
+cpu: exceptions=16115 cacheResets=1 batches=174124 verts=3576801 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=25656560
+fps: 20.0
+vis: 60.0
+cpu: exceptions=16296 cacheResets=1 batches=177554 verts=3660861 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=25891546
+fps: 20.0
+vis: 60.0
+cpu: exceptions=16491 cacheResets=1 batches=180990 verts=3745005 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=26125552
+fps: 20.0
+vis: 59.6
+cpu: exceptions=16676 cacheResets=1 batches=184420 verts=3829065 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=26351590
+fps: 19.9
+vis: 59.9
+cpu: exceptions=16871 cacheResets=1 batches=187850 verts=3913125 texStalls=0 recompiles=2331 underruns=2 overruns=0 sleep_us=26569478
+fps: 20.0
+vis: 60.0
+cpu: exceptions=17064 cacheResets=1 batches=190817 verts=3985620 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=26787331
+fps: 18.2
+vis: 60.0
+cpu: exceptions=17273 cacheResets=1 batches=193847 verts=4059150 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=27036514
+fps: 20.0
+vis: 60.0
+cpu: exceptions=17483 cacheResets=1 batches=196877 verts=4132680 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=27280404
+fps: 20.0
+vis: 60.0
+cpu: exceptions=17695 cacheResets=1 batches=199907 verts=4206210 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=27519760
+fps: 20.0
+vis: 60.0
+cpu: exceptions=17887 cacheResets=1 batches=202937 verts=4279740 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=27767154
+fps: 20.0
+vis: 60.0
+cpu: exceptions=18096 cacheResets=1 batches=205971 verts=4353270 texStalls=0 recompiles=2333 underruns=2 overruns=0 sleep_us=28014967
+fps: 18.7
+vis: 60.0
+cpu: exceptions=18313 cacheResets=1 batches=208942 verts=4426602 texStalls=0 recompiles=2340 underruns=2 overruns=0 sleep_us=28207827
+vis: 60.0
+cpu: exceptions=18535 cacheResets=1 batches=211534 verts=4492122 texStalls=0 recompiles=2341 underruns=2 overruns=0 sleep_us=28406617
+fps: 16.4
+vis: 60.0
+cpu: exceptions=18731 cacheResets=1 batches=214774 verts=4574022 texStalls=0 recompiles=2341 underruns=2 overruns=0 sleep_us=28641249
+fps: 20.0
+vis: 60.0
+cpu: exceptions=18939 cacheResets=1 batches=218014 verts=4655922 texStalls=0 recompiles=2341 underruns=2 overruns=0 sleep_us=28862791
+fps: 20.0
+vis: 60.0
+cpu: exceptions=19145 cacheResets=1 batches=221262 verts=4737822 texStalls=0 recompiles=2341 underruns=2 overruns=0 sleep_us=29080219
+fps: 20.0
+vis: 60.0
+cpu: exceptions=19345 cacheResets=1 batches=224502 verts=4819722 texStalls=0 recompiles=2341 underruns=2 overruns=0 sleep_us=29311754
+fps: 20.0
+vis: 60.0
+cpu: exceptions=19556 cacheResets=1 batches=227766 verts=4902198 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=29532230
+fps: 20.0
+vis: 60.0
+cpu: exceptions=19782 cacheResets=1 batches=231132 verts=4986978 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=29744154
+fps: 20.0
+vis: 60.0
+cpu: exceptions=19992 cacheResets=1 batches=234494 verts=5071758 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=29966978
+fps: 17.6
+vis: 59.8
+cpu: exceptions=20211 cacheResets=1 batches=237518 verts=5148060 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=30167483
+fps: 19.9
+vis: 59.9
+cpu: exceptions=20424 cacheResets=1 batches=240878 verts=5232840 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=30382749
+fps: 20.0
+vis: 59.9
+cpu: exceptions=20635 cacheResets=1 batches=244238 verts=5317620 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=30603949
+fps: 20.0
+vis: 59.7
+cpu: exceptions=20843 cacheResets=1 batches=247598 verts=5402400 texStalls=0 recompiles=2343 underruns=2 overruns=0 sleep_us=30824398
+fps: 19.9
+vis: 59.7
+cpu: exceptions=21074 cacheResets=1 batches=250965 verts=5487222 texStalls=0 recompiles=2347 underruns=2 overruns=0 sleep_us=31021994
+fps: 19.9
+vis: 59.9
+cpu: exceptions=21287 cacheResets=1 batches=254415 verts=5575542 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=31225432
+fps: 20.0
+vis: 59.7
+cpu: exceptions=21487 cacheResets=1 batches=257862 verts=5664180 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=31446703
+fps: 19.9
+vis: 59.7
+cpu: exceptions=21692 cacheResets=1 batches=261310 verts=5752800 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=31658588
+fps: 19.9
+vis: 60.0
+cpu: exceptions=21899 cacheResets=1 batches=264062 verts=5823696 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=31871381
+fps: 15.5
+vis: 60.0
+cpu: exceptions=22085 cacheResets=1 batches=267158 verts=5903454 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=32103102
+fps: 20.0
+vis: 60.0
+cpu: exceptions=22287 cacheResets=1 batches=270598 verts=5992074 texStalls=0 recompiles=2351 underruns=2 overruns=0 sleep_us=32319488
+fps: 16.9
+game: n=2/4 how=vis vis=3600 vi_rate=60 wall_us=60076937 sleep_us=32464311 avg_vis=59.46 avg_fps=21.57 exceptions=22438 cacheResets=1 recompiles=2351 batches=272570 verts=6044694 texStalls=0 treeDepthMax=32 underruns=2 overruns=0 pmc1=43784468392 pmc2=0 pmc3=0 pmc4=0 mmcr0=00000042 mmcr1=00000000 heap_used=11363056 heap_free=3600 arena1_free=385008 arena2_free=54302592 flushes=6 flush_us=4632 padtrace=0 rom=sd:/wii64/roms/Banjo-Kazooie.V64
+=== chain 2/4 end vis=3600 how=vis rom=sd:/wii64/roms/Banjo-Kazooie.V64 ===
+mark: loadROM: enter
+mark: loadROM: before rom_read
+mark: ROMCache_load: enter
+menufps: 0.0
+mark: ROMCache_load: before first read
+mark: ROMCache_load: first read returned
+mark: ROMCache_load: byte_swap_type set
+mark: ROMCache_load: first byte_swap done
+menufps: 0.2
+menufps: 58.8
+menufps: 57.9
+mark: ROMCache_load: loop exited normally
+mark: loadROM: after rom_read
+mark: loadROM: before init_memory
+mark: loadROM: after init_memory
+mark: loadROM: before romOpen_gfx
+mark: loadROM: after romOpen_gfx / before romOpen_audio
+mark: loadROM: after romOpen_audio / before romOpen_input
+mark: loadROM: after romOpen_input / before cpu_init
+mark: loadROM: after cpu_init
+menufps: 1.3
+fps: 0.2
+vis: 1.6
+cpu: exceptions=0 cacheResets=0 batches=0 verts=0 texStalls=0 recompiles=0 underruns=0 overruns=0 sleep_us=0
+vis: 49.3
+cpu: exceptions=594 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=107 underruns=0 overruns=0 sleep_us=0
+vis: 60.0
+cpu: exceptions=1648 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=1 overruns=0 sleep_us=128161
+vis: 60.0
+cpu: exceptions=2818 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=1 overruns=0 sleep_us=296908
+vis: 45.6
+cpu: exceptions=3714 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=6 overruns=0 sleep_us=386511
+vis: 29.5
+cpu: exceptions=4299 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=21 overruns=0 sleep_us=386511
+vis: 29.1
+cpu: exceptions=4883 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=36 overruns=0 sleep_us=386511
+vis: 29.4
+cpu: exceptions=5468 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=51 overruns=0 sleep_us=386511
+vis: 29.8
+cpu: exceptions=6053 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=66 overruns=0 sleep_us=386511
+vis: 29.7
+cpu: exceptions=6638 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=81 overruns=0 sleep_us=386511
+vis: 29.8
+cpu: exceptions=7223 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=96 overruns=0 sleep_us=386511
+vis: 29.7
+cpu: exceptions=7808 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=111 overruns=0 sleep_us=386511
+vis: 30.4
+cpu: exceptions=8432 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=127 overruns=0 sleep_us=386511
+vis: 34.9
+cpu: exceptions=9133 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=145 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=9835 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=163 overruns=0 sleep_us=386511
+vis: 34.7
+cpu: exceptions=10537 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=180 overruns=0 sleep_us=386511
+vis: 35.2
+cpu: exceptions=11238 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=198 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=11940 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=216 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=12642 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=234 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=13343 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=252 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=14045 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=270 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=14747 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=288 overruns=0 sleep_us=386511
+vis: 35.8
+cpu: exceptions=15448 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=306 overruns=0 sleep_us=386511
+vis: 38.5
+cpu: exceptions=16228 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=324 overruns=0 sleep_us=386511
+vis: 37.4
+cpu: exceptions=16969 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=340 overruns=0 sleep_us=386511
+vis: 35.0
+cpu: exceptions=17671 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=358 overruns=0 sleep_us=386511
+vis: 35.0
+cpu: exceptions=18372 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=374 overruns=0 sleep_us=386511
+vis: 32.3
+cpu: exceptions=19035 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=391 overruns=0 sleep_us=386511
+vis: 35.9
+cpu: exceptions=19776 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=408 overruns=0 sleep_us=386511
+vis: 32.5
+cpu: exceptions=20439 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=425 overruns=0 sleep_us=386511
+vis: 33.8
+cpu: exceptions=21101 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=442 overruns=0 sleep_us=386511
+vis: 36.9
+cpu: exceptions=21842 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=459 overruns=0 sleep_us=386511
+vis: 35.7
+cpu: exceptions=22544 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=476 overruns=0 sleep_us=386511
+vis: 34.9
+cpu: exceptions=23246 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=493 overruns=0 sleep_us=386511
+vis: 37.4
+cpu: exceptions=23987 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=509 overruns=0 sleep_us=386511
+vis: 34.2
+cpu: exceptions=24689 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=527 overruns=0 sleep_us=386511
+vis: 31.7
+cpu: exceptions=25312 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=543 overruns=0 sleep_us=386511
+vis: 36.6
+cpu: exceptions=26053 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=560 overruns=0 sleep_us=386511
+vis: 32.3
+cpu: exceptions=26716 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=577 overruns=0 sleep_us=386511
+vis: 32.6
+cpu: exceptions=27378 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=594 overruns=0 sleep_us=386511
+vis: 36.2
+cpu: exceptions=28119 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=611 overruns=0 sleep_us=386511
+vis: 34.5
+cpu: exceptions=28820 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=629 overruns=0 sleep_us=386511
+vis: 37.8
+cpu: exceptions=29600 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=646 overruns=0 sleep_us=386511
+vis: 32.4
+cpu: exceptions=30262 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=662 overruns=0 sleep_us=386511
+vis: 36.4
+cpu: exceptions=31003 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=679 overruns=0 sleep_us=386511
+vis: 31.7
+cpu: exceptions=31627 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=695 overruns=0 sleep_us=386511
+vis: 32.9
+cpu: exceptions=32290 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=712 overruns=0 sleep_us=386511
+vis: 33.6
+cpu: exceptions=32953 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=729 overruns=0 sleep_us=386511
+vis: 31.4
+cpu: exceptions=33577 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=745 overruns=0 sleep_us=386511
+vis: 32.0
+cpu: exceptions=34240 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=762 overruns=0 sleep_us=386511
+vis: 32.6
+cpu: exceptions=34902 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=779 overruns=0 sleep_us=386511
+vis: 33.4
+cpu: exceptions=35993 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=806 overruns=0 sleep_us=386511
+vis: 32.4
+cpu: exceptions=36656 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=823 overruns=0 sleep_us=386511
+vis: 31.8
+cpu: exceptions=37280 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=459 underruns=839 overruns=0 sleep_us=386511
+vis: 60.0
+cpu: exceptions=38451 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=470 underruns=853 overruns=0 sleep_us=434125
+vis: 60.0
+cpu: exceptions=39621 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=848150
+vis: 60.0
+cpu: exceptions=40790 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=1263945
+vis: 60.0
+cpu: exceptions=41960 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=1679568
+vis: 60.0
+cpu: exceptions=43130 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=2095148
+vis: 60.0
+cpu: exceptions=44299 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=2510849
+vis: 60.0
+cpu: exceptions=45469 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=2926524
+vis: 60.0
+cpu: exceptions=46639 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=3342004
+vis: 60.0
+cpu: exceptions=47809 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=3757636
+vis: 60.0
+cpu: exceptions=48978 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=4173247
+vis: 60.0
+cpu: exceptions=50148 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=4588867
+vis: 60.0
+cpu: exceptions=51317 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=5004394
+vis: 60.0
+cpu: exceptions=52486 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=5420062
+vis: 60.0
+cpu: exceptions=53655 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=5835681
+vis: 60.0
+cpu: exceptions=54824 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=6251270
+vis: 60.0
+cpu: exceptions=55994 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=6666659
+vis: 60.0
+cpu: exceptions=57163 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=7082283
+vis: 60.0
+cpu: exceptions=58333 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=7497877
+vis: 60.0
+cpu: exceptions=59502 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=7913494
+vis: 60.0
+cpu: exceptions=60671 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=8329139
+vis: 60.0
+cpu: exceptions=61841 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=8744859
+vis: 60.0
+cpu: exceptions=63011 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=9160577
+vis: 60.0
+cpu: exceptions=64181 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=9576131
+vis: 60.0
+cpu: exceptions=65350 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=9991870
+vis: 60.0
+cpu: exceptions=66520 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=10407600
+vis: 60.0
+cpu: exceptions=67689 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=10823321
+vis: 60.0
+cpu: exceptions=68859 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=11239012
+vis: 60.0
+cpu: exceptions=70029 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=11654758
+vis: 60.0
+cpu: exceptions=71198 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=12070529
+vis: 60.0
+cpu: exceptions=72368 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=12486264
+vis: 60.0
+cpu: exceptions=73537 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=12901784
+vis: 60.0
+cpu: exceptions=74706 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=13317646
+vis: 60.0
+cpu: exceptions=75876 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=13733475
+vis: 60.0
+cpu: exceptions=77044 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=14149223
+vis: 60.0
+cpu: exceptions=78213 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=14564933
+vis: 60.0
+cpu: exceptions=79383 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=14980689
+vis: 60.0
+cpu: exceptions=80552 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=15396390
+vis: 60.0
+cpu: exceptions=81722 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=15811872
+vis: 60.0
+cpu: exceptions=82892 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=16227491
+vis: 60.0
+cpu: exceptions=84061 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=16643152
+vis: 60.0
+cpu: exceptions=85230 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=17058729
+vis: 60.0
+cpu: exceptions=86400 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=17474323
+vis: 60.0
+cpu: exceptions=87570 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=17889923
+vis: 60.0
+cpu: exceptions=88739 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=18305588
+vis: 60.0
+cpu: exceptions=89908 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=18721124
+vis: 60.0
+cpu: exceptions=91077 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=19136477
+vis: 60.0
+cpu: exceptions=92247 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=19552060
+vis: 60.0
+cpu: exceptions=93417 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=19967669
+vis: 60.0
+cpu: exceptions=94586 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=20383371
+vis: 60.0
+cpu: exceptions=95756 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=20798960
+vis: 60.0
+cpu: exceptions=96925 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=21214611
+vis: 60.0
+cpu: exceptions=98095 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=21630327
+vis: 60.0
+cpu: exceptions=99265 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=22045922
+vis: 60.0
+cpu: exceptions=100434 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=22461610
+vis: 60.0
+cpu: exceptions=101604 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=22877447
+vis: 60.0
+cpu: exceptions=102773 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=23293248
+vis: 60.0
+cpu: exceptions=103942 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=23709065
+vis: 60.0
+cpu: exceptions=105112 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=24124924
+vis: 60.0
+cpu: exceptions=106281 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=24540728
+vis: 60.0
+cpu: exceptions=107451 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=24956229
+vis: 60.0
+cpu: exceptions=108620 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=25371962
+vis: 60.0
+cpu: exceptions=109790 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=25787739
+vis: 60.0
+cpu: exceptions=110960 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=26203452
+vis: 60.0
+cpu: exceptions=112130 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=26619239
+vis: 60.0
+cpu: exceptions=113299 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=27034938
+vis: 60.0
+cpu: exceptions=114469 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=27450712
+vis: 60.0
+cpu: exceptions=115638 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=27866484
+vis: 60.0
+cpu: exceptions=116807 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=28282141
+vis: 60.0
+cpu: exceptions=117977 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=28697941
+vis: 60.0
+cpu: exceptions=119147 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=29113752
+vis: 60.0
+cpu: exceptions=120316 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=29529496
+vis: 60.0
+cpu: exceptions=121486 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=29945329
+vis: 60.0
+cpu: exceptions=122656 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=30361054
+vis: 60.0
+cpu: exceptions=123826 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=30776771
+vis: 60.0
+cpu: exceptions=124995 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=31192321
+vis: 60.0
+cpu: exceptions=126165 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=31608060
+vis: 60.0
+cpu: exceptions=127334 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=32023803
+vis: 60.0
+cpu: exceptions=128504 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=32439534
+vis: 60.0
+cpu: exceptions=129673 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=32855331
+vis: 60.0
+cpu: exceptions=130842 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=33270967
+vis: 60.0
+cpu: exceptions=132011 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=33686574
+vis: 60.0
+cpu: exceptions=133181 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=34102175
+vis: 60.0
+cpu: exceptions=134350 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=34517540
+vis: 60.0
+cpu: exceptions=135520 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=34933044
+vis: 60.0
+cpu: exceptions=136689 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=35348608
+vis: 60.0
+cpu: exceptions=137858 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=35764261
+vis: 60.0
+cpu: exceptions=139026 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=480 underruns=853 overruns=0 sleep_us=36180060
+game: n=3/4 how=vis vis=3600 vi_rate=60 wall_us=71363729 sleep_us=36457266 avg_vis=50.29 avg_fps=0.21 exceptions=139806 cacheResets=1 recompiles=480 batches=0 verts=0 texStalls=0 treeDepthMax=9 underruns=853 overruns=0 pmc1=52018815403 pmc2=0 pmc3=0 pmc4=0 mmcr0=00000042 mmcr1=00000000 heap_used=11281704 heap_free=84952 arena1_free=385008 arena2_free=54302592 flushes=7 flush_us=5018 padtrace=0 rom=sd:/wii64/roms/Zelda Ocarina of Time Master Quest.v64
+=== chain 3/4 end vis=3600 how=vis rom=sd:/wii64/roms/Zelda Ocarina of Time Master Quest.v64 ===
+mark: loadROM: enter
+mark: loadROM: before rom_read
+mark: ROMCache_load: enter
+mark: ROMCache_load: before first read
+mark: ROMCache_load: first read returned
+mark: ROMCache_load: byte_swap_type set
+mark: ROMCache_load: first byte_swap done
+menufps: 0.0
+menufps: 59.9
+menufps: 60.0
+mark: ROMCache_load: loop exited normally
+mark: loadROM: after rom_read
+mark: loadROM: before init_memory
+mark: loadROM: after init_memory
+mark: loadROM: before romOpen_gfx
+mark: loadROM: after romOpen_gfx / before romOpen_audio
+mark: loadROM: after romOpen_audio / before romOpen_input
+mark: loadROM: after romOpen_input / before cpu_init
+mark: loadROM: after cpu_init
+menufps: 1.0
+fps: 0.2
+vis: 4.6
+cpu: exceptions=0 cacheResets=0 batches=0 verts=0 texStalls=0 recompiles=0 underruns=0 overruns=0 sleep_us=0
+vis: 50.0
+cpu: exceptions=609 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=114 underruns=0 overruns=0 sleep_us=9581
+vis: 50.0
+cpu: exceptions=1565 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=545 underruns=1 overruns=0 sleep_us=259585
+vis: 50.0
+cpu: exceptions=2555 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=680755
+vis: 50.0
+cpu: exceptions=3561 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=1102824
+vis: 50.0
+cpu: exceptions=4568 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=1525015
+vis: 50.0
+cpu: exceptions=5573 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=1947123
+vis: 50.0
+cpu: exceptions=6580 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=2369231
+vis: 50.0
+cpu: exceptions=7586 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=2791328
+vis: 50.0
+cpu: exceptions=8591 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=3213450
+vis: 50.0
+cpu: exceptions=9597 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=3635672
+vis: 50.0
+cpu: exceptions=10605 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=4057776
+vis: 50.0
+cpu: exceptions=11612 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=4479913
+vis: 50.0
+cpu: exceptions=12620 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=4902058
+vis: 50.0
+cpu: exceptions=13626 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=5324062
+vis: 50.0
+cpu: exceptions=14632 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=5746168
+vis: 50.0
+cpu: exceptions=15639 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=6168272
+vis: 50.0
+cpu: exceptions=16646 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=6590473
+vis: 50.0
+cpu: exceptions=17652 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=7012558
+vis: 50.0
+cpu: exceptions=18657 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=7434143
+vis: 50.0
+cpu: exceptions=19664 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=7855598
+vis: 50.0
+cpu: exceptions=20671 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=8277162
+vis: 50.0
+cpu: exceptions=21678 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=8698644
+vis: 50.0
+cpu: exceptions=22686 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=9120149
+vis: 50.0
+cpu: exceptions=23691 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=9541583
+vis: 50.0
+cpu: exceptions=24698 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=9963156
+vis: 50.0
+cpu: exceptions=25706 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=10384688
+vis: 50.0
+cpu: exceptions=26713 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=10805970
+vis: 50.0
+cpu: exceptions=27720 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=11227500
+vis: 50.0
+cpu: exceptions=28728 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=11648988
+vis: 50.0
+cpu: exceptions=29734 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=12070415
+vis: 50.0
+cpu: exceptions=30740 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=12491909
+vis: 50.0
+cpu: exceptions=31746 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=12913357
+vis: 50.0
+cpu: exceptions=32753 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=13335009
+vis: 50.0
+cpu: exceptions=33758 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=13756564
+vis: 50.0
+cpu: exceptions=34765 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=14178159
+vis: 50.0
+cpu: exceptions=35771 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=14599665
+vis: 50.0
+cpu: exceptions=36778 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=15021294
+vis: 50.0
+cpu: exceptions=37786 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=15442787
+vis: 50.0
+cpu: exceptions=38792 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=15864927
+vis: 50.0
+cpu: exceptions=39799 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=16286921
+vis: 50.0
+cpu: exceptions=40805 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=16709110
+vis: 50.0
+cpu: exceptions=41812 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=17131258
+vis: 50.0
+cpu: exceptions=43061 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=17637237
+vis: 50.0
+cpu: exceptions=44068 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=18058816
+vis: 50.0
+cpu: exceptions=45072 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=18480354
+vis: 50.0
+cpu: exceptions=46077 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=18901693
+vis: 50.0
+cpu: exceptions=47083 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=19323142
+vis: 50.0
+cpu: exceptions=48091 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=19744689
+vis: 50.0
+cpu: exceptions=49099 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=20166215
+vis: 50.0
+cpu: exceptions=50105 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=20587715
+vis: 50.0
+cpu: exceptions=51113 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=21009185
+vis: 50.0
+cpu: exceptions=52119 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=21430710
+vis: 50.0
+cpu: exceptions=53126 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=21852246
+vis: 50.0
+cpu: exceptions=54133 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=22273797
+vis: 50.0
+cpu: exceptions=55140 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=22695281
+vis: 50.0
+cpu: exceptions=56147 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=23116724
+vis: 50.0
+cpu: exceptions=57153 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=23538177
+vis: 50.0
+cpu: exceptions=58157 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=23959620
+vis: 50.0
+cpu: exceptions=59162 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=24381142
+vis: 50.0
+cpu: exceptions=60169 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=24802794
+vis: 50.0
+cpu: exceptions=61175 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=25224397
+vis: 50.0
+cpu: exceptions=62183 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=25646011
+vis: 50.0
+cpu: exceptions=63190 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=26067578
+vis: 50.0
+cpu: exceptions=64196 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=26489172
+vis: 50.0
+cpu: exceptions=65204 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=26910661
+vis: 50.0
+cpu: exceptions=66211 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=27332181
+vis: 50.0
+cpu: exceptions=67217 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=27753772
+vis: 50.0
+cpu: exceptions=68222 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=28175320
+vis: 50.0
+cpu: exceptions=69228 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=28596895
+vis: 50.0
+cpu: exceptions=70235 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=29018367
+vis: 50.0
+cpu: exceptions=71241 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=29439832
+vis: 50.0
+cpu: exceptions=72248 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=29861126
+vis: 50.0
+cpu: exceptions=73254 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=30282656
+vis: 50.0
+cpu: exceptions=74261 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=30704225
+vis: 50.0
+cpu: exceptions=75267 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=31125717
+vis: 50.0
+cpu: exceptions=76274 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=31547212
+vis: 50.0
+cpu: exceptions=77280 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=31968714
+vis: 50.0
+cpu: exceptions=78288 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=32390203
+vis: 50.0
+cpu: exceptions=79295 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=32812339
+vis: 50.0
+cpu: exceptions=80302 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=33234480
+vis: 50.0
+cpu: exceptions=81309 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=33656593
+vis: 50.0
+cpu: exceptions=82317 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=34078667
+vis: 50.0
+cpu: exceptions=83323 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=34500852
+vis: 50.0
+cpu: exceptions=84328 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=34922978
+vis: 50.0
+cpu: exceptions=85334 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=35344943
+vis: 50.0
+cpu: exceptions=86341 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=35767017
+vis: 50.0
+cpu: exceptions=87348 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=36189135
+vis: 50.0
+cpu: exceptions=88356 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=36611300
+vis: 50.0
+cpu: exceptions=89363 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=37033469
+vis: 50.0
+cpu: exceptions=90371 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=37455575
+vis: 50.0
+cpu: exceptions=91377 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=37877722
+vis: 50.0
+cpu: exceptions=92383 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=38299818
+vis: 50.0
+cpu: exceptions=93390 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=38721948
+vis: 50.0
+cpu: exceptions=94396 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=39144098
+vis: 50.0
+cpu: exceptions=95403 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=39566223
+vis: 50.0
+cpu: exceptions=96408 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=39988338
+vis: 50.0
+cpu: exceptions=97415 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=40410460
+vis: 50.0
+cpu: exceptions=98422 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=40832599
+vis: 50.0
+cpu: exceptions=99429 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=41253894
+vis: 50.0
+cpu: exceptions=100433 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=41675422
+vis: 50.0
+cpu: exceptions=101440 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=42096916
+vis: 50.0
+cpu: exceptions=102448 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=42518418
+vis: 50.0
+cpu: exceptions=103455 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=42939934
+vis: 50.0
+cpu: exceptions=104461 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=43361349
+vis: 50.0
+cpu: exceptions=105468 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=43782857
+vis: 50.0
+cpu: exceptions=106474 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=44204333
+vis: 50.0
+cpu: exceptions=107481 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=44625859
+vis: 50.0
+cpu: exceptions=108488 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=45047332
+vis: 50.0
+cpu: exceptions=109495 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=45468780
+vis: 50.0
+cpu: exceptions=110502 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=45890161
+vis: 50.0
+cpu: exceptions=111508 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=46311679
+vis: 50.0
+cpu: exceptions=112514 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=46733034
+vis: 50.0
+cpu: exceptions=113522 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=47154613
+vis: 50.0
+cpu: exceptions=114528 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=47576177
+vis: 50.0
+cpu: exceptions=115534 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=47997686
+vis: 50.0
+cpu: exceptions=116541 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=48419255
+vis: 50.0
+cpu: exceptions=117549 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=48840733
+vis: 50.0
+cpu: exceptions=118556 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=49262297
+vis: 50.0
+cpu: exceptions=119562 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=49684397
+vis: 50.0
+cpu: exceptions=120569 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=50106514
+vis: 50.0
+cpu: exceptions=121576 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=50528619
+vis: 50.0
+cpu: exceptions=122582 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=50950770
+vis: 50.0
+cpu: exceptions=123587 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=51372939
+vis: 50.0
+cpu: exceptions=124594 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=51795103
+vis: 50.0
+cpu: exceptions=125600 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=52217084
+vis: 50.0
+cpu: exceptions=126608 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=52639234
+vis: 50.0
+cpu: exceptions=127613 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=53061417
+vis: 50.0
+cpu: exceptions=128619 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=53483542
+vis: 50.0
+cpu: exceptions=129626 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=53905679
+vis: 50.0
+cpu: exceptions=130634 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=54327810
+vis: 50.0
+cpu: exceptions=131641 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=54749909
+vis: 50.0
+cpu: exceptions=132647 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=55172099
+vis: 50.0
+cpu: exceptions=133653 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=55594221
+vis: 50.0
+cpu: exceptions=134660 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=56016431
+vis: 50.0
+cpu: exceptions=135666 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=56438637
+vis: 50.0
+cpu: exceptions=136673 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=56860743
+vis: 50.0
+cpu: exceptions=137678 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=57282917
+vis: 50.0
+cpu: exceptions=138686 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=57704901
+vis: 50.0
+cpu: exceptions=139694 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=58126382
+vis: 50.0
+cpu: exceptions=140701 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=58547814
+vis: 50.0
+cpu: exceptions=141708 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=58969438
+vis: 50.0
+cpu: exceptions=142715 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=59390923
+vis: 50.0
+cpu: exceptions=143722 cacheResets=1 batches=0 verts=0 texStalls=0 recompiles=565 underruns=1 overruns=0 sleep_us=59812400
+game: n=4/4 how=vis vis=3600 vi_rate=50 wall_us=71980578 sleep_us=60115731 avg_vis=49.68 avg_fps=0.21 exceptions=144448 cacheResets=1 recompiles=565 batches=0 verts=0 texStalls=0 treeDepthMax=10 underruns=1 overruns=0 pmc1=52470462068 pmc2=0 pmc3=0 pmc4=0 mmcr0=00000042 mmcr1=00000000 heap_used=11285304 heap_free=81352 arena1_free=385008 arena2_free=54302592 flushes=7 flush_us=5230 padtrace=0 rom=sd:/wii64/roms/Legend of Zelda, The - Majora's Mask (E) (M4) [!].z64
+=== chain 4/4 end vis=3600 how=vis rom=sd:/wii64/roms/Legend of Zelda, The - Majora's Mask (E) (M4) [!].z64 ===

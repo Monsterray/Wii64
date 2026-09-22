@@ -101,39 +101,46 @@ void setupFatDevice(fileBrowser_file* topLevel)
 	romFile_init( romFile_topLevel );
 }
 
+/* Load a ROM straight from a path and play it, returning when the game stops: a loader's
+   argv, diag.cfg's autoboot_rom= and every game of a chain= run come through here.
+   Returns loadROM()'s result, 0 when the game ran. A chain sets autobootQuiet: its
+   failure box waits for a button press, which an unattended run would never get. */
+bool autobootQuiet = false;
+
+int autobootROM(const char* path)
+{
+	static fileBrowser_file autoBoot;
+	memset(&autoBoot, 0, sizeof(autoBoot));
+	strncpy(autoBoot.name, path, sizeof(autoBoot.name) - 1);
+
+	setupFatDevice(strncmp(path, "sd:/", 4) == 0 ? &topLevel_libfat_Default : &topLevel_libfat_USB);
+	int ret = loadROM(&autoBoot);
+	menu::Gui::getInstance().draw();
+	if (ret)
+	{
+		if (!autobootQuiet)
+			menu::MessageBox::getInstance().setMessage("Autoboot failed");
+		return ret;
+	}
+	Func_SetPlayGame();
+	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
+	LoadingBar_showBar(1.0f, "Loading ...");
+	sleep(3);
+	control_info_init(); // by now a Wii remote should've re-sync'd.
+	Func_PlayGame();
+	return 0;
+}
+
 LoadRomFrame::LoadRomFrame()
 {
-#ifdef HW_RVL	
+#ifdef HW_RVL
 	// argv is only setup if we detect argv[0] sd:/ or usb:/
 	// Yes this happens early, before we've actually run the menu for any frames.
 	if (Autoboot::hasPath())
-    {
-        const char* path = Autoboot::getPath();
-        //print_gecko("Autoboot path: %s\n", path);
-
-        fileBrowser_file* autoBoot = (fileBrowser_file*)calloc(1, sizeof(fileBrowser_file));
-        strncpy(autoBoot->name, path, 191);
-		autoBoot->name[191] = '\0';
-		
-		setupFatDevice(strncmp(path, "sd:/", 4) == 0 ? &topLevel_libfat_Default : &topLevel_libfat_USB);
-        int ret = loadROM(autoBoot);
-		menu::Gui::getInstance().draw();	
-
-        if (ret)
-        {
-            menu::MessageBox::getInstance().setMessage("Autoboot failed");
-        }
-        else
-        {
-            Func_SetPlayGame();
-            pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
-			LoadingBar_showBar(1.0f, "Loading ...");
-			sleep(3);
-			control_info_init(); // by now a Wii remote should've re-sync'd.
-            Func_PlayGame();
-        }
+	{
+		autobootROM(Autoboot::getPath());
 		Autoboot::setPath(NULL);
-    }
+	}
 #endif
 	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
 		FRAME_BUTTONS[i].button = new menu::Button(FRAME_BUTTONS[i].buttonStyle, &FRAME_BUTTONS[i].buttonString, 

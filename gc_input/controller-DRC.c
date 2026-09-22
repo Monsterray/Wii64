@@ -27,24 +27,7 @@
 #include <math.h>
 #include "controller.h"
 #include <wiidrc/wiidrc.h>
-
-#define DRC_DEADZONE 6
-#define _DRC_BUILD_TMPSTICK(inval) \
-	tmp_stick16 = (inval*1.08f); \
-	if(tmp_stick16 > DRC_DEADZONE) tmp_stick16 = (tmp_stick16-DRC_DEADZONE)*1.08f; \
-	else if(tmp_stick16 < -DRC_DEADZONE) tmp_stick16 = (tmp_stick16+DRC_DEADZONE)*1.08f; \
-	else tmp_stick16 = 0; \
-	if(tmp_stick16 > 80) tmp_stick8 = 80; \
-	else if(tmp_stick16 < -80) tmp_stick8 = -80; \
-	else tmp_stick8 = (s8)tmp_stick16;
-
-static int getDRCValue(int in)
-{
-	//do scale, deadzone and clamp
-	s8 tmp_stick8; s16 tmp_stick16;
-	_DRC_BUILD_TMPSTICK(in);
-	return tmp_stick8;
-}
+#include "n64_analog.h"
 
 enum {
 	L_STICK_AS_ANALOG = 1, R_STICK_AS_ANALOG = 2,
@@ -165,23 +148,16 @@ static int _GetKeys(int Control, BUTTONS * Keys, controller_config_t* config)
 	c->D_CBUTTON    = isHeld(config->CD);
 	c->U_CBUTTON    = isHeld(config->CU);
 
-	if(config->analog->mask == L_STICK_AS_ANALOG){
-		c->X_AXIS = getDRCValue(WiiDRC_lStickX());
-		c->Y_AXIS = getDRCValue(WiiDRC_lStickY());
-	} else if(config->analog->mask == R_STICK_AS_ANALOG){
-		c->X_AXIS = getDRCValue(WiiDRC_rStickX());
-		c->Y_AXIS = getDRCValue(WiiDRC_rStickY());
-	} else if(config->analog->mask == BUTTON_AS_ANALOG){
-		if(b & WIIDRC_BUTTON_RIGHT)
-			c->X_AXIS = +80;
-		else if(b & WIIDRC_BUTTON_LEFT)
-			c->X_AXIS = -80;
-		if(b & WIIDRC_BUTTON_UP)
-			c->Y_AXIS = +80;
-		else if(b & WIIDRC_BUTTON_DOWN)
-			c->Y_AXIS = -80;
-	}
-	if(config->invertedY) c->Y_AXIS = -c->Y_AXIS;
+	signed char x = 0, y = 0;
+	if(config->analog->mask == L_STICK_AS_ANALOG)
+		drc_stick(WiiDRC_lStickX(), WiiDRC_lStickY(), &x, &y);
+	else if(config->analog->mask == R_STICK_AS_ANALOG)
+		drc_stick(WiiDRC_rStickX(), WiiDRC_rStickY(), &x, &y);
+	else if(config->analog->mask == BUTTON_AS_ANALOG)
+		button_stick(!!(b & WIIDRC_BUTTON_RIGHT) - !!(b & WIIDRC_BUTTON_LEFT),
+		             !!(b & WIIDRC_BUTTON_UP) - !!(b & WIIDRC_BUTTON_DOWN), &x, &y);
+	c->X_AXIS = x;
+	c->Y_AXIS = config->invertedY ? -y : y;
 
 	// Return whether the exit button(s) are pressed
 	return isHeld(config->exit);
