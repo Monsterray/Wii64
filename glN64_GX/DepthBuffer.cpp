@@ -90,9 +90,18 @@ void DepthBuffer_RemoveBuffer( u32 address )
 	}
 }
 
+// Depth-buffer count is capped like the texture cache's maxBytes is --
+// nothing ever calls DepthBuffer_RemoveBuffer(), so without a cap this
+// MRU-ordered list (top = most recently used, DepthBuffer_MoveToTop()
+// already maintains that order on every cache hit) grows once per distinct
+// Z-buffer address a game uses, unbounded, for the whole ROM session.
+#define DEPTHBUFFER_MAX_COUNT 16
+
 DepthBuffer *DepthBuffer_AddTop()
 {
 	DepthBuffer *newtop = (DepthBuffer*)malloc( sizeof( DepthBuffer ) );
+	if (!newtop)
+		return NULL;
 
 	newtop->lower = depthBuffer.top;
 	newtop->higher = NULL;
@@ -106,6 +115,9 @@ DepthBuffer *DepthBuffer_AddTop()
     depthBuffer.top = newtop;
 
 	depthBuffer.numBuffers++;
+
+	if (depthBuffer.numBuffers > DEPTHBUFFER_MAX_COUNT && depthBuffer.bottom != newtop)
+		DepthBuffer_RemoveBottom();
 
 	return newtop;
 }
@@ -157,6 +169,8 @@ void DepthBuffer_SetBuffer( u32 address )
 	}
 
 	current = DepthBuffer_AddTop();
+	if (!current)
+		return;
 
 	current->address = address;
 	current->cleared = TRUE;

@@ -407,7 +407,15 @@ void RSP_ProcessDList()
 			u32 pci = RSP.PCi;
 			if (RSP.count == 1)
 				--pci;
-			RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[RSP.PC[pci]], 24, 8 );
+			// Peek at the next command's opcode -- upstream read this
+			// unguarded; _ProcessDListFactor5() a few lines above already
+			// has this same guard with a comment noting the risk. A
+			// malformed/truncated display list can otherwise read past the
+			// end of RDRAM here.
+			if ((RSP.PC[pci] + 4) <= RDRAMSize)
+				RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[RSP.PC[pci]], 24, 8 );
+			else
+				RSP.nextCmd = 0;
 		}
 
 		GBI.cmd[RSP.cmd]( w0, w1 );
