@@ -68,14 +68,13 @@ struct ButtonInfo
 
 MessageBox::MessageBox()
 		: buttonImage(0),
-		  buttonFocusImage(0),
 		  messageBoxActive(false),
 		  currentCursorFrame(0),
 		  currentFocusFrame(0),
-		  returnValue(0)
+		  returnValue(0),
+		  messageFade(0.0f)
 {
 	buttonImage = Resources::getInstance().getImage(Resources::IMAGE_DEFAULT_BUTTON);
-	buttonFocusImage = Resources::getInstance().getImage(Resources::IMAGE_DEFAULT_BUTTONFOCUS);
 
 	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
 		FRAME_BUTTONS[i].button = new menu::Button(FRAME_BUTTONS[i].buttonStyle, &FRAME_BUTTONS[i].buttonString, 

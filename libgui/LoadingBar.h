@@ -46,7 +46,6 @@ private:
 	LoadingBar();
 	~LoadingBar();
 	Image *buttonImage;
-	Image *buttonFocusImage;
 	bool loadingBarActive;
 	Frame *currentCursorFrame;
 	Frame *currentFocusFrame;

@@ -90,7 +90,17 @@ void InputStatusBar::drawComponent(Graphics& gfx)
 		case PADTYPE_WII:
 			u32 type;
 			s32 err;
-			err = WPAD_Probe((int)padAssign[i], &type);
+			// WPAD_Probe() here was a second IOS/IPC round trip per pad,
+			// every single draw of this status bar (shown continuously on
+			// MainFrame/MiniMenuFrame) -- WPAD_Data() below already has the
+			// same info, refreshed this frame by Input::refreshInput()'s
+			// WPAD_ScanPads() (same fix already applied to gc_input's
+			// Classic/WiimoteNunchuk controllers).
+			{
+				WPADData* wd = WPAD_Data((int)padAssign[i]);
+				err = wd->err;
+				type = wd->exp.type;
+			}
 			controller_Classic.available[(int)padAssign[i]] = (err == WPAD_ERR_NONE && type == WPAD_EXP_CLASSIC) ? 1 : 0;
 			controller_WiimoteNunchuk.available[(int)padAssign[i]] = (err == WPAD_ERR_NONE && type == WPAD_EXP_NUNCHUK) ? 1 : 0;
 			controller_Wiimote.available[(int)padAssign[i]] = (err == WPAD_ERR_NONE && type == WPAD_EXP_NONE) ? 1 : 0;

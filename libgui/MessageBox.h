@@ -50,7 +50,6 @@ private:
 	MessageBox();
 	~MessageBox();
 	Image *buttonImage;
-	Image *buttonFocusImage;
 	bool messageBoxActive;
 	Frame *currentCursorFrame;
 	Frame *currentFocusFrame;

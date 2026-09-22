@@ -26,7 +26,6 @@
 #include "FocusManager.h"
 #include "IPLFont.h"
 #include <stdio.h>
-#include <debug.h>
 
 namespace menu {
 
@@ -35,14 +34,12 @@ char loadingBarText[LOADINGBAR_TEXT_WIDTH];
 
 LoadingBar::LoadingBar()
 		: buttonImage(0),
-		  buttonFocusImage(0),
 		  loadingBarActive(false),
 		  currentCursorFrame(0),
 		  currentFocusFrame(0),
 		  percentComplete(0.0f)
 {
 	buttonImage = Resources::getInstance().getImage(Resources::IMAGE_DEFAULT_BUTTON);
-	buttonFocusImage = Resources::getInstance().getImage(Resources::IMAGE_DEFAULT_BUTTONFOCUS);
 
 	showFrame();
 

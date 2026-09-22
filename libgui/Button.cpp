@@ -26,6 +26,7 @@
 #include "Image.h"
 #include "FocusManager.h"
 #include <math.h>
+#include "ogc/lwp_watchdog.h"
 
 namespace menu {
 
@@ -135,8 +136,6 @@ void Button::setFontSize(float size)
 {
 	fontSize = size;
 }
-
-#include "ogc/lwp_watchdog.h"
 
 void Button::setLabelMode(int mode)
 {

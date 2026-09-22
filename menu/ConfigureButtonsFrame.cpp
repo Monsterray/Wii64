@@ -325,7 +325,20 @@ void ConfigureButtonsFrame::activateSubmenu(int submenu)
 
 void ConfigureButtonsFrame::updateFrame(float deltaTime)
 {
-	activateSubmenu(activePad);
+	// Every explicit mutation already refreshes its own display state --
+	// Func_NextPad/ResetPad/LoadPadConfig call activateSubmenu() directly,
+	// and each individual Func_ToggleButton* rewrites its own single
+	// FRAME_STRINGS entry -- so rebuilding all ~17 strcpys/sprintf here on
+	// every frame this page is visible was pure waste. The one thing only
+	// a per-frame check can catch: a physical controller hotplug changing
+	// virtualControllers[activePad].control while the user sits on that
+	// exact pad's remap screen without navigating away. Gate on that.
+	static controller_t* lastControl = NULL;
+	if (virtualControllers[activePad].control != lastControl)
+	{
+		lastControl = virtualControllers[activePad].control;
+		activateSubmenu(activePad);
+	}
 }
 
 #define NUM_LINES 10
