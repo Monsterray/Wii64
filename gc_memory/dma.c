@@ -323,13 +323,21 @@ void dma_sp_write()
 	memaddr  = sp_register.sp_mem_addr_reg & 0xFF8;
 	dramaddr = sp_register.sp_dram_addr_reg & 0xFFFFF8;
 
+	// dramaddr is only masked to 24 bits (16MB) here, then advances by
+	// length+skip for up to 256 iterations with no per-iteration clamp
+	// against the actual rdram[] size (MEM_SIZE, 4-8MB) -- only the final
+	// value gets re-masked below, after the loop already dereferenced the
+	// unclamped, larger ones. Masked at each use instead, matching real
+	// hardware's address-wrap behavior for a physical RAM smaller than the
+	// address range, and the same idiom the PI-DMA paths in this file use.
 	for (i = 0; i < count; i++)
 	{
+		unsigned long dramaddr_m = dramaddr & MEMMASK;
 		memoff = memaddr & 0xFFF;
 		chunk = (0x1000 - memoff < length) ? (0x1000 - memoff) : length;
-		memcpy(&spMemType[memoff^S8], &rdramb[dramaddr^S8], chunk);
+		memcpy(&spMemType[memoff^S8], &rdramb[dramaddr_m^S8], chunk);
 		if (chunk < length)
-			memcpy(&spMemType[0^S8], &rdramb[(dramaddr+chunk)^S8], length-chunk);
+			memcpy(&spMemType[0^S8], &rdramb[((dramaddr_m+chunk)&MEMMASK)^S8], length-chunk);
 		memaddr  += length;
 		dramaddr += length + skip;
 	}
@@ -355,13 +363,15 @@ void dma_sp_read()
 	memaddr  = sp_register.sp_mem_addr_reg & 0xFF8;
 	dramaddr = sp_register.sp_dram_addr_reg & 0xFFFFF8;
 
+	// Same fix as dma_sp_write() above: mask at each use, not just at entry.
 	for (i = 0; i < count; i++)
 	{
+		unsigned long dramaddr_m = dramaddr & MEMMASK;
 		memoff = memaddr & 0xFFF;
 		chunk = (0x1000 - memoff < length) ? (0x1000 - memoff) : length;
-		memcpy(&rdramb[dramaddr^S8], &spMemType[memoff^S8], chunk);
+		memcpy(&rdramb[dramaddr_m^S8], &spMemType[memoff^S8], chunk);
 		if (chunk < length)
-			memcpy(&rdramb[(dramaddr+chunk)^S8], &spMemType[0^S8], length-chunk);
+			memcpy(&rdramb[((dramaddr_m+chunk)&MEMMASK)^S8], &spMemType[0^S8], length-chunk);
 		memaddr  += length;
 		dramaddr += length + skip;
 	}

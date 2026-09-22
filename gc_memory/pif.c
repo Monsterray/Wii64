@@ -335,6 +335,13 @@ void internal_ReadController(int Control, BYTE *Command)
 
 void internal_ControllerCommand(int Control, BYTE *Command)
 {
+	// update_pif_write()/update_pif_read() walk PIF_RAM (64 bytes) and pass
+	// Command = &PIF_RAMb[i] for whatever i a chain of commands has walked
+	// to -- a mempak read/write below touches up to Command[0x25], 38 bytes
+	// from Command[0]. If i left less than that before hitting the buffer
+	// end, honor it the same way an absent controller is already handled
+	// (Command[1]'s error bit) instead of writing past PIF_RAM.
+	int pifRoomForMempak = ((PIF_RAMb + 0x40) - Command) >= 0x26;
 	switch (Command[2])
 	{
 		case 0x00: // check
@@ -366,7 +373,7 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 				Command[1] |= 0x80;
 		break;
 		case 0x02: // read controller pack
-			if (Controls[Control].Present)
+			if (Controls[Control].Present && pifRoomForMempak)
 			{
 				switch(Controls[Control].Plugin)
 				{
@@ -401,7 +408,7 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 				Command[1] |= 0x80;
 			break;
 		case 0x03: // write controller pack
-			if (Controls[Control].Present)
+			if (Controls[Control].Present && pifRoomForMempak)
 			{
 				switch(Controls[Control].Plugin)
 				{
