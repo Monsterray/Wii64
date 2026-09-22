@@ -4,18 +4,25 @@
 *.dol
 *.map
 
-# Local MCP server config (machine-specific paths, e.g. C:/ai/venvs/...)
-.mcp.json
-
-# Local build/test tooling and profiles (machine-specific, not for other contributors)
+# --- AI tooling: this workstation only, never committed ---
+# Local build/test tooling and profiles
 .dev/
-
-# Local agent notes (machine-specific, not project documentation)
+# Local agent notes and config
 AGENTS.md
+CLAUDE.md
 .claude/
-
+.mcp.json
 # codebase-memory's local index artifact -- regenerate with index_repository,
 # no need to carry a 6MB binary graph.db in the repo.
 .codebase-memory/
+# Other AI coding assistants, in case any get used here later
+.cursor/
+.cursorrules
+.cursorignore
+.windsurf/
+.windsurfrules
+.aider*
+.codeium/
+.continue/
 
 __pycache__/
