@@ -120,7 +120,7 @@ static struct {
 	u64 start, flushTicks, pmc[4];
 	unsigned long long sleepUs;
 	unsigned int exceptions, cacheResets, batches, verts, texStalls, recompiles;
-	unsigned int treeDepthMax, flushes, visN, fpsN;
+	unsigned int treeDepthMax, flushes, visN, fpsN, vi0Retrace;
 	double visSum, fpsSum;
 } g;
 static volatile unsigned int g_underruns, g_overruns;
@@ -311,6 +311,9 @@ void perfProf_gameBegin(void)
 void perfProf_clockStart(void)
 {
 	g.start = gettime();
+	extern volatile unsigned int diag_retraces; // main_gc-menu2.cpp
+	g.vi0Retrace = diag_retraces; // host frame of guest VI 1: scripts/dtm2input.py --offset
+	buf_printf("first_vi: vi0_retrace=%u\n", g.vi0Retrace); // in a recording run, which never reaches gameEnd
 	memset(g.pmc, 0, sizeof(g.pmc));
 	pmc_start();
 }
@@ -321,13 +324,13 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	unsigned long long wallUs = ticks_to_microsecs(gettime() - g.start);
 	pmc_accumulate();
 	extern float VILimit; // main/timers.c: the VI rate this ROM is paced at (50/60)
-	buf_printf("game: n=%d/%d how=%s vis=%u vi_rate=%.0f wall_us=%llu sleep_us=%llu avg_vis=%.2f avg_fps=%.2f"
+	buf_printf("game: n=%d/%d how=%s vis=%u vi_rate=%.0f vi0_retrace=%u wall_us=%llu sleep_us=%llu avg_vis=%.2f avg_fps=%.2f"
 		" exceptions=%u cacheResets=%u recompiles=%u batches=%u verts=%u texStalls=%u"
 		" treeDepthMax=%u underruns=%u overruns=%u"
 		" pmc1=%llu pmc2=%llu pmc3=%llu pmc4=%llu mmcr0=%08x mmcr1=%08x"
 		" heap_used=%d heap_free=%d arena1_free=%u arena2_free=%u"
 		" flushes=%u flush_us=%llu padtrace=%d rom=%s\n",
-		n, total, how, vis, VILimit, wallUs, g.sleepUs,
+		n, total, how, vis, VILimit, g.vi0Retrace, wallUs, g.sleepUs,
 		g.visN ? g.visSum / g.visN : 0.0, g.fpsN ? g.fpsSum / g.fpsN : 0.0,
 		g.exceptions, g.cacheResets, g.recompiles, g.batches, g.verts, g.texStalls,
 		g.treeDepthMax, g_underruns, g_overruns,

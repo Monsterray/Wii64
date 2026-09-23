@@ -1,0 +1,10 @@
+# Hand-written replay (not from a movie): press Start every 300 VIs from VI 600, 10 VIs
+# each, to get SM64 past its title screen and file select; then hold the stick right.
+# Checks chain=<vis>,input=<name> end to end: scripts/chains/replay_smoke.txt.
+600 1000 0 0 0 0
+610 0000 0 0 0 0
+900 1000 0 0 0 0
+910 0000 0 0 0 0
+1200 1000 0 0 0 0
+1210 0000 0 0 0 0
+1500 0000 82 0 0 0

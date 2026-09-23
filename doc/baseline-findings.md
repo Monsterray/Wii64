@@ -60,8 +60,9 @@ MEM1 for the heap to grow into. Frames = avg_fps x wall time.)
 2. **Hardware session** (`doc/hardware-session.md`, `scripts/chains/hardware.txt`).
    Required before any speed work: idle %, IPC and real audio gaps exist only there.
    Fix WiiStation's PMC probe first if its session shares the trip.
-3. **Make the baseline represent gameplay.** Scripted input by VI (port WiiStation's
-   `autoinput.txt` idea to diag.cfg) to get past title screens, and more ROMs covering
+3. **Make the baseline represent gameplay.** Replay recorded play by VI (`chain=...,input=`
+   from a Dolphin movie, `doc/controller-testing.md`; works now, no recordings yet) to get
+   past title screens, and more ROMs covering
    other microcodes (F3DEX2, S2DEX) -- today the set is 2 working games in attract mode.
 4. **After hardware, only if it shows a bottleneck:** glN64's geometry volume (finding
    5) if the Wii is CPU/FIFO bound in 3D scenes; the FuncTree BST (finding 8) if IPC is

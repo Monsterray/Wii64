@@ -1,0 +1,3 @@
+# Pad replay smoke test: SM64 with scripts/inputs/sm64_start.txt on port 1. The last frame
+# (xfb_01.png) is past the title screen, and padtrace_01.csv holds the replayed values.
+chain=2400,input=sm64_start sd:/wii64/roms/Super Mario 64.v64

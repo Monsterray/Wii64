@@ -295,7 +295,8 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           menu slowdown writeup) can be
                                           checked against a real load, not
                                           just a fast scan.
-     chain=<vis>[,padsweep=<vi>] <rom>   One line per game: run each for
+     chain=<vis>[,padsweep=<vi>][,input=<name>] <rom>
+                                          One line per game: run each for
                                           <vis> guest VIs, one after another,
                                           in one boot, then power off. On
                                           hardware, moving the SD card is the
@@ -317,7 +318,11 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           how=timeout. scripts/chain_table.py
                                           reads it all back. ,padsweep=<vi>
                                           runs the pad sweep (below) in that
-                                          game only.
+                                          game only. ,input=<name> replays
+                                          sd:/wii64/input/<name>.txt on port
+                                          1 in that game: a pad recording by
+                                          guest VI, made from a Dolphin movie
+                                          by scripts/dtm2input.py.
      padsweep=<vi>[,<hold>]              From guest VI <vi> of each game on,
                                           the GameCube driver on port 1 reads
                                           a generated sweep instead of the
@@ -355,13 +360,18 @@ static int g_diagTestSelectLoad = 0; // 1 = click the first ROM in the SD browse
 
 /* chain= -- see the doc comment above. */
 #define CHAIN_MAX 32
-static struct { unsigned int vis, padsweep; char rom[192]; } g_chain[CHAIN_MAX];
+static struct { unsigned int vis, padsweep; char input[32], rom[192]; } g_chain[CHAIN_MAX];
 static int g_chainN, g_chainI;
 static unsigned int g_padsweepAll; // padsweep= for every game; chain=<vis>,padsweep=<vi> for one
-static volatile unsigned int g_retraces, g_chainDeadline;
+static volatile unsigned int g_chainDeadline;
+// Host retraces since the first VIDEO_Init, never reset (libogc's own count restarts at
+// every VIDEO_Init): the chain watchdog, and perf.log's vi0_retrace.
+extern "C" volatile unsigned int diag_retraces;
+volatile unsigned int diag_retraces;
 static volatile bool g_chainTimedOut;
 extern "C" unsigned int diag_vi_count, diag_stop_vi;
 extern "C" unsigned int padsweep_vi, padsweep_hold;
+extern "C" unsigned int padreplay_load(const char* path);
 extern int autobootROM(const char* path);
 extern bool autobootQuiet;
 
@@ -369,8 +379,11 @@ static void chainArm(int i) {
 	diag_vi_count = 0;
 	diag_stop_vi = g_chain[i].vis;
 	padsweep_vi = g_chain[i].padsweep ? g_chain[i].padsweep : g_padsweepAll;
+	char path[64];
+	snprintf(path, sizeof(path), "sd:/wii64/input/%s.txt", g_chain[i].input);
+	padreplay_load(g_chain[i].input[0] ? path : NULL);
 	g_chainTimedOut = false;
-	g_chainDeadline = g_retraces + 3 * g_chain[i].vis + 60 * 60;
+	g_chainDeadline = diag_retraces + 3 * g_chain[i].vis + 60 * 60;
 }
 
 /* The frame on screen when the game stopped, raw from the XFB (YUYV, fbWidth x xfbHeight
@@ -446,11 +459,14 @@ static void apply_diag_automation(void) {
 		} else if(strncmp(line, "test_selectload=1", 17) == 0) {
 			g_diagTestSelectLoad = 1;
 		} else if(strncmp(line, "chain=", 6) == 0 && g_chainN < CHAIN_MAX) {
-			// chain=<vis>[,padsweep=<vi>] <rom path>
+			// chain=<vis>[,padsweep=<vi>][,input=<name>] <rom path>
 			char* p = line + 6;
 			g_chain[g_chainN].vis = strtoul(p, &p, 10);
 			g_chain[g_chainN].padsweep = 0;
-			if(*p == ',') sscanf(p, ",padsweep=%u", &g_chain[g_chainN].padsweep);
+			g_chain[g_chainN].input[0] = 0;
+			for(; *p == ','; p += strcspn(p + 1, ", ") + 1)
+				if(sscanf(p, ",padsweep=%u", &g_chain[g_chainN].padsweep) != 1)
+					sscanf(p, ",input=%31[^, \r\n]", g_chain[g_chainN].input);
 			p = strchr(p, ' ');
 			if(p && g_chain[g_chainN].vis && sscanf(p + 1, "%191[^\r\n]", g_chain[g_chainN].rom) == 1)
 				g_chainN++;
@@ -553,7 +569,7 @@ void load_config(const char *loaded_path) {
 extern "C" void ScanPADSandReset(u32 _) {
 	drcNeedScan = padNeedScan = wpadNeedScan = 1;
 	// Host retraces keep coming when a guest hangs; guest VIs may not.
-	if(++g_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
+	if(++diag_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
 		g_chainTimedOut = true;
 		stop_it();
 	}

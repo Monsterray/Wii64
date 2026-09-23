@@ -80,6 +80,43 @@ values per main-stick axis, rim within 0.989..1.005 of the gate, 82 cardinal, (6
 best diagonal (the raw grid's nearest step to 45 degrees), 10 buttons one bit each (GC X
 and Y are unmapped by default).
 
+### Recorded play -- a Dolphin movie, replayed by the emulator
+
+A chain entry `chain=<vis>,input=<name> <rom>` makes port 1 replay
+`sd:/wii64/input/<name>.txt` in that game, at the same point `padsweep=` stands in. Each line
+is `<guest VI> <PAD_BUTTON_* mask, hex> <sx> <sy> <cx> <cy>` (raw GameCube values), held
+until the next line. It is keyed on the game's own VIs, so a replay stays in step on a Wii
+that runs slower than Dolphin did. The files live in `scripts/inputs/`; every launcher copies
+them to the card (`.dev/stage_roms.sh`). Dolphin's own movie playback (`-m`) does nothing in
+the installed build (WiiStation `Docs/CONTROLLER_TESTING.md`), so the emulator replays the
+recording itself, like WiiStation's `autoinput.txt`.
+
+To make one from play:
+
+```bash
+.dev/build_profiling.sh glN64_wii && cp wii64-glN64.dol .dev/wii64-glN64-prof.dol
+.dev/wii64_diag.sh record .dev/wii64-glN64-prof.dol "Super Mario 64.v64"
+```
+
+Dolphin opens with nothing booted. **Movie > Start Recording Input** boots Wii64 from
+power-on, and the ROM autoboots on the path a chain replay takes. Play, then **Movie > Stop
+Recording** (save the `.dtm`) and close Dolphin. A recording started from a save state
+cannot be replayed: its frame 0 is not power-on.
+
+```bash
+python scripts/dtm2input.py movie.dtm --perf .dev/dolphin_record/Load/WiiSDSync/wii64/perf.log \
+    --out scripts/inputs/sm64_play.txt          # --vi-rate 50 for a PAL ROM; --events lists presses
+```
+
+`--perf` reads `first_vi: vi0_retrace=N`, the host frame the game's first VI ran on in that
+recording. Movie frames are host VI fields from power-on, so guest VI = (frame - N) x
+vi_rate / 60. The recording must have run at full speed. Checked: the parser reads a real
+Dolphin movie (WiiStation's `DebugSpyroToPause.dtm`) with the same 7220 pad polls and 11294
+Wiimote records as WiiStation's converter. `scripts/inputs/sm64_start.txt`
+(`scripts/chains/replay_smoke.txt`) takes SM64 from the title screen into the castle
+flyover, and the release and PERF_PROF builds stop on the same frame. `dtm2input.py
+--selftest` checks the conversion.
+
 ### 3. Real controllers -- hardware only
 
 What neither layer above can see: how much travel a particular physical stick really has

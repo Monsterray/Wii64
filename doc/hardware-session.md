@@ -11,6 +11,7 @@ check. The Wii powers itself off when it is done, and everything is on the card.
 | `apps/wii64/boot.dol` | a **PERF_PROF** build (`.dev/build_profiling.sh glN64_wii` or `Rice_wii`) -- a release build compiles every probe out and writes no `perf.log` |
 | `wii64/diag.cfg` | the chain: `scripts/chains/hardware.txt`, copied as is |
 | `wii64/roms/` | the ROMs `hardware.txt` names, under exactly those file names |
+| `wii64/input/` | `scripts/inputs/*.txt`, if a chain line has `,input=` (recorded play, `doc/controller-testing.md`) |
 
 Nothing else is needed. A chain never loads or writes the card's saves (autosave is off for
 the whole boot), so a card with real saves on it is safe and the runs are comparable.
