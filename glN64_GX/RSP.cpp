@@ -11,11 +11,15 @@
 
 #ifdef __GX__
 #include <gccore.h>
+#include <stdio.h>
+#include "../gui/DEBUG.h"
 #endif // __GX__
 
 #include "../main/winlnxdefs.h"
 
 #include <math.h>
+#include <string.h>
+#include <ctype.h>
 #include "glN64.h"
 #include "OpenGL.h"
 #include "Debug.h"
@@ -28,7 +32,7 @@
 #include "../main/timers.h"
 #include "Combiner.h"
 //#include "textures.h"
-//#include "Config.h"
+#include "Config.h"
 #include "FrameBuffer.h"
 #include "DepthBuffer.h"
 #include "GBI.h"
@@ -203,20 +207,27 @@ void RSP_ProcessDList()
 		if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
 			gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
-		gDPSetAlphaCompare( G_AC_NONE );
-		gDPSetDepthSource( G_ZS_PIXEL );
-		gDPSetRenderMode( 0, 0 );
-		gDPSetAlphaDither( G_AD_DISABLE );
-		gDPSetColorDither( G_CD_DISABLE );
-		gDPSetCombineKey( G_CK_NONE );
-		gDPSetTextureConvert( G_TC_FILT );
-		gDPSetTextureFilter( G_TF_POINT );
-		gDPSetTextureLUT( G_TT_NONE );
-		gDPSetTextureLOD( G_TL_TILE );
-		gDPSetTextureDetail( G_TD_CLAMP );
-		gDPSetTexturePersp( G_TP_PERSP );
-		gDPSetCycleType( G_CYC_1CYCLE );
-		gDPPipelineMode( G_PM_NPRIMITIVE );
+		if ((config.generalEmulation.hacks & hack_doNotResetOtherModeL) == 0)
+		{
+			gDPSetAlphaCompare( G_AC_NONE );
+			gDPSetDepthSource( G_ZS_PIXEL );
+			gDPSetRenderMode( 0, 0 );
+		}
+
+		if ((config.generalEmulation.hacks & hack_doNotResetOtherModeH) == 0)
+		{
+			gDPSetAlphaDither( G_AD_DISABLE );
+			gDPSetColorDither( G_CD_DISABLE );
+			gDPSetCombineKey( G_CK_NONE );
+			gDPSetTextureConvert( G_TC_FILT );
+			gDPSetTextureFilter( G_TF_POINT );
+			gDPSetTextureLUT( G_TT_NONE );
+			gDPSetTextureLOD( G_TL_TILE );
+			gDPSetTextureDetail( G_TD_CLAMP );
+			gDPSetTexturePersp( G_TP_PERSP );
+			gDPSetCycleType( G_CYC_1CYCLE );
+			gDPPipelineMode( G_PM_NPRIMITIVE );
+		}
 
 #ifdef __GX__
 		OGL_GXinitDlist();
@@ -334,6 +345,50 @@ void RSP_ProcessDList()
 	gSP.changed |= CHANGED_COLORBUFFER;
 }
 
+static void _RSP_SetGameHacks()
+{
+	RSP.romname[0] = 0;
+
+	if (HEADER != NULL)
+	{
+		for (int i = 0; i < 20; i++)
+			RSP.romname[i] = (char)HEADER[32 + i];
+		RSP.romname[20] = 0;
+
+		// Remove all trailing spaces.
+		size_t len = strlen( RSP.romname );
+		while (len > 0 && RSP.romname[len - 1] == ' ')
+			RSP.romname[--len] = 0;
+	}
+
+	gDPSetDepthClearColor();
+	config.generalEmulation.hacks = 0;
+
+	if (strstr( RSP.romname, "THE LEGEND OF ZELDA" ) != NULL ||
+	    strstr( RSP.romname, "ZELDA MASTER QUEST" ) != NULL)
+		config.generalEmulation.hacks |= hack_subscreen;
+	else if (strstr( RSP.romname, "DOUBUTSUNOMORI" ) != NULL ||
+	         strstr( RSP.romname, "ANIMAL FOREST" ) != NULL)
+		config.generalEmulation.hacks |= hack_subscreen;
+	else if (strstr( RSP.romname, "Perfect Dark" ) != NULL ||
+	         strstr( RSP.romname, "PERFECT DARK" ) != NULL)
+		config.generalEmulation.hacks |= hack_rectDepthBufferCopyPD | hack_clearAloneDepthBuffer;
+	else if (strstr( RSP.romname, "TUROK_DINOSAUR_HUNTE" ) != NULL)
+		config.generalEmulation.hacks |= hack_rectDepthBufferCopyPD; // TODO check if this works here
+	else if (strstr( RSP.romname, "GOLDENEYE" ) != NULL)
+		config.generalEmulation.hacks |= hack_clearAloneDepthBuffer;
+	else if (strstr( RSP.romname, "CONKER BFD" ) != NULL ||
+	         strstr( RSP.romname, "MarioTennis" ) != NULL)
+		config.generalEmulation.hacks |= hack_fbTextureOffset;
+	else if (strstr( RSP.romname, "MASK" ) != NULL) // ZELDA MAJORA'S MASK
+		config.generalEmulation.hacks |= hack_fbCopyToRDRAM;
+	else if (strstr( RSP.romname, "Quake" ) != NULL)
+		config.generalEmulation.hacks |= hack_doNotResetOtherModeH | hack_doNotResetOtherModeL;
+	else if (strstr( RSP.romname, "QUAKE II" ) != NULL ||
+	         strstr( RSP.romname, "GAUNTLET LEGENDS" ) != NULL)
+		config.generalEmulation.hacks |= hack_doNotResetOtherModeH;
+}
+
 void RSP_Init()
 {
         //u8 test;
@@ -351,6 +406,11 @@ void RSP_Init()
 	
 	memset( &gSP, 0, sizeof( gSPInfo ) );
 	gDP.otherMode._u64 = 0;
+	gDP.m_subscreen = false;
+	gDP.m_fbCopyPending = 0;
+	gDP.m_fbCopySource = 0;
+
+	_RSP_SetGameHacks();
 
 	gDP.loadTile = &gDP.tiles[7];
 	gSP.textureTile[0] = &gDP.tiles[0];

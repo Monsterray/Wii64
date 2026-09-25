@@ -137,6 +137,8 @@ BOOL TextureCache_Verify();
 #ifdef __GX__
 void TextureCache_FreeNextTexture();
 BOOL TextureCache_FreeOneTexture();
+void TextureCache_PinTexture( const CachedTexture *tex );
+void TextureCache_ReleaseRetired();
 #endif // __GX__
 
 #endif

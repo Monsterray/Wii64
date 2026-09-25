@@ -22,8 +22,12 @@
 #include "RSP.h"
 #include "RDP.h"
 #include "Textures.h"
+#include "VI.h"
 #include "Combiner.h"
+#include "gDP.h"
 #include "Types.h"
+#include "../gui/DEBUG.h"
+#include "Config.h"
 
 FrameBufferInfo frameBuffer;
 
@@ -41,6 +45,96 @@ void glN64_FBRead( unsigned long addr )
 extern heap_cntrl* GXtexCache;
 #endif //__GX__
 
+// Re-stamp the fingerprint of every buffer starting in [start,end].
+// GLideN64 does this after copyWhiteToRDRAM().
+void FrameBuffer_RestampMarkers( u32 start, u32 end )
+{
+	FrameBuffer *current = frameBuffer.top;
+
+	while (current != NULL)
+	{
+		if (current->startAddress >= start && (current->startAddress + 3) <= end)
+			FrameBuffer_CopyRdram( current );
+		current = current->lower;
+	}
+}
+
+// GLideN64 uses this, has it named fingerprint instead.
+static const u32 fbFingerprint[4] = { 2, 6, 4, 3 };
+
+u32 FB_frame = 0;
+
+// GLideN64's FrameBuffer::updateEndAddress()
+static void _fbUpdateEndAddress( FrameBuffer *buffer )
+{
+	const u32 height = buffer->height ? buffer->height : 1;
+	const u32 end = buffer->startAddress + (((buffer->width * height) << buffer->size >> 1) - 1);
+
+	buffer->endAddress = (end < RDRAMSize) ? end : (RDRAMSize - 1);
+}
+
+static BOOL _fbIsAuxiliary( const FrameBuffer *buffer )
+{
+	return (buffer->width != VI.width || buffer->size < G_IM_SIZ_16b) ? TRUE : FALSE;
+}
+
+void FrameBuffer_CopyRdram( FrameBuffer *buffer )
+{
+	if (buffer == NULL)
+		return;
+
+	buffer->fingerprint = FALSE;
+
+	const u32 stride = buffer->width << buffer->size >> 1;
+	if (stride == 0 || buffer->startAddress >= RDRAMSize)
+		return;
+
+	u32 height = buffer->height ? buffer->height : 1;
+	if ((buffer->startAddress + stride * height) > RDRAMSize)
+		height = (RDRAMSize - buffer->startAddress) / stride;
+	if (height == 0)
+		return;
+
+	// height <= 1 means nothing has been rendered into it yet
+	if (height <= 1)
+		return;
+
+	if (buffer->isDepthBuffer)
+		return;
+
+	if (!_fbIsAuxiliary( buffer ))
+		return;
+
+	const u32 dataSize = stride * height;
+	const u32 twoPercent = (dataSize / 200 > 4) ? (dataSize / 200) : 4;
+	u32 *dst = (u32*)&RDRAM[buffer->startAddress];
+
+	for (u32 i = 0; i < twoPercent; i++)
+		dst[i] = (i < 4) ? fbFingerprint[i] : 0;
+
+	buffer->fingerprint = TRUE;
+}
+
+BOOL FrameBuffer_IsValid( FrameBuffer *buffer )
+{
+	if (buffer == NULL)
+		return FALSE;
+
+	if (buffer->validityChecked == FB_frame)
+		return TRUE;
+	buffer->validityChecked = FB_frame;
+
+	if (!buffer->fingerprint)
+		return TRUE;
+
+	const u32 *src = (const u32*)&RDRAM[buffer->startAddress];
+	for (u32 i = 0; i < 4; i++)
+		if ((src[i] & 0xFFFEFFFE) != (fbFingerprint[i] & 0xFFFEFFFE))
+			return FALSE;
+
+	return TRUE;
+}
+
 void FrameBuffer_Init()
 {
 	frameBuffer.current = NULL;
@@ -50,38 +144,26 @@ void FrameBuffer_Init()
 	fbUnderConstruction = NULL;
 }
 
+static BOOL _fbIsLive( const FrameBuffer *buffer );
+
+// Eviction for the texture cache: the least recently used buffer that is neither being
+// built, scanned out nor rendered into.
 void FrameBuffer_RemoveBottom()
 {
-	if (frameBuffer.bottom == NULL || frameBuffer.bottom == fbUnderConstruction)
-		return;
+	FrameBuffer *victim = frameBuffer.bottom;
 
-	FrameBuffer *newBottom = frameBuffer.bottom->higher;
+	while (victim != NULL && (victim == fbUnderConstruction || _fbIsLive( victim )))
+		victim = victim->higher;
 
-#ifdef __GX__
-	frameBuffer.bottom->texture->frameBufferTexture = false;
-#endif //__GX__
-	TextureCache_Remove( frameBuffer.bottom->texture );
-
-	if (frameBuffer.bottom == frameBuffer.top)
-		frameBuffer.top = NULL;
-
-#ifdef __GX__
-	if (gDP.loadTile->frameBuffer == frameBuffer.bottom)
-		gDP.loadTile->frameBuffer = NULL;
-#endif //__GX__
-
-	free( frameBuffer.bottom );
-
-    frameBuffer.bottom = newBottom;
-	
-	if (frameBuffer.bottom != NULL)
-		frameBuffer.bottom->lower = NULL;
-
-	frameBuffer.numBuffers--;
+	if (victim != NULL)
+		FrameBuffer_Remove( victim );
 }
 
 void FrameBuffer_Remove( FrameBuffer *buffer )
 {
+	if (buffer == NULL)
+		return;
+
 	if ((buffer == frameBuffer.bottom) &&
 		(buffer == frameBuffer.top))
 	{
@@ -109,12 +191,17 @@ void FrameBuffer_Remove( FrameBuffer *buffer )
 	}
 
 	if (buffer->texture)
-		TextureCache_Remove( buffer->texture );
+	{
+		CachedTexture *texture = buffer->texture;
 
-#ifdef __GX__
-	if (gDP.loadTile->frameBuffer == buffer)
-		gDP.loadTile->frameBuffer = NULL;
-#endif //__GX__
+		// Clearing buffer->texture, rather than the frameBufferTexture flag, is what
+		// stops TextureCache_Remove() coming back around through
+		// FrameBuffer_RemoveBufferForTexture(). It looks this buffer up by texture and
+		// no longer finds it. The flag has to stay around, because it is what tells
+		// _texHeapFree() the GP may still be writing to the block. (Vigilante 8 menu crash)
+		buffer->texture = NULL;
+		TextureCache_Remove( texture );
+	}
 
 	free( buffer );
 
@@ -136,13 +223,13 @@ void FrameBuffer_InvalidateBuffer( u32 address )
 	}
 }
 
-void FrameBuffer_RemoveBuffer( u32 address )
+void FrameBuffer_RemoveBufferForTexture( CachedTexture *texture )
 {
 	FrameBuffer *current = frameBuffer.bottom;
 
 	while (current != NULL)
 	{
-		if (current->startAddress == address)
+		if (current->texture == texture)
 		{
 			current->texture = NULL;
 			FrameBuffer_Remove( current );
@@ -150,6 +237,144 @@ void FrameBuffer_RemoveBuffer( u32 address )
 		}
 		current = current->higher;
 	}
+}
+
+// GLideN64's isOverlapping()
+static BOOL _fbIsOverlapping( const FrameBuffer *b1, const FrameBuffer *b2 )
+{
+	if (b1->endAddress < b2->endAddress && b1->width == b2->width && b1->size == b2->size &&
+	    b1->startAddress < b2->startAddress)
+	{
+		const u32 stride = b1->width << b1->size >> 1;
+		const u32 diff = b1->endAddress - b2->startAddress + 1;
+
+		if (stride != 0 && (diff % stride) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+static BOOL _fbIsLive( const FrameBuffer *buffer )
+{
+	if (REG.VI_ORIGIN != NULL)
+	{
+		const u32 origin = *REG.VI_ORIGIN & 0x00FFFFFF;
+
+		if (buffer->startAddress <= origin && buffer->endAddress >= origin)
+			return TRUE;	// on screen right now
+	}
+
+	if (buffer->startAddress == gDP.colorImage.address)
+		return TRUE;		// the current render target
+
+	return FALSE;
+}
+
+BOOL FrameBuffer_IsTextureLive( const CachedTexture *texture )
+{
+	FrameBuffer *current = frameBuffer.top;
+
+	while (current != NULL)
+	{
+		if (current->texture == texture)
+			return _fbIsLive( current );
+		current = current->lower;
+	}
+
+	return FALSE;
+}
+
+// GLideN64's isSubBuffer()
+static FrameBuffer *_fbFindSubBuffer( u32 address, u16 size, u16 width )
+{
+	FrameBuffer *current = frameBuffer.top;
+	const u32 stride = (u32)width << size >> 1;
+
+	if (stride == 0)
+		return NULL;
+
+	while (current != NULL)
+	{
+		if (current->width == width && current->size == size &&
+		    address > current->startAddress && address <= current->endAddress)
+		{
+			const u32 diff = address - current->startAddress;
+
+			if ((diff % stride) != 0 && (diff / stride) < 5)
+				return current;
+		}
+
+		current = current->lower;
+	}
+
+	return NULL;
+}
+
+static FrameBuffer *_fbFindTarget( u32 address, u16 size, u16 width )
+{
+	FrameBuffer *current = frameBuffer.top;
+
+	while (current != NULL)
+	{
+		if (current->startAddress == address &&
+		    current->width == width && current->size == size)
+			return current;
+
+		current = current->lower;
+	}
+
+	return _fbFindSubBuffer( address, size, width );
+}
+
+static BOOL _fbMayEvict( const FrameBuffer *victim, const FrameBuffer *current )
+{
+	if (_fbIsLive( victim ))
+		return FALSE;
+
+	if (!_fbIsAuxiliary( current ))
+		return TRUE;
+
+	return _fbIsAuxiliary( victim ) ? TRUE : FALSE;
+}
+
+void FrameBuffer_RemoveIntersections( FrameBuffer *current )
+{
+	if (current == NULL)
+		return;
+
+	FrameBuffer *iter = frameBuffer.bottom;
+	while (iter != NULL)
+	{
+		FrameBuffer *next = iter->higher;
+
+		if (iter != current)
+		{
+			if (iter->startAddress <= current->startAddress &&
+			    iter->endAddress >= current->startAddress)
+			{
+				if (_fbIsOverlapping( iter, current ))
+				{
+					iter->endAddress = current->startAddress - 1;
+				}
+				else if (_fbMayEvict( iter, current ))
+					FrameBuffer_Remove( iter );
+			}
+			else if (current->startAddress <= iter->startAddress &&
+			         current->endAddress >= iter->startAddress)
+			{
+				if (_fbIsOverlapping( current, iter ))
+				{
+					current->endAddress = iter->startAddress - 1;
+				}
+				else if (_fbMayEvict( iter, current ))
+					FrameBuffer_Remove( iter );
+			}
+		}
+
+		iter = next;
+	}
+
 }
 
 FrameBuffer *FrameBuffer_AddTop()
@@ -161,7 +386,15 @@ FrameBuffer *FrameBuffer_AddTop()
 		return NULL;
 	}
 
+	memset( newtop, 0, sizeof( FrameBuffer ) );
+
 	newtop->texture = TextureCache_AddTop();
+	if (newtop->texture == NULL)
+	{
+		free( newtop );
+		return NULL;
+	}
+
 #ifdef __GX__
 	newtop->texture->VIcount = 0;
 #endif //__GX__
@@ -210,38 +443,87 @@ void FrameBuffer_MoveToTop( FrameBuffer *newtop )
 	TextureCache_MoveToTop( newtop->texture );	// VIcount already reset above
 }
 
+// GLideN64's FrameBufferList::removeBuffers()
+void FrameBuffer_RemoveBuffersOfWidth( u32 width )
+{
+	FrameBuffer *current = frameBuffer.bottom;
+
+	while (current != NULL)
+	{
+		FrameBuffer *next = current->higher;
+
+		if (current->width == width)
+		{
+			FrameBuffer_Remove( current );
+		}
+
+		current = next;
+	}
+}
+
 void FrameBuffer_Destroy()
 {
 	fbUnderConstruction = NULL;
 	while (frameBuffer.bottom)
-		FrameBuffer_RemoveBottom();
+		FrameBuffer_Remove( frameBuffer.bottom );
+}
+
+void FrameBuffer_RefreshCurrent( FrameBuffer *buffer )
+{
+	if (buffer == NULL || buffer->texture == NULL || buffer->texture->GXtexture == NULL)
+		return;
+
+	if (buffer->startAddress != gDP.colorImage.address || buffer->refreshedFrame == FB_frame)
+		return;
+
+	buffer->refreshedFrame = FB_frame;
+
+	OGL_ApplyPendingClears();
+
+	GX_SetTexCopySrc(OGL.GXorigX, OGL.GXorigY,
+	                 (u16) buffer->texture->realWidth, (u16) buffer->texture->realHeight);
+	GX_SetTexCopyDst((u16) buffer->texture->realWidth, (u16) buffer->texture->realHeight,
+	                 buffer->texture->GXtexfmt, GX_COPY_PROGRESSIVE);
+	GX_SetCopyFilter(GX_FALSE, NULL, GX_FALSE, NULL);
+	DCInvalidateRange(buffer->texture->GXtexture, buffer->texture->textureBytes);
+	GX_CopyTex(buffer->texture->GXtexture, GX_FALSE);
+	GX_InvalidateTexAll();
+	GX_PixModeSync();
+	GX_SetCopyFilter(rmode->aa, rmode->sample_pattern, GX_TRUE, rmode->vfilter);
 }
 
 void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 {
-	FrameBuffer *current = frameBuffer.top;
+	// The EFB copy below has to see the game's clear, not what preceded it.
+	OGL_ApplyPendingClears();
 
-	// Search through saved frame buffers
-	while (current != NULL)
+	// height is deliberately not part of the key
+	FrameBuffer *current = _fbFindTarget( address, size, width );
+
+	if (current != NULL)
 	{
-		// height is deliberately not part of the key
-		if ((current->startAddress == address) &&
-			(current->width == width) &&
-			(current->size == size))
-		{
 #ifndef __GX__
-			if ((current->scaleX != OGL.scaleX) ||
-				(current->scaleY != OGL.scaleY) ||
-				(current->height < height))
+		const BOOL stale = ((current->scaleX != OGL.scaleX) ||
+		                    (current->scaleY != OGL.scaleY) ||
+		                    (current->height < height)) ? TRUE : FALSE;
 #else //!__GX__
-			if ((current->scaleX != OGL.GXscaleX) ||
-				(current->scaleY != OGL.GXscaleY) ||
-				(current->height < height))
+		const BOOL stale = ((current->scaleX != OGL.GXscaleX) ||
+		                    (current->scaleY != OGL.GXscaleY) ||
+		                    (current->height < height)) ? TRUE : FALSE;
 #endif //__GX__
-			{
-				FrameBuffer_Remove( current );
-				break;
-			}
+
+		// The buffer no longer describes what we would render now, so drop it and build
+		// a replacement below.
+		if (stale)
+		{
+			FrameBuffer_Remove( current );
+			current = NULL;
+		}
+	}
+
+	if (current != NULL)
+	{
+		{
 #ifndef __GX__
 			glBindTexture( GL_TEXTURE_2D, current->texture->glName );
 			glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, OGL.height - current->texture->height + OGL.heightOffset, current->texture->width, current->texture->height );
@@ -260,7 +542,10 @@ void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 			GX_SetCopyFilter(rmode->aa, rmode->sample_pattern, GX_TRUE, rmode->vfilter);
 #endif // __GX__
 
-			*(u32*)&RDRAM[current->startAddress] = current->startAddress;
+			current->isDepthBuffer = (address == gDP.depthImageAddress) ? TRUE : FALSE;
+			_fbUpdateEndAddress( current );
+			FrameBuffer_RemoveIntersections( current );
+			FrameBuffer_CopyRdram( current );
 
 			current->changed = TRUE;
 
@@ -269,23 +554,43 @@ void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 			gSP.changed |= CHANGED_TEXTURE;
 			return;
 		}
-		current = current->lower;
+	}
+
+	FrameBuffer *stale = frameBuffer.bottom;
+
+	while (stale != NULL)
+	{
+		FrameBuffer *next = stale->higher;
+
+		if (stale->startAddress == address &&
+		    (stale->width != width || stale->size != size))
+		{
+			FrameBuffer_Remove( stale );
+		}
+
+		stale = next;
 	}
 
 	// Wasn't found, create a new one
 	current = FrameBuffer_AddTop();
 	if (current == NULL)
+	{
 		return;
+	}
 
 #ifdef __GX__
 	fbUnderConstruction = current;
 #endif // __GX__
 
 	current->startAddress = address;
-	current->endAddress = address + ((width * height << size >> 1) - 1);
 	current->width = width;
 	current->height = height;
 	current->size = size;
+	current->isDepthBuffer = (address == gDP.depthImageAddress) ? TRUE : FALSE;
+	_fbUpdateEndAddress( current );
+
+	// Before allocating, so an overlapping stale buffer gives its texture back first.
+	FrameBuffer_RemoveIntersections( current );
 #ifndef __GX__
 	current->scaleX = OGL.scaleX;
 	current->scaleY = OGL.scaleY;
@@ -360,19 +665,14 @@ void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 #endif //!HW_RVL
 
 	current->texture->GXtexture = (u16*) __lwp_heap_allocate(GXtexCache,current->texture->textureBytes);
-	{
-		unsigned int attempts = 0;
-		// Don't want it to loop infinitely
-		while (!current->texture->GXtexture && attempts < 1000)
-		{
-			++attempts;
-			TextureCache_FreeNextTexture();
-			current->texture->GXtexture = (u16*) __lwp_heap_allocate(GXtexCache,current->texture->textureBytes);
-		}
-	}
+	TextureCache_PinTexture( current->texture );
+	while (!current->texture->GXtexture && TextureCache_FreeOneTexture())
+		current->texture->GXtexture = (u16*) __lwp_heap_allocate(GXtexCache,current->texture->textureBytes);
+	TextureCache_PinTexture( NULL );
 
 	if (current->texture->GXtexture == NULL)
 	{
+		current->texture->textureBytes = 0;
 		fbUnderConstruction = NULL;
 		FrameBuffer_Remove( current );
 		return;
@@ -400,7 +700,7 @@ void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 	GX_SetCopyFilter(rmode->aa, rmode->sample_pattern, GX_TRUE, rmode->vfilter);
 #endif // __GX__
 
-	*(u32*)&RDRAM[current->startAddress] = current->startAddress;
+	FrameBuffer_CopyRdram( current );
 
 	current->changed = TRUE;
 
@@ -409,12 +709,14 @@ void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
 
 void FrameBuffer_RenderBuffer( u32 address )
 {
+	OGL_ApplyPendingClears();
+
+	FrameBuffer *displayed = FrameBuffer_FindBuffer( address );
 	FrameBuffer *current = frameBuffer.top;
 
 	while (current != NULL)
 	{
-		if ((current->startAddress <= address) &&
-			(current->endAddress >= address))
+		if (current == displayed)
 		{
 #ifndef __GX__
 			glPushAttrib( GL_ENABLE_BIT | GL_VIEWPORT_BIT );
@@ -544,13 +846,14 @@ void FrameBuffer_RenderBuffer( u32 address )
 
 void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width )
 {
+	OGL_ApplyPendingClears();
+
+	FrameBuffer *target = _fbFindTarget( address, size, width );
 	FrameBuffer *current = frameBuffer.top;
 
 	while (current != NULL)
 	{
-		if ((current->startAddress == address) &&
-			(current->width == width) &&
-			(current->size == size))
+		if (current == target)
 		{
 #ifndef __GX__
 			glPushAttrib( GL_ENABLE_BIT | GL_VIEWPORT_BIT );
@@ -673,19 +976,57 @@ void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width )
 	OGL_ClearColorBuffer( color );
 }
 
-FrameBuffer *FrameBuffer_FindBuffer( u32 address )
+// GLideN64's getBuffer(): exact start-address match.
+FrameBuffer *FrameBuffer_GetBuffer( u32 startAddress )
 {
 	FrameBuffer *current = frameBuffer.top;
 
 	while (current)
 	{
-		if ((current->startAddress <= address) &&
-			(current->endAddress >= address))
+		if (current->startAddress == startAddress)
 			return current;
 		current = current->lower;
 	}
 
 	return NULL;
+}
+
+FrameBuffer *FrameBuffer_FindBuffer( u32 address )
+{
+	FrameBuffer *current = frameBuffer.top;
+	FrameBuffer *best = NULL;
+
+	while (current)
+	{
+		if ((current->startAddress <= address) &&
+			(current->endAddress >= address) &&
+			(best == NULL || current->startAddress > best->startAddress))
+			best = current;
+		current = current->lower;
+	}
+
+	return best;
+}
+
+// GLideN64's FrameBuffer::getTextureBG(). A BG rect covers the buffer as a whole and
+// takes its origin from gSP.bgImage, so none of the load tile shift and offset work
+// that FrameBuffer_ActivateBufferTexture() does applies here.
+void FrameBuffer_ActivateBufferTextureBG( s16 t, FrameBuffer *buffer )
+{
+	if (buffer == NULL || buffer->texture == NULL)
+		return;
+
+	buffer->texture->scaleS = OGL.GXscaleX / (float)buffer->texture->realWidth;
+	buffer->texture->scaleT = OGL.GXscaleY / (float)buffer->texture->realHeight;
+
+	buffer->texture->shiftScaleS = 1.0f;
+	buffer->texture->shiftScaleT = 1.0f;
+
+	buffer->texture->offsetS = gSP.bgImage.imageX;
+	buffer->texture->offsetT = gSP.bgImage.imageY;
+
+	FrameBuffer_MoveToTop( buffer );
+	TextureCache_ActivateTexture( t, buffer->texture );
 }
 
 void FrameBuffer_ActivateBufferTexture( s16 t, FrameBuffer *buffer )
@@ -731,11 +1072,82 @@ void FrameBuffer_ActivateBufferTexture( s16 t, FrameBuffer *buffer )
 #endif //__GX__
 	}
 
+	// GLideN64 hack_fbTextureOffset (their #519 and #2112)
+	if ((config.generalEmulation.hacks & hack_fbTextureOffset) != 0 &&
+	    gDP.otherMode.textureFilter != G_TF_POINT)
+	{
+		buffer->texture->offsetS -= 1.0f;
+		buffer->texture->offsetT -= 1.0f;
+	}
+
 	FrameBuffer_MoveToTop( buffer );
 	TextureCache_ActivateTexture( t, buffer->texture );
 }
 
 #ifdef __GX__
+
+void FrameBuffer_CopyToRDRAM( u32 sourceAddress, u32 address, u32 width, u32 height )
+{
+	if (width == 0 || height == 0)
+		return;
+
+	if (address >= RDRAMSize || (address + width * height * 2) > RDRAMSize)
+		return;
+
+	FrameBuffer *source = FrameBuffer_GetBuffer( sourceAddress );
+
+	if (source == NULL || source->texture == NULL ||
+	    source->texture->GXtexture == NULL ||
+	    source->texture->GXtexfmt != GX_TF_RGBA8)
+		return;
+
+	const u32 texW = source->texture->width;
+	const u32 texH = source->texture->height;
+	const u32 pitch = source->texture->realWidth;
+
+	if (texW == 0 || texH == 0 || pitch < 4)
+		return;
+
+	const u8 *tex = (const u8*)source->texture->GXtexture;
+	DCInvalidateRange( source->texture->GXtexture, source->texture->textureBytes );
+
+	for (u32 oy = 0; oy < height; oy++)
+	{
+		u32 sy = (oy * texH) / height;
+		if (sy >= texH)
+			sy = texH - 1;
+
+		const u8 *tileRow = tex + (sy >> 2) * (pitch >> 2) * 64;
+		const u32 i = ((sy & 3) << 2) << 1;
+
+		u16 *dst = (u16*)&RDRAM[address + oy * width * 2];
+
+		for (u32 ox = 0; ox < width; ox++)
+		{
+			u32 sx = (ox * texW) / width;
+			if (sx >= texW)
+				sx = texW - 1;
+
+			const u8 *tile = tileRow + (sx >> 2) * 64;
+			const u32 t = i + ((sx & 3) << 1);
+
+			const u8 r = tile[t + 1];
+			const u8 g = tile[32 + t];
+			const u8 b = tile[32 + t + 1];
+
+			dst[ox] = (u16)(((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | 1);
+		}
+	}
+
+	DCFlushRange( &RDRAM[address], width * height * 2 );
+
+	FrameBuffer_RestampMarkers( address, address + width * height * 2 - 1 );
+
+	FrameBuffer *written = FrameBuffer_GetBuffer( address );
+	if (written != NULL && written->isDepthBuffer)
+		written->changed = FALSE;
+}
+
 void FrameBuffer_IncrementVIcount()
 {
 	FrameBuffer *buffer = frameBuffer.top;
