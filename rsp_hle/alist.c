@@ -637,12 +637,15 @@ static void alist_resample_save(struct hle_t* hle, uint32_t address, uint16_t po
     *dram_u16(hle, address + 8) = pitch_accu;
 }
 
-/* Wii64 setting -- see wii64config.h. 0 (AUDIOQUALITY_HIFI, default) keeps
-   the original 4-tap interpolation below; nonzero (AUDIOQUALITY_FAST) skips
+/* Wii64 setting -- see wii64config.h. AUDIOQUALITY_ACCURATE (default) keeps
+   the original N64 4-tap interpolation below; AUDIOQUALITY_FAST skips
    straight to a nearest-sample pick, cutting this loop's per-sample cost
    from 4 multiplies+a LUT fetch down to a single fetch, at the cost of some
    resampled audio fidelity (more aliasing/harshness on pitch-shifted
-   sounds). Same load/reset/save history handling either way, so streaming
+   sounds). AUDIOQUALITY_HIFI keeps the 4-tap core but interpolates between
+   adjacent RESAMPLE_LUT phases with the low fraction bits, removing phase
+   quantization beyond N64 accuracy at the cost of a few extra ALU ops.
+   Same load/reset/save history handling in every mode, so streaming
    state stays consistent if the setting is changed between calls. */
 extern char audioQuality;
 
@@ -657,7 +660,7 @@ void alist_resample(
         uint32_t address)
 {
     uint32_t pitch_accu;
-    bool fast = (audioQuality != 0);
+    int mode = audioQuality; /* 0 accurate, 1 fast, 2 hi-fi; hoisted so no per-sample branch */
 
     uint16_t ipos = dmemi >> 1;
     uint16_t opos = dmemo >> 1;
@@ -672,10 +675,41 @@ void alist_resample(
     else
         alist_resample_load(hle, address, ipos, &pitch_accu);
 
-    while (count != 0) {
-        if (fast) {
+    if (mode == 1) {
+        while (count != 0) {
             *sample(hle, opos++) = *sample(hle, ipos + 2);
-        } else {
+
+            pitch_accu += pitch;
+            ipos += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+        }
+    } else if (mode == 2) {
+        while (count != 0) {
+            /* Phase-interpolated 4-tap: blend adjacent LUT rows by the
+               sub-phase fraction instead of truncating to 6 bits. */
+            unsigned phase = (pitch_accu & 0xfc00) >> 8;
+            unsigned frac = (pitch_accu & 0x03ff) >> 2; /* 0..255 */
+            const int16_t* lut0 = RESAMPLE_LUT + phase;
+            const int16_t* lut1 = RESAMPLE_LUT + ((phase + 4) & 0xff);
+            int32_t s0 = *sample(hle, ipos    );
+            int32_t s1 = *sample(hle, ipos + 1);
+            int32_t s2 = *sample(hle, ipos + 2);
+            int32_t s3 = *sample(hle, ipos + 3);
+            int32_t acc0 = s0 * lut0[0] + s1 * lut0[1] + s2 * lut0[2] + s3 * lut0[3];
+            int32_t acc1 = s0 * lut1[0] + s1 * lut1[1] + s2 * lut1[2] + s3 * lut1[3];
+            /* acc is Q15; blend in 32 bits, then round once. */
+            int32_t acc = acc0 + (((acc1 - acc0) * (int32_t)frac + 128) >> 8);
+
+            *sample(hle, opos++) = clamp_s16(acc >> 15);
+
+            pitch_accu += pitch;
+            ipos += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+        }
+    } else {
+        while (count != 0) {
             const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
 
             *sample(hle, opos++) = clamp_s16( (
@@ -683,12 +717,12 @@ void alist_resample(
                 (*sample(hle, ipos + 1) * lut[1]) +
                 (*sample(hle, ipos + 2) * lut[2]) +
                 (*sample(hle, ipos + 3) * lut[3]) ) >> 15);
-        }
 
-        pitch_accu += pitch;
-        ipos += (pitch_accu >> 16);
-        pitch_accu &= 0xffff;
-        --count;
+            pitch_accu += pitch;
+            ipos += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+        }
     }
 
     alist_resample_save(hle, address, ipos, pitch_accu);

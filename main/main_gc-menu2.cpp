@@ -150,7 +150,7 @@ static struct {
 } OPTIONS[] =
 { { "MiniMenu", &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE },
   { "Audio", &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE },
-  { "AudioQuality", &audioQuality, AUDIOQUALITY_HIFI, AUDIOQUALITY_FAST },
+  { "AudioQuality", &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_HIFI },
   { "FPS", &showFPSonScreen, FPS_HIDE, FPS_SHOW },
 //  { "Debug", &printToScreen, DEBUG_HIDE, DEBUG_SHOW },
   { "FBTex", &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE },
@@ -359,6 +359,7 @@ extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagAutonavLoadFromSD = 0; // 0=off, 1=open Load from SD, 2=also select the first entry (FileBrowserFrame, not SelectRomFrame)
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
+static int g_diagAudioQualityOverride = -1; // -1 = use settings.cfg; else AUDIOQUALITY_*
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
@@ -542,6 +543,14 @@ static void apply_diag_line(char* line) {
 			perfProf_mark(g_diagDynacoreOverride == DYNACORE_PURE_INTERP ?
 				"diag requested core: pure interpreter" : g_diagDynacoreOverride == DYNACORE_DYNAREC ?
 				"diag requested core: dynarec" : "diag requested core: interpreter");
+		} else if(strncmp(line, "audio_quality=", 14) == 0) {
+			char quality[16];
+			if(sscanf(line + 14, "%15[^\r\n]", quality) == 1) {
+				if(!strcmp(quality, "fast")) g_diagAudioQualityOverride = AUDIOQUALITY_FAST;
+				else if(!strcmp(quality, "accurate")) g_diagAudioQualityOverride = AUDIOQUALITY_ACCURATE;
+				else if(!strcmp(quality, "hifi")) g_diagAudioQualityOverride = AUDIOQUALITY_HIFI;
+				else perfProf_mark("diag audio quality: unknown value ignored");
+			}
 		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
 			dynarecTrace_setEnabled(1);
 		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
@@ -643,6 +652,11 @@ void load_config(const char *loaded_path) {
 			readConfig(f);
 			fclose(f);
 		}
+		if(g_diagAudioQualityOverride != -1)
+			audioQuality = g_diagAudioQualityOverride;
+		perfProf_mark(audioQuality == AUDIOQUALITY_FAST ?
+			"audio quality: fast" : audioQuality == AUDIOQUALITY_HIFI ?
+			"audio quality: hifi" : "audio quality: accurate");
 		if(g_diagDynacoreOverride != -1) { // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
 			dynacore = g_diagDynacoreOverride;
 			perfProf_mark(dynacore == DYNACORE_PURE_INTERP ?
@@ -734,7 +748,7 @@ int main(int argc, const char* argv[]) {
 	miniMenuActive   = MINIMENU_DISABLE; // Activate MiniMenu
 #endif
 	audioEnabled     = 1; // Audio
-	audioQuality     = AUDIOQUALITY_HIFI; // Audio resample quality
+	audioQuality     = AUDIOQUALITY_ACCURATE; // Audio resample quality
 	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging

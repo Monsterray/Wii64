@@ -26,21 +26,23 @@
 #include "../main/wii64config.h"
 
 void Func_AudioQualityFast();
+void Func_AudioQualityAccurate();
 void Func_AudioQualityHiFi();
 void Func_ReturnFromAdvancedAudioFrame();
 
-#define NUM_FRAME_BUTTONS 2
+#define NUM_FRAME_BUTTONS 3
 #define FRAME_BUTTONS advancedAudioFrameButtons
 #define FRAME_STRINGS advancedAudioFrameStrings
-#define NUM_FRAME_TEXTBOXES 3
+#define NUM_FRAME_TEXTBOXES 4
 #define FRAME_TEXTBOXES advancedAudioFrameTextBoxes
 
-static char FRAME_STRINGS[5][50] =
+static char FRAME_STRINGS[6][50] =
 	{ "Fast",
+	  "Accurate",
 	  "Hi-Fi",
 	  "Advanced Sound Settings",
 	  "Fast: lower CPU cost, some audio quality loss",
-	  "Hi-Fi: full quality (default)"
+	  "Accurate: N64 (default). Hi-Fi: Wii-best"
 };
 
 struct ButtonInfo
@@ -60,8 +62,9 @@ struct ButtonInfo
 	ButtonFunc		returnFunc;
 } FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
 { //	button	buttonStyle	buttonString		x		y		width	height	Up	Dwn	Lft	Rt	clickFunc				returnFunc
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	210.0,	180.0,	100.0,	50.0,	-1,	-1,	 1,	 1,	Func_AudioQualityFast,	Func_ReturnFromAdvancedAudioFrame }, // Fast
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	325.0,	180.0,	100.0,	50.0,	-1,	-1,	 0,	 0,	Func_AudioQualityHiFi,	Func_ReturnFromAdvancedAudioFrame }, // Hi-Fi
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	160.0,	180.0,	100.0,	50.0,	-1,	-1,	 2,	 1,	Func_AudioQualityFast,	Func_ReturnFromAdvancedAudioFrame }, // Fast
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	270.0,	180.0,	100.0,	50.0,	-1,	-1,	 0,	 2,	Func_AudioQualityAccurate,	Func_ReturnFromAdvancedAudioFrame }, // Accurate
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[2],	380.0,	180.0,	100.0,	50.0,	-1,	-1,	 1,	 0,	Func_AudioQualityHiFi,	Func_ReturnFromAdvancedAudioFrame }, // Hi-Fi
 };
 
 struct TextBoxInfo
@@ -74,9 +77,9 @@ struct TextBoxInfo
 	bool			centered;
 } FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
 { //	textBox	textBoxString		x		y		scale	centered
-	{	NULL,	FRAME_STRINGS[2],	320.0,	110.0,	 1.0,	true }, // Title
-	{	NULL,	FRAME_STRINGS[3],	320.0,	260.0,	 0.75,	true }, // Fast description
-	{	NULL,	FRAME_STRINGS[4],	320.0,	290.0,	 0.75,	true }, // Hi-Fi description
+	{	NULL,	FRAME_STRINGS[3],	320.0,	110.0,	 1.0,	true }, // Title
+	{	NULL,	FRAME_STRINGS[4],	320.0,	260.0,	 0.75,	true }, // Fast description
+	{	NULL,	FRAME_STRINGS[5],	320.0,	290.0,	 0.75,	true }, // Accurate/Hi-Fi description
 };
 
 AdvancedAudioFrame::AdvancedAudioFrame()
@@ -129,7 +132,9 @@ void AdvancedAudioFrame::activateSubmenu(int submenu)
 {
 	FRAME_BUTTONS[0].button->setSelected(false);
 	FRAME_BUTTONS[1].button->setSelected(false);
+	FRAME_BUTTONS[2].button->setSelected(false);
 	if (audioQuality == AUDIOQUALITY_FAST)	FRAME_BUTTONS[0].button->setSelected(true);
+	else if (audioQuality == AUDIOQUALITY_HIFI)	FRAME_BUTTONS[2].button->setSelected(true);
 	else									FRAME_BUTTONS[1].button->setSelected(true);
 }
 
@@ -137,13 +142,23 @@ void Func_AudioQualityFast()
 {
 	FRAME_BUTTONS[0].button->setSelected(true);
 	FRAME_BUTTONS[1].button->setSelected(false);
+	FRAME_BUTTONS[2].button->setSelected(false);
 	audioQuality = AUDIOQUALITY_FAST;
+}
+
+void Func_AudioQualityAccurate()
+{
+	FRAME_BUTTONS[0].button->setSelected(false);
+	FRAME_BUTTONS[1].button->setSelected(true);
+	FRAME_BUTTONS[2].button->setSelected(false);
+	audioQuality = AUDIOQUALITY_ACCURATE;
 }
 
 void Func_AudioQualityHiFi()
 {
 	FRAME_BUTTONS[0].button->setSelected(false);
-	FRAME_BUTTONS[1].button->setSelected(true);
+	FRAME_BUTTONS[1].button->setSelected(false);
+	FRAME_BUTTONS[2].button->setSelected(true);
 	audioQuality = AUDIOQUALITY_HIFI;
 }
 

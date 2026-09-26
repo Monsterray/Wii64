@@ -44,8 +44,9 @@ enum audioEnabled
 extern char audioQuality;
 enum audioQuality
 {
-	AUDIOQUALITY_HIFI=0,	// 4-tap interpolated resample (default, matches original behavior)
-	AUDIOQUALITY_FAST	// nearest-sample resample -- cheaper, some audio fidelity loss
+	AUDIOQUALITY_ACCURATE=0,	// N64 4-tap interpolated resample (default, matches original behavior)
+	AUDIOQUALITY_FAST,	// nearest-sample resample -- cheaper, some audio fidelity loss
+	AUDIOQUALITY_HIFI	// Wii-best: phase-interpolated 4-tap + lossless backend path
 };
 
 extern char showFPSonScreen;

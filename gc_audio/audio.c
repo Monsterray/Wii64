@@ -54,6 +54,10 @@
 #include "../main/timers.h"
 #include "../main/wii64config.h"
 
+/* Hi-fi tier: keep every DMA byte instead of dropping the whole transfer on
+   overrun. A partial fit preserves stream continuity; the fast/accurate
+   tiers keep the original drop to avoid extra IRQ-disabled copy time. */
+
 AUDIO_INFO AudioInfo;
 extern float VILimit;
 #define DEFAULT_FREQUENCY 33600
@@ -157,6 +161,29 @@ EXPORT void CALL AiLenChanged(void)
 #ifdef PERF_PROF
 			streamStarted = 1;
 #endif
+		} else if (audioQuality == AUDIOQUALITY_HIFI && buffered < BUFFER_SIZE) {
+			/* Hi-fi: ring is full for this DMA; copy what fits, count the
+			   lost tail as an overrun. No wrap-split loss: loop reuses the
+			   fit path above with the remaining capacity as length. */
+			int fit = BUFFER_SIZE - buffered;
+			int skip = length - fit;
+			length = fit;
+			do {
+				int size = MIN(end_ptr - write_ptr, length);
+				memcpy(write_ptr, stream, size);
+				stream += size;
+				length -= size;
+
+				write_ptr += size;
+				if (write_ptr >= end_ptr)
+					write_ptr = buffer;
+				buffered += size;
+			} while (length > 0);
+#ifdef PERF_PROF
+			streamStarted = 1;
+#endif
+			(void)skip;
+			perfProf_audioOverrun();
 		} else
 			perfProf_audioOverrun();
 
