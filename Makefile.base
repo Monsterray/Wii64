@@ -6,7 +6,7 @@ AS  := $(DEVKITPPC)/bin/powerpc-eabi-as
 
 
 
-LTO			 = -flto -fno-strict-aliasing # Uncomment to use link-time optimization
+LTO			 = -flto=auto -fno-strict-aliasing # Uncomment to use link-time optimization
 DEBUG_FLAGS += #-DSHOW_DEBUG #-DPROFILE #-DDEBUGON #-DPRINTGECKO #-DGLN64_SDLOG #-DNO_BT #-DPERF_PROF
 
 MACHDEP		+= -mcpu=750 -meabi -mhard-float 

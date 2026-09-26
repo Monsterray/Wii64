@@ -624,6 +624,14 @@ static int dir_comparator(const void* _x, const void* _y){
 
 void selectRomFrame_OpenDirectory(fileBrowser_file* dir)
 {
+#ifdef HW_RVL
+	if (romFile_init == fileBrowser_libfat_init && !romFile_init(dir)) {
+		menu::MessageBox::getInstance().setMessage(
+			dir->name[0] == 's' ? "Could not mount the SD card" : "Could not mount USB storage");
+		return;
+	}
+#endif
+
 	// Free the old menu stuff
 //	if(menu_items){  free(menu_items);  menu_items  = NULL; }
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
@@ -690,7 +698,10 @@ void selectRomFrame_Error(fileBrowser_file* dir, int error_code)
   	sprintf(feedback_string,"DVDX v2 not found");
 	}
 	else if(error_code == NO_DISC) {
-  	sprintf(feedback_string,"NO Disc Inserted");
+		sprintf(feedback_string,"NO Disc Inserted");
+	}
+	else if(error_code == 0) {
+		snprintf(feedback_string, sizeof(feedback_string), "No ROM files found in \"%s\"", dir->name);
 	}
 	//set first entry to read 'error' and return to main menu
 	else
