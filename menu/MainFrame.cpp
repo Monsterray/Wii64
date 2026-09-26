@@ -176,7 +176,7 @@ void Func_Settings()
 	pMenuContext->setActiveFrame(MenuContext::FRAME_SETTINGS,SettingsFrame::SUBMENU_GENERAL);
 }
 
-#define VERSION "1.5.3"
+#define VERSION "1.5.4"
 #ifdef RICE_GFX
 	#define GFX_PLUGIN "Rice"
 #else

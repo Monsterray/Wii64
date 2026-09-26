@@ -49,13 +49,22 @@
 #define TLBLUT_LO   (ROMCACHE_HI)
 #define TLBLUT_HI   (TLBLUT_LO + TLBLUT_SIZE)
 
-// We want 15MB for a Texture Cache
-#define TEXCACHE_SIZE (15*MB)
+// We want 13MB for a Texture Cache (trimmed from 15MB: 2MB moved to
+// the runtime GPU plugin region below; heap consumers use these
+// symbols so the trim flows through automatically)
+#define TEXCACHE_SIZE (13*MB)
 #define TEXCACHE_LO   (TLBLUT_HI)
 #define TEXCACHE_HI   (TEXCACHE_LO + TEXCACHE_SIZE)
 
+// 2MB for the runtime GPU plugin (relocatable ELF loaded from
+// sd:/wii64/plugins/). Measured glN64 code is ~0.5MB text;
+// 2MB covers tables, relocations, and growth.
+#define PLUGIN_SIZE (2*MB)
+#define PLUGIN_LO   (TEXCACHE_HI)
+#define PLUGIN_HI   (PLUGIN_LO + PLUGIN_SIZE)
+
 #define TEX_THUMB_SIZE (320*240*2)
-#define TEX_THUMB_LO   (TEXCACHE_HI)
+#define TEX_THUMB_LO   (PLUGIN_HI)
 #define TEX_THUMB_HI   (TEX_THUMB_LO + TEX_THUMB_SIZE)
 
 // We want 1MB for invalid_code
@@ -115,7 +124,7 @@
 #define UNCLAIMED_HI   (MEM2_HI)
 
 #define MEM2_USED_SIZE (ROMCACHE_SIZE + TLBLUT_SIZE \
-                        + TEXCACHE_SIZE + TEX_THUMB_SIZE + INVCODE_SIZE \
+                        + TEXCACHE_SIZE + PLUGIN_SIZE + TEX_THUMB_SIZE + INVCODE_SIZE \
                         + FONT_SIZE + FLASHRAM_SIZE \
                         + SRAM_SIZE + MEMPACK_SIZE \
                         + BLOCKS_SIZE + RECOMPMETA_SIZE\
