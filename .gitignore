@@ -4,6 +4,10 @@
 *.dol
 *.map
 
+# Agent working notes and handoffs (plans, benchmarks, scratch).
+# Never committed; stays local to each checkout.
+/agent-share/
+
 # Local macOS metadata
 .DS_Store
 

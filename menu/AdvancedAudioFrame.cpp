@@ -33,7 +33,7 @@ void Func_ReturnFromAdvancedAudioFrame();
 #define NUM_FRAME_BUTTONS 3
 #define FRAME_BUTTONS advancedAudioFrameButtons
 #define FRAME_STRINGS advancedAudioFrameStrings
-#define NUM_FRAME_TEXTBOXES 4
+#define NUM_FRAME_TEXTBOXES 3
 #define FRAME_TEXTBOXES advancedAudioFrameTextBoxes
 
 static char FRAME_STRINGS[6][50] =
