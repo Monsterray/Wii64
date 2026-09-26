@@ -1,0 +1,4 @@
+# Same interrupt timing as the dynarec control; isolate the CPU core setting.
+dynacore=pureinterp
+randomize_interrupt=1
+chain=1800 sd:/wii64/roms/Mario Kart 64.v64

@@ -1,0 +1,4 @@
+# Same as mario_kart_diag without changing interrupt timing; compare on hardware.
+dynacore=dynarec
+randomize_interrupt=1
+chain=1800 sd:/wii64/roms/Mario Kart 64.v64

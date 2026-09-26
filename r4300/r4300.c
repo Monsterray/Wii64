@@ -192,14 +192,16 @@ void init_blocks()
 static int cpu_inited;
 void go()
 {
-	r4300.stop = 0;
+   r4300.stop = 0;
 
    if(dynacore == 2) {
+		perfProf_mark("CPU core dispatch: pure interpreter");
 		dynacore = 0;
 		interpcore = 1;
 		pure_interpreter();
 		dynacore = 2;
-	} else {
+   } else {
+		perfProf_mark("CPU core dispatch: dynarec");
 		interpcore = 0;
 		dynacore = 1;
 		if(cpu_inited) {

@@ -37,6 +37,8 @@ extern "C" {
 #include "Textures.h"
 #endif // __GX__
 
+static void _gDPWriteRDRAM( u32 dst, const u8 *src, u8 fill, u32 numBytes );
+
 #include <math.h>
 
 #include <stdlib.h>

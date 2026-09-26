@@ -33,6 +33,9 @@
 #include <sys/stat.h>
 #include <malloc.h>
 #include <fat.h>
+#if defined(HW_RVL) && defined(PERF_PROF)
+#include <network.h>
+#endif
 #ifdef DEBUGON
 # include <debug.h>
 #endif
@@ -298,7 +301,7 @@ static void ensure_wii64_dirs(const char *prefix) {
      chain=<vis>[,padsweep=<vi>][,input=<name>] <rom>
                                           One line per game: run each for
                                           <vis> guest VIs, one after another,
-                                          in one boot, then power off. On
+                                          in one boot, then return to the loader. On
                                           hardware, moving the SD card is the
                                           slow part, so one boot collects
                                           every game. Each game starts from
@@ -323,6 +326,9 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           1 in that game: a pad recording by
                                           guest VI, made from a Dolphin movie
                                           by scripts/dtm2input.py.
+     --diag=<line>                       wiiload form of one diag.cfg line. If
+                                          present, these lines replace the SD
+                                          diag.cfg for this run.
      padsweep=<vi>[,<hold>]              From guest VI <vi> of each game on,
                                           the GameCube driver on port 1 reads
                                           a generated sweep instead of the
@@ -357,6 +363,8 @@ static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
 static int g_diagTestSelectLoad = 0; // 1 = click the first ROM in the SD browser listing at boot, 0 = off
+static char g_diagArgs[32][192];
+static int g_diagArgN;
 
 /* chain= -- see the doc comment above. */
 #define CHAIN_MAX 32
@@ -369,6 +377,77 @@ static volatile unsigned int g_chainDeadline;
 extern "C" volatile unsigned int diag_retraces;
 volatile unsigned int diag_retraces;
 static volatile bool g_chainTimedOut;
+#if defined(HW_RVL) && defined(PERF_PROF)
+static char g_resultHost[16];
+static unsigned int g_resultPort = 39364;
+
+/* Upload only after the measured run. The SD copy remains authoritative if Wi-Fi fails. */
+static bool uploadFile(const char* name, bool required) {
+	char path[64], header[160], reply[16], buf[4096];
+	snprintf(path, sizeof(path), "sd:/wii64/%s", name);
+	bool done = !strcmp(name, "done");
+	FILE* f = done ? NULL : fopen(path, "rb");
+	if (!f && !done) return !required;
+	long size = 0;
+	if (f) {
+		if (fseek(f, 0, SEEK_END) || ftell(f) < 0 || ftell(f) > 2 * 1024 * 1024) { fclose(f); return false; }
+		size = ftell(f);
+		rewind(f);
+	}
+	int sock = net_socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) { if (f) fclose(f); return false; }
+	struct timeval timeout = { 8, 0 };
+	net_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+	net_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	net_setsockopt(sock, SOL_SOCKET, SO_CONTIMEO, &timeout, sizeof(timeout));
+	struct sockaddr_in addr = {};
+	addr.sin_len = sizeof(addr);
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(g_resultPort);
+	bool ok = inet_aton(g_resultHost, &addr.sin_addr) == 1 &&
+		net_connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0;
+	int len = snprintf(header, sizeof(header), "POST /%s HTTP/1.0\r\nContent-Length: %ld\r\n\r\n", name, size);
+	for (int off = 0; ok && off < len; ) {
+		int sent = net_write(sock, header + off, len - off);
+		if (sent <= 0) ok = false; else off += sent;
+	}
+	while (ok && f && !feof(f)) {
+		size_t n = fread(buf, 1, sizeof(buf), f);
+		if (ferror(f)) { ok = false; break; }
+		for (size_t off = 0; ok && off < n; ) {
+			int sent = net_write(sock, buf + off, n - off);
+			if (sent <= 0) ok = false; else off += sent;
+		}
+	}
+	if (ok) {
+		int got = 0;
+		while (got < 12) {
+			int n = net_read(sock, reply + got, sizeof(reply) - got);
+			if (n <= 0) { ok = false; break; }
+			got += n;
+		}
+		if (ok) ok = !memcmp(reply, "HTTP/1.0 200", 12);
+	}
+	net_close(sock);
+	if (f) fclose(f);
+	return ok;
+}
+
+static void uploadResults(void) {
+	if (!g_resultHost[0]) return;
+	if (net_init() < 0) { perfProf_mark("hardware upload: network unavailable"); return; }
+	bool ok = uploadFile("perf.log", true);
+	for (int i = 1; ok && i <= g_chainN; ++i) {
+		char name[32];
+		snprintf(name, sizeof(name), "xfb_%02d.bin", i);
+		ok = uploadFile(name, false);
+		snprintf(name, sizeof(name), "padtrace_%02d.csv", i);
+		if (ok) ok = uploadFile(name, false);
+	}
+	if (ok) ok = uploadFile("done", false);
+	if (!ok) perfProf_mark("hardware upload: failed; results remain on SD");
+}
+#endif
 extern "C" unsigned int diag_vi_count, diag_stop_vi;
 extern "C" unsigned int padsweep_vi, padsweep_hold;
 extern "C" unsigned int padreplay_load(const char* path);
@@ -381,7 +460,12 @@ static void chainArm(int i) {
 	padsweep_vi = g_chain[i].padsweep ? g_chain[i].padsweep : g_padsweepAll;
 	char path[64];
 	snprintf(path, sizeof(path), "sd:/wii64/input/%s.txt", g_chain[i].input);
-	padreplay_load(g_chain[i].input[0] ? path : NULL);
+	unsigned int replayRecords = padreplay_load(g_chain[i].input[0] ? path : NULL);
+	if(g_chain[i].input[0]) {
+		char mark[64];
+		snprintf(mark, sizeof(mark), "pad replay records: %u", replayRecords);
+		perfProf_mark(mark);
+	}
 	g_chainTimedOut = false;
 	g_chainDeadline = diag_retraces + 3 * g_chain[i].vis + 60 * 60;
 }
@@ -402,8 +486,8 @@ static void chainSnapshot(int n) {
 	fclose(f);
 }
 
-/* A chained game has come back from go(): file its results and boot the next; after the
-   last, power off. Returns true while there is another game to run. */
+/* A chained game has come back from go(): file its results and boot the next.
+   Network runs return through the loader stub; offline runs keep their old behavior. */
 static bool chainNext(void) {
 	if (!g_chainN || g_chainI >= g_chainN) return false;
 	const char* how = !diag_vi_count ? "load_failed" : g_chainTimedOut ? "timeout" : "vis";
@@ -415,22 +499,29 @@ static bool chainNext(void) {
 		return true;
 	}
 	diag_stop_vi = 0;
-	// Unmount first: a Wii that powers off with the FAT cache dirty loses the log.
+	#if defined(HW_RVL) && defined(PERF_PROF)
+	uploadResults();
+	#endif
+	// Unmount first so the results survive either exit path.
 	fatUnmount("sd");
 	fatUnmount("usb");
+	#ifdef HW_RVL
+	exit(0); // return through the Homebrew Channel reload stub
+	#else
 	SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+	#endif
 	return false;
 }
 
-static void apply_diag_automation(void) {
-	FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
-	if(!f) return;
-	char line[192];
-	while(fgets(line, sizeof(line), f)) {
-		char romPath[192];
-		char coreName[32];
-		if(sscanf(line, "autoboot_rom=%191[^\r\n]", romPath) == 1) {
+static void apply_diag_line(char* line) {
+	char romPath[192];
+	char coreName[32];
+	if(!strncmp(line, "dynacore=", 9))
+		perfProf_mark("diag received dynacore line");
+	if(sscanf(line, "autoboot_rom=%191[^\r\n]", romPath) == 1) {
+		#ifdef HW_RVL
 			Autoboot::setPath(romPath);
+		#endif
 		} else if(strncmp(line, "autonav=selectrom_sd", 20) == 0) {
 			g_diagAutonavSelectRomSD = true;
 		} else if(strncmp(line, "autonav=loadrom_sd_select1", 26) == 0) {
@@ -448,6 +539,9 @@ static void apply_diag_automation(void) {
 			else if(!strcmp(coreName, "pureinterp")) g_diagDynacoreOverride = DYNACORE_PURE_INTERP;
 			else if(!strcmp(coreName, "interp"))     g_diagDynacoreOverride = DYNACORE_INTERPRETER;
 			else                                     g_diagDynacoreOverride = atoi(coreName);
+			perfProf_mark(g_diagDynacoreOverride == DYNACORE_PURE_INTERP ?
+				"diag requested core: pure interpreter" : g_diagDynacoreOverride == DYNACORE_DYNAREC ?
+				"diag requested core: dynarec" : "diag requested core: interpreter");
 		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
 			dynarecTrace_setEnabled(1);
 		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
@@ -458,6 +552,12 @@ static void apply_diag_automation(void) {
 			g_diagTestSaveLoad = 1;
 		} else if(strncmp(line, "test_selectload=1", 17) == 0) {
 			g_diagTestSelectLoad = 1;
+		#if defined(HW_RVL) && defined(PERF_PROF)
+		} else if(sscanf(line, "result_host=%15[0-9.]", g_resultHost) == 1) {
+			// Numeric IPv4 only; set this to the Mac's LAN address.
+		} else if(sscanf(line, "result_port=%u", &g_resultPort) == 1) {
+			if (!g_resultPort || g_resultPort > 65535) g_resultPort = 39364;
+		#endif
 		} else if(strncmp(line, "chain=", 6) == 0 && g_chainN < CHAIN_MAX) {
 			// chain=<vis>[,padsweep=<vi>][,input=<name>] <rom path>
 			char* p = line + 6;
@@ -472,15 +572,33 @@ static void apply_diag_automation(void) {
 				g_chainN++;
 		} else if(sscanf(line, "padsweep_hold=%u", &padsweep_hold) == 1) {
 			if(!padsweep_hold) padsweep_hold = 2; // step length for per-game ,padsweep= too
-		} else if(sscanf(line, "padsweep=%u,%u", &g_padsweepAll, &padsweep_hold) >= 1) {
-			padsweep_vi = g_padsweepAll;
-			if(!padsweep_hold) padsweep_hold = 2;
+	} else if(sscanf(line, "padsweep=%u,%u", &g_padsweepAll, &padsweep_hold) >= 1) {
+		padsweep_vi = g_padsweepAll;
+		if(!padsweep_hold) padsweep_hold = 2;
+}
+}
+
+static void apply_diag_automation(void) {
+	if(g_diagArgN) {
+		perfProf_mark("diag config: wiiload arguments");
+		for(int i = 0; i < g_diagArgN; ++i) {
+			if(!strncmp(g_diagArgs[i], "dynacore=", 9))
+				perfProf_mark("wiiload dynacore argument received");
+			apply_diag_line(g_diagArgs[i]);
 		}
+	} else {
+		FILE* f = fopen("sd:/wii64/diag.cfg", "rb");
+		if(!f) return;
+		char line[192];
+		while(fgets(line, sizeof(line), f))
+			apply_diag_line(line);
+		fclose(f);
 	}
-	fclose(f);
 	if(g_chainN) {
 		autobootQuiet = true;
+		#ifdef HW_RVL
 		Autoboot::setPath(g_chain[0].rom);
+		#endif
 		chainArm(0);
 	}
 }
@@ -491,12 +609,12 @@ void load_config(const char *loaded_path) {
 	char prefix[16];
 	int (*configFile_init)(fileBrowser_file*) = fileBrowser_libfat_init;
 
-	if(loaded_path[0] == 'u') {  
+	if(loaded_path && loaded_path[0] == 'u') {
 		memcpy(&configFile_file, &saveDir_libfat_USB, sizeof(fileBrowser_file));
 		strcpy(prefix,"usb:/wii64/");
 		romFile_topLevel = &topLevel_libfat_USB;
 	}
-	else if(loaded_path[0] == 's') {
+	else if(loaded_path && loaded_path[0] == 's') {
 		memcpy(&configFile_file, &saveDir_libfat_Default, sizeof(fileBrowser_file));
 		strcpy(prefix,"sd:/wii64/");
 		romFile_topLevel = &topLevel_libfat_Default;
@@ -525,8 +643,12 @@ void load_config(const char *loaded_path) {
 			readConfig(f);
 			fclose(f);
 		}
-		if(g_diagDynacoreOverride != -1) // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
+		if(g_diagDynacoreOverride != -1) { // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
 			dynacore = g_diagDynacoreOverride;
+			perfProf_mark(dynacore == DYNACORE_PURE_INTERP ?
+				"diag applied core: pure interpreter" : dynacore == DYNACORE_DYNAREC ?
+				"diag applied core: dynarec" : "diag applied core: interpreter");
+		}
 		if(g_chainN) // a chain never loads or writes the card's real saves
 			autoSave = AUTOSAVE_DISABLE;
 		sprintf(configFile_file.name, "%s%s", prefix, "controlG.cfg");
@@ -571,10 +693,13 @@ extern "C" void ScanPADSandReset(u32 _) {
 	// Host retraces keep coming when a guest hangs; guest VIs may not.
 	if(++diag_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
 		g_chainTimedOut = true;
+		perfProf_mark("stop reason: chain host-retrace timeout");
 		stop_it();
 	}
-	if(!((*(u32*)0xCC003000)>>16))
+	if(!((*(u32*)0xCC003000)>>16)) {
+		perfProf_mark("stop reason: Wii power-status register");
 		stop_it();
+	}
 }
 
 int main(int argc, const char* argv[]) {
@@ -652,14 +777,23 @@ int main(int argc, const char* argv[]) {
 	nativeOutput	 = NATIVEOUT_DISABLE;
 
 #ifdef HW_RVL
-	if (argv && argc > 1 && argv[1])
+	if (argc > 1 && argv && argv[1] && strncmp(argv[1], "--diag=", 7) != 0)
         Autoboot::setPath(argv[1]);
-	load_config(argv && argc > 0 && argv[0] ? argv[0] : "sd");
-	// Handle options passed in through arguments
 	int i;
-	for(i=1; argv && i<argc; ++i){
-		handleConfigPair((char*)argv[i]);
+	// Some Wii loaders place the first application argument at argv[0]. Only
+	// consume diagnostic options here, so checking that slot is safe either way.
+	for(i=0; argv && i<argc; ++i){
+		if(argv[i] && strncmp(argv[i], "--diag=", 7) == 0 && g_diagArgN < 32) {
+			strncpy(g_diagArgs[g_diagArgN], argv[i] + 7, sizeof(g_diagArgs[0]) - 1);
+			g_diagArgs[g_diagArgN][sizeof(g_diagArgs[0]) - 1] = 0;
+			g_diagArgN++;
+		}
 	}
+	load_config(argc > 0 && argv && argv[0] ? argv[0] : NULL);
+	// Apply normal settings overrides after the saved settings have loaded.
+	for(i=1; argv && i<argc; ++i)
+		if(argv[i] && strncmp(argv[i], "--diag=", 7) != 0)
+			handleConfigPair((char*)argv[i]);
 #else
 	load_config("sd");
 #endif
@@ -982,7 +1116,10 @@ static void rsp_info_init(void){
 	initiateRSP(rsp_info,(DWORD*)&cycle_count);
 }
 
-void stop_it() { r4300.stop = 1; }
+void stop_it() {
+	perfProf_mark("stop_it requested");
+	r4300.stop = 1;
+}
 
 #ifdef HW_RVL
 void ShutdownWii() {

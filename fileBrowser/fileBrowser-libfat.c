@@ -237,11 +237,6 @@ int fileBrowser_libfat_init(fileBrowser_file* f){
 #else
 	// GC has only SD
 	if(mounted[2]) return 1;
-	res = fatMountSimple ("sd", gcloader);
-	if(res) {
-		mounted[2] = 1;
-		return res;
-	}
 	res = fatMountSimple ("sd", get_io_gcsd2());
 	if(res) {
 		mounted[2] = 1;
@@ -328,4 +323,3 @@ int fileBrowser_libfatROM_readFile(fileBrowser_file* file, void* buffer, unsigne
 
 	return bytes_read;
 }
-

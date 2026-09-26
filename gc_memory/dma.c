@@ -36,6 +36,7 @@
 #include "../main/rom.h"
 #include "../main/ROM-Cache.h"
 #include "../main/guifuncs.h"
+#include "../main/perf_prof.h"
 #include "../r4300/r4300.h"
 #include "../r4300/Recomp-Cache.h"
 #include "../r4300/interupt.h"
@@ -430,6 +431,7 @@ void dma_si_write()
 	if (si_register.si_pif_addr_wr64b != 0x1FC007C0)
 	{
 		//	printf("unknown SI use\n");
+		perfProf_mark("stop reason: SI write PIF address mismatch");
 		r4300.stop=1;
 	}
 	for (i=0; i<(64/4); i++)
@@ -450,6 +452,7 @@ void dma_si_read()
 	if (si_register.si_pif_addr_rd64b != 0x1FC007C0)
 	{
 		//	printf("unknown SI use\n");
+		perfProf_mark("stop reason: SI read PIF address mismatch");
 		r4300.stop=1;
 	}
 	update_pif_read();

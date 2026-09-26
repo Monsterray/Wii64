@@ -1,0 +1,8 @@
+# Tap Start, then A, then Start again to move past the title/menu if it responds.
+0 0000 0 0 0 0
+300 1000 0 0 0 0
+310 0000 0 0 0 0
+900 0100 0 0 0 0
+910 0000 0 0 0 0
+1500 1000 0 0 0 0
+1510 0000 0 0 0 0

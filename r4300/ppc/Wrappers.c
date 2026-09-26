@@ -32,6 +32,9 @@
 #include "Recompile.h"
 #include "Wrappers.h"
 #include "../../main/dynarec_trace.h"
+#include "../../main/perf_prof.h"
+
+#include <stdio.h>
 
 extern unsigned long instructionCount;
 extern void (*interp_ops[64])(void);
@@ -140,6 +143,7 @@ void dynarec(unsigned int address){
 		dynarecTrace_dispatch(address); // no-op unless diag.cfg's dynarec_trace=1 -- see main/dynarec_trace.h
 
 		if(address == 0 && ++watchdogZeroCount >= DYNAREC_WATCHDOG_ZEROPC_LIMIT) {
+			perfProf_mark("dynarec watchdog: zero PC");
 			wii64_watchdogMessage("Dynarec jumped to address 0 -- stopped and returned to menu");
 			r4300.stop = 1;
 			break;
@@ -154,6 +158,11 @@ void dynarec(unsigned int address){
 			watchdogRingPos = (watchdogRingPos + 1) % DYNAREC_WATCHDOG_RING_SIZE;
 			if(seenBefore) {
 				if(++watchdogCycleCount >= DYNAREC_WATCHDOG_CYCLE_LIMIT) {
+					#ifdef PERF_PROF
+					char mark[48];
+					snprintf(mark, sizeof(mark), "dynarec watchdog: cycle PC=%08X", address);
+					perfProf_mark(mark);
+					#endif
 					wii64_watchdogMessage("Dynarec got stuck in a loop -- stopped and returned to menu");
 					r4300.stop = 1;
 					break;
@@ -594,6 +603,7 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 			if(needsCheck) invalidate_func(addr);
 			break;
 		default:
+			perfProf_mark("stop reason: unsupported dynarec memory operation");
 			r4300.stop = 1;
 			break;
 	}
@@ -603,4 +613,3 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 	//end_section(DYNAMEM_SECTION);
 	return r4300.pc != pc ? r4300.pc : 0;
 }
-

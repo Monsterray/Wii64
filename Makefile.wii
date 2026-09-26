@@ -4,17 +4,11 @@ CXXFLAGS	+= -DWII -DHW_RVL -DUSE_EXPANSION -D__wii__
 
 LDFLAGS		+= -mrvl
 
-# libogc2 exists in two layouts in the wild: the prebuilt bundle (libogc2/include
-# with libogc2/lib/wii) and what upstream's own "make install" produces
-# (libogc2/wii/include with libogc2/wii/lib). Accept either so a libogc2 built
-# from source works without editing this file.
-ifneq ($(wildcard $(DEVKITPRO)/libogc2/lib/wii),)
-LIBPATHS 	+= -L$(DEVKITPRO)/libogc2/lib/wii
-INCLUDE 	+= -I$(DEVKITPRO)/libogc2/include
-else
-LIBPATHS 	+= -L$(DEVKITPRO)/libogc2/wii/lib
-INCLUDE 	+= -I$(DEVKITPRO)/libogc2/wii/include
-endif
+LIBOGC2_INCLUDE 	?= $(firstword $(wildcard $(DEVKITPRO)/libogc2/include) $(wildcard $(DEVKITPRO)/libogc2/wii/include))
+LIBOGC2_WII_LIB 	?= $(firstword $(wildcard $(DEVKITPRO)/libogc2/lib/wii) $(wildcard $(DEVKITPRO)/libogc2/wii/lib))
+
+LIBPATHS 	+= -L$(LIBOGC2_WII_LIB)
+INCLUDE 	+= -I$(LIBOGC2_INCLUDE)
 
 OBJ		+= \
 		vm/dsihandler.o \
@@ -27,4 +21,3 @@ OBJ_INPUT	+= \
 		gc_input/controller-WiimoteNunchuk.o
 
 LIB		+= -lwiiuse -lbte -lz
-

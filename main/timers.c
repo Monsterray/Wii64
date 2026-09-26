@@ -135,8 +135,10 @@ void new_vi(void) {
 	VI_Counter++;
 	if (++diag_vi_count == 1)
 		perfProf_clockStart(); // wall time and PMCs count gameplay, not the load before it
-	if (diag_vi_count >= diag_stop_vi && diag_stop_vi)
+	if (diag_vi_count >= diag_stop_vi && diag_stop_vi) {
+		perfProf_mark("stop reason: chain guest VI limit");
 		stop_it();
+	}
 
 	CurrentFPSTime = ticks_to_microsecs(gettick());
 
@@ -179,4 +181,3 @@ void new_vi(void) {
 	LastFPSTime = CurrentFPSTime ;
     end_section(IDLE_SECTION);
 }
-

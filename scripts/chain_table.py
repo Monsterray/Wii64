@@ -39,7 +39,10 @@ def games(log_path):
     out = []
     with open(log_path, encoding="latin-1") as f:
         for line in f:
-            line = line.rstrip("\r\n")
+            # Dolphin's live Wii SD folder sync can expose FAT-cluster padding
+            # as NULs while the guest appends to a file. Ignore those bytes so
+            # completed game rows remain readable after the run.
+            line = line.replace("\0", "").rstrip("\r\n")
             if GAME.match(line):
                 out.append(parse_game(line))
     return out

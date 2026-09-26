@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <gccore.h>
+#include "../../main/perf_prof.h"
 #include "Register-Cache.h"
 #include "../../gc_memory/memory.h"
 #include "../Invalid_Code.h"
@@ -526,6 +527,7 @@ static int pass0(PowerPC_block* ppc_block){
 
 inline unsigned long update_invalid_addr(unsigned long addr);
 void jump_to(unsigned int address){
+	perfProf_mark("stop reason: dynarec jump_to");
 	r4300.stop = 1;
 }
 unsigned long jump_target;

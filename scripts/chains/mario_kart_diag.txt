@@ -1,0 +1,5 @@
+# Diagnostic A/B: hold the dynarec constant and remove interrupt jitter.
+dynacore=dynarec
+randomize_interrupt=0
+chain=1800 sd:/wii64/roms/Mario Kart 64.v64
+chain=1800,input=kart_start sd:/wii64/roms/Mario Kart 64.v64

@@ -4,13 +4,22 @@
 *.dol
 *.map
 
-# --- AI tooling: this workstation only, never committed ---
-# Local build/test tooling and profiles
-.dev/
-# Local agent notes and config
-AGENTS.md
+# Local macOS metadata
+.DS_Store
+
+# Keep the portable developer scripts; ignore local build products, ROMs,
+# emulator profiles, captures and logs under .dev.
+.dev/*
+!.dev/*.sh
+!.dev/*.ps1
+# Local agent config; keep the shared Wii64 skill.
 CLAUDE.md
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/wii64-build-and-test/
+.claude/skills/wii64-build-and-test/*
+!.claude/skills/wii64-build-and-test/SKILL.md
 .mcp.json
 # codebase-memory's local index artifact -- regenerate with index_repository,
 # no need to carry a 6MB binary graph.db in the repo.
@@ -29,6 +38,5 @@ __pycache__/
 
 # Baseline screenshots: large binary media, kept out of git as in WiiStation
 baselines/media/
-.DS_Store
 /libogc2/
 /libfat/

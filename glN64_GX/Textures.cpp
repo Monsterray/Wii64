@@ -528,6 +528,7 @@ const struct
 
 
 static CachedTexture  textureSlots[GX_MAX_TEXTURES];
+static void *GXtexCacheBase = NULL;
 static CachedTexture *freeTextureSlots = NULL;
 
 static void TextureCache_InitSlots()
@@ -557,6 +558,12 @@ static void TextureCache_FreeSlot( CachedTexture *slot )
 #define BG_KEEP 4
 static CachedTexture *bgKeep[BG_KEEP] = { NULL, NULL, NULL, NULL };
 static u32 bgKeepNext = 0;
+static const CachedTexture *pinnedTexture = NULL;
+
+void TextureCache_PinTexture( const CachedTexture *tex )
+{
+	pinnedTexture = tex;
+}
 
 static void TextureCache_KeepBackground( CachedTexture *tex )
 {
@@ -586,7 +593,8 @@ static void TextureCache_ForgetBackground( const CachedTexture *tex )
 
 static bool TextureCache_IsInUse( const CachedTexture *tex )
 {
-	return (tex == cache.current[0]) || (tex == cache.current[1]);
+	return (tex == cache.current[0]) || (tex == cache.current[1]) ||
+	       (tex != NULL && tex == pinnedTexture);
 }
 
 static void TextureCache_ForgetAllBackgrounds()
@@ -653,15 +661,17 @@ void TextureCache_Init()
 	{
 		GXtexCache = (heap_cntrl*)malloc(sizeof(heap_cntrl));
 #ifdef HW_RVL
-		__lwp_heap_init(GXtexCache, TEXCACHE_LO,GX_TEXTURE_CACHE_SIZE, 32);
+		GXtexCacheBase = TEXCACHE_LO;
 #else //HW_RVL
-		__lwp_heap_init(GXtexCache, memalign(32,GX_TEXTURE_CACHE_SIZE),GX_TEXTURE_CACHE_SIZE, 32);
+		GXtexCacheBase = memalign(32,GX_TEXTURE_CACHE_SIZE);
 #endif //!HW_RVL
 		__lwp_heap_init(GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(GXtexCache, "TEX");
 #endif
 	}
+	else if (GXtexCacheBase != NULL)
+		__lwp_heap_init(GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
 #endif //__GX__
 
 #ifndef __GX__
@@ -777,7 +787,7 @@ void TextureCache_RemoveBottom()
 	cache.cachedBytes -= cache.bottom->textureBytes;
 
 	if (cache.bottom->frameBufferTexture)
-		FrameBuffer_RemoveBuffer( cache.bottom->address );
+		FrameBuffer_RemoveBufferForTexture( cache.bottom );
 
 	if (cache.bottom == cache.top)
 		cache.top = NULL;
@@ -804,7 +814,7 @@ void TextureCache_Remove( CachedTexture *texture )
 
 #ifdef __GX__
 	if (texture->frameBufferTexture)
-		FrameBuffer_RemoveBuffer( texture->address );
+		FrameBuffer_RemoveBufferForTexture( texture );
 #endif //__GX__
 
 	if ((texture == cache.bottom) &&
@@ -2086,11 +2096,16 @@ void TextureCache_Update( u32 t )
 	}
 	else if (gDP.textureMode == TEXTUREMODE_FRAMEBUFFER)
 	{
-#ifndef __GX__
-		FrameBuffer_ActivateBufferTexture( t, gDP.loadTile->frameBuffer );
-#else //!__GX__
-		if (gDP.loadTile->frameBuffer) FrameBuffer_ActivateBufferTexture( t, gDP.loadTile->frameBuffer );
-#endif //__GX__
+		FrameBuffer *buffer = FrameBuffer_GetBuffer( gSP.textureTile[t]->frameBufferAddress );
+		if (buffer != NULL)
+			FrameBuffer_ActivateBufferTexture( t, buffer );
+		return;
+	}
+	else if (gDP.textureMode == TEXTUREMODE_FRAMEBUFFER_BG)
+	{
+		FrameBuffer *buffer = FrameBuffer_GetBuffer( gSP.textureTile[t]->frameBufferAddress );
+		if (buffer != NULL)
+			FrameBuffer_ActivateBufferTextureBG( t, buffer );
 		return;
 	}
 

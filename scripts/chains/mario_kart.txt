@@ -1,0 +1,2 @@
+# Final hardware check after the Dolphin fix: reproduce the 60 s baseline.
+chain=3600 sd:/wii64/roms/Mario Kart 64.v64

@@ -182,7 +182,7 @@ void Graphics::drawInit()
 	GX_InvVtxCache();
 	GX_InvalidateTexAll();
 
-	resetCopyParamsForMenu(false);
+	resetCopyParamsForMenu();
 
 	resetDrawState();
 }
