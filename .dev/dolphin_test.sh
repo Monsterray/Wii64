@@ -103,6 +103,10 @@ if [ "$(uname -s)" = Darwin ] && [ "$WAIT" = interactive ]; then
 		-C Dolphin.Core.WiiSDCardAllowWrites=True \
 		-C Dolphin.Core.WiiSDCardEnableFolderSync="$folder_sync" \
 		-C Dolphin.Interface.ConfirmStop=False \
+		-C Dolphin.Interface.UsePanicHandlers=False \
+		-C Dolphin.Interface.OnScreenDisplayMessages=False \
+		-C Dolphin.Analytics.PermissionAsked=True \
+		-C Dolphin.Analytics.Enabled=False \
 		-C Logger.Options.WriteToFile=True \
 		-C Logger.Logs.MASTER=True \
 		-C Logger.Logs.BOOT=True

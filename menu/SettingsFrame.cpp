@@ -107,9 +107,10 @@ static char FRAME_STRINGS[41][23] =
 	  "Input",
 	  "Audio",
 	  "Saves",
-	//Strings for General tab [5]
+	//Strings for Saves tab device rows [5]
 	  "Native Saves Device",
 	  "Save States Device",
+	//Strings for General tab [7]
 	  "Select CPU Core",
 	  "Save Settings",
 	  "SD",
@@ -173,18 +174,19 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[2],	275.0,	 30.0,	100.0,	56.0,	-1,	-1,	 1,	 3,	Func_TabInput,			Func_ReturnFromSettingsFrame }, // Input tab
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[3],	395.0,	 30.0,	100.0,	56.0,	-1,	-1,	 2,	 4,	Func_TabAudio,			Func_ReturnFromSettingsFrame }, // Audio tab
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[4],	515.0,	 30.0,	100.0,	56.0,	-1,	-1,	 3,	 0,	Func_TabSaves,			Func_ReturnFromSettingsFrame }, // Saves tab
-	//Buttons for General Tab (starts at button[5])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	100.0,	 55.0,	50.0,	 0,	 7,	 6,	 6,	Func_NativeSaveSD,		Func_ReturnFromSettingsFrame }, // Native Save: SD
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	100.0,	 70.0,	50.0,	 0,	8,	 5,	 5,	Func_NativeSaveUSB,		Func_ReturnFromSettingsFrame }, // Native Save: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	170.0,	 55.0,	50.0,	 5,	9,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	170.0,	 70.0,	50.0,	 6,	9,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	330.0,	240.0,	150.0,	50.0,	 7,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	495.0,	240.0,	120.0,	50.0,	8,	12,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	330.0,	310.0,	 55.0,	50.0,	9,	14,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	400.0,	310.0,	 55.0,	50.0,	9,	15,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	470.0,	310.0,	 55.0,	50.0,	9,	15,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	380.0,	 55.0,	50.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	380.0,	 70.0,	50.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
+	//Buttons for Saves Tab device rows (starts at button[5]; shared with old General indices)
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	100.0,	 55.0,	50.0,	 4,	 7,	 6,	 6,	Func_NativeSaveSD,		Func_ReturnFromSettingsFrame }, // Native Save: SD
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	100.0,	 70.0,	50.0,	 4,	8,	 5,	 5,	Func_NativeSaveUSB,		Func_ReturnFromSettingsFrame }, // Native Save: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	170.0,	 55.0,	50.0,	 5,	37,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	170.0,	 70.0,	50.0,	 6,	38,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
+	//Buttons for General Tab (starts at button[9])
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	330.0,	100.0,	150.0,	50.0,	 4,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	495.0,	100.0,	120.0,	50.0,	 4,	13,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	330.0,	170.0,	 55.0,	50.0,	9,	14,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	400.0,	170.0,	 55.0,	50.0,	9,	15,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	470.0,	170.0,	 55.0,	50.0,	10,	15,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	240.0,	 55.0,	50.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	240.0,	 70.0,	50.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
 	//Buttons for Video Tab (starts at button[16])
 	//Sized/positioned to match the General tab's convention (button width fit
 	//to its label, 330/400 for a 2-way toggle, 15px gap) instead of a fixed
@@ -213,10 +215,10 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 3,	41,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 3,	41,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
 	//Buttons for Saves Tab (starts at button[37])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	240.0,	 75.0,	50.0,	 7,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	240.0,	 75.0,	50.0,	 8,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	310.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	380.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
 	//Button 41 appended out of tab order (not 37-40) so the Saves tab's existing indices didn't need renumbering
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	 20.0,	380.0,	120.0,	50.0,	35,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-left of Audio tab -- bottom-right is under the spinning logo)
 };
@@ -231,12 +233,13 @@ struct TextBoxInfo
 	bool			centered;
 } FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
 { //	textBox	textBoxString		x		y		scale	centered
-	//TextBoxes for General Tab (starts at textBox[0])
+	//TextBoxes for Saves Tab device rows (textBox[0-1]; shared with old General indices)
 	{	NULL,	FRAME_STRINGS[5],	180.0,	125.0,	 1.0,	true }, // Native Save Device: SD/USB
 	{	NULL,	FRAME_STRINGS[6],	180.0,	195.0,	 1.0,	true }, // Save State Device: SD/USB
-	{	NULL,	FRAME_STRINGS[7],	180.0,	265.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
-	{	NULL,	FRAME_STRINGS[36],	180.0,	335.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
-	{	NULL,	FRAME_STRINGS[8],	180.0,	405.0,	 1.0,	true }, // Save settings.cfg: SD/USB
+	//TextBoxes for General Tab (starts at textBox[2])
+	{	NULL,	FRAME_STRINGS[7],	180.0,	125.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
+	{	NULL,	FRAME_STRINGS[36],	180.0,	195.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
+	{	NULL,	FRAME_STRINGS[8],	180.0,	265.0,	 1.0,	true }, // Save settings.cfg: SD/USB
 	//TextBoxes for Video Tab (starts at textBox[5])
 	{	NULL,	FRAME_STRINGS[13],	180.0,	125.0,	 1.0,	true }, // Show FPS: On/Off
 	{	NULL,	FRAME_STRINGS[14],	180.0,	181.0,	 1.0,	true }, // ScreenMode: 4x3/16x9/Force16x9
@@ -250,7 +253,7 @@ struct TextBoxInfo
 	//TextBoxes for Audio Tab (starts at textBox[13])
 	{	NULL,	FRAME_STRINGS[30],	180.0,	125.0,	 1.0,	true }, // Disable Audio: Yes/No
 	//TextBoxes for Saves Tab (starts at textBox[14])
-	{	NULL,	FRAME_STRINGS[33],	180.0,	125.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
+	{	NULL,	FRAME_STRINGS[33],	180.0,	265.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
 
 };
 
@@ -323,29 +326,27 @@ void SettingsFrame::activateSubmenu(int submenu)
 	{						//Config buttons: set visible; set selected
 		case SUBMENU_GENERAL:
 			setDefaultFocus(FRAME_BUTTONS[0].button);
-			for (int i = 0; i < NUM_TAB_BUTTONS; i++)
-			{
-				FRAME_BUTTONS[i].button->setVisible(true);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[5].button);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[14].button);
-				FRAME_BUTTONS[i].button->setActive(true);
-			}
-			for (int i = 0; i < 5; i++)
-				FRAME_TEXTBOXES[i].textBox->setVisible(true);
-			FRAME_BUTTONS[0].button->setSelected(true);
-			FRAME_BUTTONS[5+nativeSaveDevice].button->setSelected(true);
-			FRAME_BUTTONS[7+saveStateDevice].button->setSelected(true);
-			if (dynacore == DYNACORE_PURE_INTERP)	FRAME_BUTTONS[9].button->setSelected(true);
+		for (int i = 0; i < NUM_TAB_BUTTONS; i++)
+		{
+			FRAME_BUTTONS[i].button->setVisible(true);
+			FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[9].button);
+			FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[14].button);
+			FRAME_BUTTONS[i].button->setActive(true);
+		}
+		for (int i = 2; i < 5; i++)
+			FRAME_TEXTBOXES[i].textBox->setVisible(true);
+		FRAME_BUTTONS[0].button->setSelected(true);
+		if (dynacore == DYNACORE_PURE_INTERP)	FRAME_BUTTONS[9].button->setSelected(true);
 			else									FRAME_BUTTONS[10].button->setSelected(true);
 			if (count_per_op == COUNT_PER_OP_1)			FRAME_BUTTONS[11].button->setSelected(true);
 			else if (count_per_op == COUNT_PER_OP_2)	FRAME_BUTTONS[12].button->setSelected(true);
 			else										FRAME_BUTTONS[13].button->setSelected(true);
-			for (int i = 5; i < 16; i++)
-			{
-				FRAME_BUTTONS[i].button->setVisible(true);
-				FRAME_BUTTONS[i].button->setActive(true);
-			}
-			break;
+		for (int i = 9; i < 16; i++)
+		{
+			FRAME_BUTTONS[i].button->setVisible(true);
+			FRAME_BUTTONS[i].button->setActive(true);
+		}
+		break;
 		case SUBMENU_VIDEO:
 			setDefaultFocus(FRAME_BUTTONS[1].button);
 			for (int i = 0; i < NUM_TAB_BUTTONS; i++)
@@ -420,23 +421,32 @@ void SettingsFrame::activateSubmenu(int submenu)
 			break;
 		case SUBMENU_SAVES:
 			setDefaultFocus(FRAME_BUTTONS[4].button);
-			for (int i = 0; i < NUM_TAB_BUTTONS; i++)
-			{
-				FRAME_BUTTONS[i].button->setVisible(true);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[37].button);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[40].button);
-				FRAME_BUTTONS[i].button->setActive(true);
-			}
-			for (int i = 14; i < 15; i++)
-				FRAME_TEXTBOXES[i].textBox->setVisible(true);
-			FRAME_BUTTONS[4].button->setSelected(true);
-			if (autoSave == AUTOSAVE_ENABLE)	FRAME_BUTTONS[37].button->setSelected(true);
+		for (int i = 0; i < NUM_TAB_BUTTONS; i++)
+		{
+			FRAME_BUTTONS[i].button->setVisible(true);
+			FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[5].button);
+			FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[40].button);
+			FRAME_BUTTONS[i].button->setActive(true);
+		}
+		FRAME_TEXTBOXES[0].textBox->setVisible(true);
+		FRAME_TEXTBOXES[1].textBox->setVisible(true);
+		for (int i = 14; i < 15; i++)
+			FRAME_TEXTBOXES[i].textBox->setVisible(true);
+		FRAME_BUTTONS[4].button->setSelected(true);
+		FRAME_BUTTONS[5+nativeSaveDevice].button->setSelected(true);
+		FRAME_BUTTONS[7+saveStateDevice].button->setSelected(true);
+		if (autoSave == AUTOSAVE_ENABLE)	FRAME_BUTTONS[37].button->setSelected(true);
 			else								FRAME_BUTTONS[38].button->setSelected(true);
-			// Stop at 41, not NUM_FRAME_BUTTONS -- button 41 is the Advanced
-			// Audio Settings button, appended out of tab order (see its own
-			// comment below) and meant only for the Audio tab. This loop used
-			// to sweep it in too, so it also showed up on the Saves tab.
-			for (int i = 37; i < 41; i++)
+		// Stop at 41, not NUM_FRAME_BUTTONS -- button 41 is the Advanced
+		// Audio Settings button, appended out of tab order (see its own
+		// comment below) and meant only for the Audio tab. This loop used
+		// to sweep it in too, so it also showed up on the Saves tab.
+		for (int i = 5; i < 9; i++)
+		{
+			FRAME_BUTTONS[i].button->setVisible(true);
+			FRAME_BUTTONS[i].button->setActive(true);
+		}
+		for (int i = 37; i < 41; i++)
 			{
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
