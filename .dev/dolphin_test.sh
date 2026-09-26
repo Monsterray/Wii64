@@ -74,6 +74,7 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 
 LOCAL_WII64="$PROFILE_POSIX/Load/WiiSDSync/wii64"
+raw="$PROFILE_POSIX/Load/WiiSD.raw"
 mkdir -p "$LOCAL_WII64"
 if [ "$folder_sync" = True ]; then
 	# ROMs and boxart.bin from the one drop folder (see stage_roms.sh).
@@ -148,14 +149,28 @@ echo "Booting $DOL in Dolphin, waiting ${WAIT}s..."
 elapsed=0
 chain_count=0
 if [ -f "$LOCAL_WII64/diag.cfg" ]; then chain_count="$(grep -c '^chain=' "$LOCAL_WII64/diag.cfg" || true)"; fi
+raw_ready=1
+if [ "$chain_count" -gt 0 ] && [ -f "$raw" ]; then
+	old_games="$(python3 scripts/sdimage_read.py "$raw" wii64/perf.log 2>/dev/null | tr -d '\000' | grep -c '^game: ' || true)"
+	[ "$old_games" -eq 0 ] || raw_ready=0
+fi
 while [ "$elapsed" -lt "$WAIT" ]; do
 	if [ "$(uname -s)" = Darwin ]; then
 		[ -n "$(mac_dolphin_pids)" ] || break
 	else
 		kill -0 "${tracked_pids[0]}" 2>/dev/null || break
 	fi
-	if [ "$chain_count" -gt 0 ] && [ -f "$LOCAL_WII64/perf.log" ]; then
-		game_count="$(tr -d '\000' < "$LOCAL_WII64/perf.log" | grep -c '^game: ' || true)"
+	if [ "$chain_count" -gt 0 ]; then
+		game_count=0
+		if [ -s "$LOCAL_WII64/perf.log" ]; then
+			game_count="$(tr -d '\000' < "$LOCAL_WII64/perf.log" | grep -c '^game: ' || true)"
+		elif { [ "$raw_ready" -eq 0 ] || [ $((elapsed % 5)) -eq 0 ]; } && [ -f "$raw" ]; then
+			game_count="$(python3 scripts/sdimage_read.py "$raw" wii64/perf.log 2>/dev/null | tr -d '\000' | grep -c '^game: ' || true)"
+			if [ "$raw_ready" -eq 0 ]; then
+				[ "$game_count" -ne 0 ] || raw_ready=1
+				game_count=0
+			fi
+		fi
 		if [ "$game_count" -ge "$chain_count" ]; then
 			echo "Dolphin recorded all $game_count/$chain_count game results."
 			sleep 2
@@ -201,13 +216,14 @@ else
 fi
 tail -20 "$PROFILE_POSIX/Logs/dolphin.log" 2>/dev/null || tail -20 "$PROFILE_POSIX/dolphin-test.log" 2>/dev/null || true
 [ "$dolphin_status" -eq 0 ] || exit 1
-if [ "$folder_sync" = False ]; then
-	raw="$PROFILE_POSIX/Load/WiiSD.raw"
+if [ "$folder_sync" = False ] || { [ "$chain_count" -gt 0 ] && [ ! -s "$LOCAL_WII64/perf.log" ]; }; then
 	for name in diag.cfg perf.log; do
 		rm -f "$LOCAL_WII64/$name"
 		python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/sdimage_read.py" "$raw" "wii64/$name" "$LOCAL_WII64/$name" >/dev/null 2>&1 || rm -f "$LOCAL_WII64/$name"
 	done
-	for n in {01..09}; do
+	frame_count="$chain_count"
+	[ "$frame_count" -gt 0 ] || frame_count=9
+	for n in $(seq -w 1 "$frame_count"); do
 		for name in "xfb_$n.bin" "padtrace_$n.csv"; do
 			rm -f "$LOCAL_WII64/$name"
 			python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/sdimage_read.py" "$raw" "wii64/$name" "$LOCAL_WII64/$name" >/dev/null 2>&1 || rm -f "$LOCAL_WII64/$name"

@@ -21,7 +21,7 @@ mkdir -p "$dest/roms" "$dest/saves"
 
 # boxart.bin (tracked, release/wii64/) belongs in wii64/, not roms/ -- without it every
 # game shows "boxart.bin Missing".
-cp -u "$(dirname "${BASH_SOURCE[0]}")/../release/wii64/boxart.bin" "$dest/boxart.bin" 2>/dev/null || true
+cp -p "$(dirname "${BASH_SOURCE[0]}")/../release/wii64/boxart.bin" "$dest/boxart.bin" 2>/dev/null || true
 
 [ -d "$SHARED_ROMS" ] || { echo "stage_roms: no drop folder $SHARED_ROMS" >&2; exit 0; }
 # -iname: a plain *.v64 glob misses "Banjo-Kazooie.V64". Extensions match
@@ -36,5 +36,5 @@ done < <(find "$SHARED_ROMS" -type f \
 	\( -iname '*.z64' -o -iname '*.n64' -o -iname '*.v64' -o -iname '*.bin' -o -iname '*.rom' \) -print0)
 # Pad replays (chain=<vis>,input=<name>, scripts/dtm2input.py) go to wii64/input/.
 mkdir -p "$dest/input"
-cp -u "$(dirname "${BASH_SOURCE[0]}")"/../scripts/inputs/*.txt "$dest/input/" 2>/dev/null || true
+cp -p "$(dirname "${BASH_SOURCE[0]}")"/../scripts/inputs/*.txt "$dest/input/" 2>/dev/null || true
 echo "stage_roms: $n new, $(ls "$dest/roms" | wc -l) ROMs in $(basename "$(dirname "$(dirname "$(dirname "$dest")")")")"

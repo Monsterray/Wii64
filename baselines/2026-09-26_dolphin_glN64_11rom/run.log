@@ -1,0 +1,39 @@
+Using the macOS Dolphin Wii Remote and mouse bindings.
+stage_roms: 0 new,       13 ROMs in dolphin_bench
+Booting .dev/bench_builds/wii64-glN64.dol in Dolphin, waiting 1200s...
+Dolphin recorded all 11/11 game results.
+01:46:266 Core/Core.cpp:238 I[BOOT]: CPU Thread separate = Yes
+01:52:317 Core/Boot/Boot.cpp:541 N[BOOT]: Booting from executable: /Users/monsterray/Agent Folders/Wii64 glN64/.dev/bench_builds/wii64-glN64.dol
+01:52:321 Core/Boot/Boot_BS2Emu.cpp:435 I[BOOT]: Using serial number: 790426842
+01:52:321 Core/Boot/Boot_BS2Emu.cpp:463 I[BOOT]: Setup Wii Memory...
+03:59:383 Core/Core.cpp:237 I[BOOT]: Starting core = Wii mode
+03:59:384 Core/Core.cpp:238 I[BOOT]: CPU Thread separate = Yes
+04:04:777 Core/Boot/Boot.cpp:541 N[BOOT]: Booting from executable: /Users/monsterray/Agent Folders/Wii64 glN64/.dev/bench_builds/wii64-glN64.dol
+04:04:780 Core/Boot/Boot_BS2Emu.cpp:435 I[BOOT]: Using serial number: 790426842
+04:04:781 Core/Boot/Boot_BS2Emu.cpp:463 I[BOOT]: Setup Wii Memory...
+04:04:877 Core/HW/DSPHLE/UCodes/UCodes.cpp:225 W[MASTER]: Warning: This title might be incompatible with DSP HLE emulation. Try using LLE if this is homebrew.
+
+Unknown ucode (CRC = 8d527c50) - forcing AXWii.
+05:27:326 Core/Core.cpp:237 I[BOOT]: Starting core = Wii mode
+05:27:327 Core/Core.cpp:238 I[BOOT]: CPU Thread separate = Yes
+05:32:753 Core/Boot/Boot.cpp:541 N[BOOT]: Booting from executable: /Users/monsterray/Agent Folders/Wii64 glN64/.dev/bench_builds/wii64-glN64.dol
+05:32:757 Core/Boot/Boot_BS2Emu.cpp:435 I[BOOT]: Using serial number: 790426842
+05:32:758 Core/Boot/Boot_BS2Emu.cpp:463 I[BOOT]: Setup Wii Memory...
+05:32:857 Core/HW/DSPHLE/UCodes/UCodes.cpp:225 W[MASTER]: Warning: This title might be incompatible with DSP HLE emulation. Try using LLE if this is homebrew.
+
+Unknown ucode (CRC = 8d527c50) - forcing AXWii.
+  # rom                                how            vis  wall s speed  idle   fps     exc  recomp tree  undr  ovr   ipc   pad png
+-----------------------------------------------------------------------------------------------------------------------------------
+  1 Super Mario 64.v64                 vis           3600    60.1  1.00   43%  28.2   27294    1567   15     0 3541  0.00     4 xfb_01.png
+  2 Mario Kart 64.v64                  vis           3600    60.0  1.00   99%   0.8    6345     395   14     0    0  0.00     0 xfb_02.png
+  3 Banjo-Kazooie.V64                  vis           3600    60.0  1.00   55%  21.9   22438    2351   32     0 1730  0.00     0 xfb_03.png
+  4 Mario Party.v64                    vis           3600    63.4  0.95   25% 131.8   33517    1627   25     0 3447  0.00    10 xfb_04.png
+  5 Mario Party (USA).z64              vis           3600    63.4  0.95   25% 131.9   33519    1627   25     0 3447  0.00    10 xfb_05.png
+  6 Mario Party 2 (E) (M5) [!].z64     vis           3600    75.0  0.96   59%  82.5   30364    2102   20     0 3453  0.00     8 xfb_06.png
+  7 Mario Party 2 (USA).z64            vis           3600    63.0  0.95   49% 107.9   31349    2026   26     0 3426  0.00    10 xfb_07.png
+  8 Mario Party 3 (E) (M4) [!].z64     vis           3600    74.8  0.96   69%  69.3   25308    2347   20     0 2657  0.00    10 xfb_08.png
+  9 Mario Party 3 (USA).z64            vis           3600    62.9  0.95   64%  91.3   27038    2200   20     0 3528  0.00    10 xfb_09.png
+ 10 Pokemon Snap.rom                   vis           3600    62.6  0.96    6%  56.7   37960     832   12     0 3563  0.00     0 xfb_10.png
+ 11 Super Smash Bros. (U) [!].z64      vis           3600    61.3  0.98   42%  51.7   48849    2125   14     0 3563  0.00     0 xfb_11.png
+
+flush cost: 72.9 ms over 89 flushes

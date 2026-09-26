@@ -21,20 +21,25 @@ METRICS = ["speed", "idle_pct", "avg_fps", "exceptions", "recompiles", "treeDept
 def load(src):
     p = pathlib.Path(src)
     if p.is_dir():
-        out = {}
+        rows = []
         for g in games(p / "perf.log"):
             wall = g.get("wall_us", 0) / 1e6
             rate = g.get("vi_rate") or (50.0 if re.search(r"\((E|Europe|PAL)\)", g["rom"], re.I) else 60.0)
             g["speed"] = g.get("vis", 0) / wall / rate if wall else 0
             g["idle_pct"] = 100 * g.get("sleep_us", 0) / g["wall_us"] if g.get("wall_us") else 0
             g["ipc"] = g["pmc2"] / g["pmc1"] if g.get("pmc1") else 0
-            out[os.path.basename(g["rom"])] = g
-        return out
-    with open(ROOT / "baselines" / "games.csv", newline="", encoding="utf-8") as f:
-        rows = [r for r in csv.DictReader(f) if r["id"] == src]
-    if not rows:
-        sys.exit(f"{src}: not a directory and no rows with that id in baselines/games.csv")
-    return {r["rom"]: {k: float(v) if re.fullmatch(r"-?[0-9.]+", v or "") else v for k, v in r.items()} for r in rows}
+            rows.append((os.path.basename(g["rom"]), g))
+    else:
+        with open(ROOT / "baselines" / "games.csv", newline="", encoding="utf-8") as f:
+            matches = [r for r in csv.DictReader(f) if r["id"] == src]
+        if not matches:
+            sys.exit(f"{src}: not a directory and no rows with that id in baselines/games.csv")
+        rows = [(r["rom"], {k: float(v) if re.fullmatch(r"-?[0-9.]+", v or "") else v for k, v in r.items()}) for r in matches]
+    out, counts = {}, {}
+    for name, g in rows:
+        counts[name] = counts.get(name, 0) + 1
+        out[name if counts[name] == 1 else f"{name} [run {counts[name]}]"] = g
+    return out
 
 
 def main():

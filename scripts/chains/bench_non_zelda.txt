@@ -1,0 +1,12 @@
+# All staged non-Zelda ROMs, 3600 guest VIs each, same order and input on both platforms.
+chain=3600 sd:/wii64/roms/Super Mario 64.v64
+chain=3600 sd:/wii64/roms/Mario Kart 64.v64
+chain=3600 sd:/wii64/roms/Banjo-Kazooie.V64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party.v64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party (USA).z64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party 2 (E) (M5) [!].z64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party 2 (USA).z64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party 3 (E) (M4) [!].z64
+chain=3600,input=press_a_periodically sd:/wii64/roms/Mario Party 3 (USA).z64
+chain=3600 sd:/wii64/roms/Pokemon Snap.rom
+chain=3600 sd:/wii64/roms/Super Smash Bros. (U) [!].z64
