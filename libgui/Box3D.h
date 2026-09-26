@@ -58,6 +58,7 @@ private:
 	u8 transparency;
 	Image *activeBoxartFrontImage, *activeBoxartSpineImage, *activeBoxartBackImage;
 	Image *customBoxartFrontImage, *customBoxartSpineImage, *customBoxartBackImage;
+	u8* currentTexture; /* last pointer passed to setTexture; guards per-frame repeat calls */
 
 };
 

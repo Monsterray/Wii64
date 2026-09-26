@@ -92,9 +92,10 @@ Box3D::Box3D()
 		  activeBoxartFrontImage(0),
 		  activeBoxartSpineImage(0),
 		  activeBoxartBackImage(0),
-		  customBoxartFrontImage(0),
-		  customBoxartSpineImage(0),
-		  customBoxartBackImage(0)
+	  customBoxartFrontImage(0),
+	  customBoxartSpineImage(0),
+	  customBoxartBackImage(0),
+	  currentTexture((u8*)-1) /* sentinel: no real texture pointer equals this */
 {
 	setVisible(false);
 //	srand ( gettick() );
@@ -137,6 +138,11 @@ void Box3D::setMode(int mode)
 
 void Box3D::setTexture(u8* texture)
 {
+	/* Called every frame per box button; same pointer means same art. */
+	if (texture == currentTexture)
+		return;
+	currentTexture = texture;
+
 	if(customBoxartFrontImage)	{ delete customBoxartFrontImage; customBoxartFrontImage = NULL; }
 	if(customBoxartSpineImage) 	{ delete customBoxartSpineImage; customBoxartSpineImage = NULL; }
 	if(customBoxartBackImage) 	{ delete customBoxartBackImage;  customBoxartBackImage = NULL;  }

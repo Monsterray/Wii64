@@ -471,21 +471,6 @@ void Graphics::drawCircle(int x, int y, int radius, int numSegments)
 	GX_End();
 }
 
-void Graphics::drawString(int x, int y, std::string str)
-{
-	//todo
-}
-
-void Graphics::drawPoint(int x, int y, int radius)
-{
-	GX_SetPointSize(u8 (radius *3 ),GX_TO_ZERO);
-	GX_Begin(GX_POINTS, GX_VTXFMT0, 1);
-		GX_Position3f32((float) x,(float) y, depth );
-		GX_Color4u8(appliedColor[0].r, appliedColor[0].g, appliedColor[0].b, appliedColor[0].a);
-		GX_TexCoord2f32(0.0f,0.0f);
-	GX_End();
-}
-
 void Graphics::setLineWidth(int width)
 {
 	GX_SetLineWidth((u8) (width * 6), GX_TO_ZERO );

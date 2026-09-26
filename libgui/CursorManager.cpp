@@ -177,12 +177,6 @@ void Cursor::drawCursor(Graphics& gfx)
 		}
 		gfx.drawImage(0, 0, 0, width, height, 0.0, 1.0, 0.0, 1.0);
 	}
-
-/*	GXColor debugColor = (GXColor) {255, 100, 100, 255};
-	IplFont::getInstance().drawInit(debugColor);
-	char buffer[50];
-	sprintf(buffer, "IR: %.2f, %.2f, %.2f",cursorX,cursorY,cursorRot);
-	IplFont::getInstance().drawString((int) 320, (int) 240, buffer, 1.0, true);*/
 }
 
 void Cursor::addComponent(Frame* parentFrame, Component* component, float x1, float x2, float y1, float y2)
