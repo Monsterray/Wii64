@@ -21,3 +21,4 @@ For build, Dolphin, controller, or performance work, read [the Wii64 build-and-t
 - End of conversation: bump version, rebuild, commit on the work branch, and start Dolphin interactive with the new build for the user to test.
 - local-llm MCP lives in `~/.config/opencode/opencode.jsonc` (SSH stdio to ai-server-codex). Skills live in `~/.config/opencode/skills/<name>/SKILL.md`. Newly installed skills load on next session start.
 - Menu draw calls run every frame per widget. Guard repeat work on unchanged input (see `Box3D::setTexture`). Never allocate per frame in a draw path.
+- Cleanup rule: fix broken code over removing it. Remove only what is proven dead (zero callers) or explicitly stubbed out.
