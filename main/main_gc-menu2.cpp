@@ -150,7 +150,7 @@ static struct {
 } OPTIONS[] =
 { { "MiniMenu", &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE },
   { "Audio", &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE },
-  { "AudioQuality", &audioQuality, AUDIOQUALITY_HIFI, AUDIOQUALITY_FAST },
+  { "AudioQuality", &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_FAST },
   { "FPS", &showFPSonScreen, FPS_HIDE, FPS_SHOW },
 //  { "Debug", &printToScreen, DEBUG_HIDE, DEBUG_SHOW },
   { "FBTex", &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE },
@@ -359,6 +359,7 @@ extern int randomize_interrupt;
 static bool g_diagAutonavSelectRomSD = false;
 static int g_diagAutonavLoadFromSD = 0; // 0=off, 1=open Load from SD, 2=also select the first entry (FileBrowserFrame, not SelectRomFrame)
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
+static int g_diagAudioQualityOverride = -1; // -1 = use settings.cfg; else AUDIOQUALITY_*
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
@@ -380,6 +381,70 @@ static volatile bool g_chainTimedOut;
 #if defined(HW_RVL) && defined(PERF_PROF)
 static char g_resultHost[16];
 static unsigned int g_resultPort = 39364;
+static bool g_fetchRoms;
+
+/* Diagnostic runs may stage their named ROMs from the result receiver. */
+static bool fetchRom(const char* path) {
+	const char* prefix = "sd:/wii64/roms/";
+	if (strncmp(path, prefix, strlen(prefix)) || !g_resultHost[0]) return false;
+	const char* name = path + strlen(prefix);
+	if (!*name || strchr(name, '/') || strchr(name, '\\') || strstr(name, "..")) return false;
+	FILE* existing = fopen(path, "rb");
+	if (existing) { fclose(existing); return true; }
+	char encoded[3 * 192], request[sizeof(encoded) + 80];
+	size_t e = 0;
+	for (const unsigned char* p = (const unsigned char*)name; *p; ++p) {
+		if (e + 3 >= sizeof(encoded)) return false;
+		if ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+			(*p >= '0' && *p <= '9') || *p == '-' || *p == '_' || *p == '.') encoded[e++] = *p;
+		else { snprintf(encoded + e, sizeof(encoded) - e, "%%%02X", *p); e += 3; }
+	}
+	encoded[e] = 0;
+	int sock = net_socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) return false;
+	struct timeval timeout = { 8, 0 };
+	net_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+	net_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	net_setsockopt(sock, SOL_SOCKET, SO_CONTIMEO, &timeout, sizeof(timeout));
+	struct sockaddr_in addr = {};
+	addr.sin_len = sizeof(addr);
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(g_resultPort);
+	bool ok = inet_aton(g_resultHost, &addr.sin_addr) == 1 &&
+		net_connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0;
+	int len = snprintf(request, sizeof(request), "GET /rom/%s HTTP/1.0\r\n\r\n", encoded);
+	for (int off = 0; ok && off < len; ) {
+		int sent = net_write(sock, request + off, len - off);
+		if (sent <= 0) ok = false; else off += sent;
+	}
+	char header[512] = {};
+	size_t h = 0;
+	while (ok && h + 1 < sizeof(header)) {
+		int got = net_read(sock, header + h, 1);
+		if (got <= 0) { ok = false; break; }
+		h += got;
+		if (h >= 4 && !memcmp(header + h - 4, "\r\n\r\n", 4)) break;
+	}
+	if (h < 4 || memcmp(header + h - 4, "\r\n\r\n", 4)) ok = false;
+	char* length = strstr(header, "Content-Length: ");
+	unsigned long remaining = length ? strtoul(length + 16, NULL, 10) : 0;
+	if (strncmp(header, "HTTP/1.0 200", 12) || !remaining || remaining > 64UL * 1024 * 1024) ok = false;
+	char partial[224];
+	snprintf(partial, sizeof(partial), "%s.part", path);
+	FILE* out = ok ? fopen(partial, "wb") : NULL;
+	if (!out) ok = false;
+	char buf[8192];
+	while (ok && remaining) {
+		int got = net_read(sock, buf, remaining < sizeof(buf) ? remaining : sizeof(buf));
+		if (got <= 0 || fwrite(buf, 1, got, out) != (size_t)got) { ok = false; break; }
+		remaining -= got;
+	}
+	if (out && fclose(out)) ok = false;
+	net_close(sock);
+	if (ok && rename(partial, path)) ok = false;
+	if (!ok && out) remove(partial);
+	return ok;
+}
 
 /* Upload only after the measured run. The SD copy remains authoritative if Wi-Fi fails. */
 static bool uploadFile(const char* name, bool required) {
@@ -542,6 +607,13 @@ static void apply_diag_line(char* line) {
 			perfProf_mark(g_diagDynacoreOverride == DYNACORE_PURE_INTERP ?
 				"diag requested core: pure interpreter" : g_diagDynacoreOverride == DYNACORE_DYNAREC ?
 				"diag requested core: dynarec" : "diag requested core: interpreter");
+		} else if(strncmp(line, "audio_quality=", 14) == 0) {
+			char quality[16];
+			if(sscanf(line + 14, "%15[^\r\n]", quality) == 1) {
+				if(!strcmp(quality, "fast")) g_diagAudioQualityOverride = AUDIOQUALITY_FAST;
+				else if(!strcmp(quality, "accurate")) g_diagAudioQualityOverride = AUDIOQUALITY_ACCURATE;
+				else perfProf_mark("diag audio quality: unknown value ignored");
+			}
 		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
 			dynarecTrace_setEnabled(1);
 		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
@@ -557,6 +629,8 @@ static void apply_diag_line(char* line) {
 			// Numeric IPv4 only; set this to the Mac's LAN address.
 		} else if(sscanf(line, "result_port=%u", &g_resultPort) == 1) {
 			if (!g_resultPort || g_resultPort > 65535) g_resultPort = 39364;
+		} else if(!strcmp(line, "rom_fetch=1")) {
+			g_fetchRoms = true;
 		#endif
 		} else if(strncmp(line, "chain=", 6) == 0 && g_chainN < CHAIN_MAX) {
 			// chain=<vis>[,padsweep=<vi>][,input=<name>] <rom path>
@@ -595,6 +669,13 @@ static void apply_diag_automation(void) {
 		fclose(f);
 	}
 	if(g_chainN) {
+		#if defined(HW_RVL) && defined(PERF_PROF)
+		if (g_fetchRoms) {
+			bool ready = net_init() >= 0;
+			for (int i = 0; ready && i < g_chainN; ++i) ready = fetchRom(g_chain[i].rom);
+			perfProf_mark(ready ? "ROM fetch: complete" : "ROM fetch: failed");
+		}
+		#endif
 		autobootQuiet = true;
 		#ifdef HW_RVL
 		Autoboot::setPath(g_chain[0].rom);
@@ -643,6 +724,10 @@ void load_config(const char *loaded_path) {
 			readConfig(f);
 			fclose(f);
 		}
+		if(g_diagAudioQualityOverride != -1)
+			audioQuality = g_diagAudioQualityOverride;
+		perfProf_mark(audioQuality == AUDIOQUALITY_FAST ?
+			"audio quality: fast" : "audio quality: accurate");
 		if(g_diagDynacoreOverride != -1) { // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
 			dynacore = g_diagDynacoreOverride;
 			perfProf_mark(dynacore == DYNACORE_PURE_INTERP ?
@@ -734,7 +819,7 @@ int main(int argc, const char* argv[]) {
 	miniMenuActive   = MINIMENU_DISABLE; // Activate MiniMenu
 #endif
 	audioEnabled     = 1; // Audio
-	audioQuality     = AUDIOQUALITY_HIFI; // Audio resample quality
+	audioQuality     = AUDIOQUALITY_ACCURATE; // Audio resample quality
 	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging

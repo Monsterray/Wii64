@@ -10,7 +10,17 @@ value() { sed -n "s/^$1=//p" "$config" | tail -n 1; }
 wii_ip="$(value WII64_WII_IP)"
 mac_ip="$(value WII64_MAC_IP)"
 python3 -c 'import ipaddress,sys; [ipaddress.IPv4Address(x) for x in sys.argv[1:]]' "$wii_ip" "$mac_ip"
-python3 -c 'import socket,sys; s=socket.socket(); s.bind((sys.argv[1],0)); s.close(); socket.create_connection((sys.argv[2],4299),3).close()' "$mac_ip" "$wii_ip" || { echo "Homebrew Channel is not reachable; check the Wii screen and LAN." >&2; exit 1; }
+python3 -c 'import socket,sys; s=socket.socket(); s.bind((sys.argv[1],0)); s.close()' "$mac_ip" || { echo "This Mac cannot bind to $mac_ip; check .dev/hardware.env." >&2; exit 1; }
+# A bare connect-and-close can stall older HBC's loader; send a rejected header.
+for attempt in 1 2 3 4 5; do
+	if python3 -c 'import socket,sys; s=socket.create_connection((sys.argv[1],4299),3); s.sendall(b"PING"+bytes(12)); s.close()' "$wii_ip" 2>/dev/null; then break; fi
+	if [ "$attempt" = 5 ]; then
+		echo "Homebrew Channel upload port is not reachable at $wii_ip:4299; check its network icon and IP." >&2
+		exit 1
+	fi
+	echo "Waiting for Homebrew Channel network ($attempt/5)..."
+	sleep 2
+done
 chain="${2:-$(value WII64_CHAIN)}"
 [[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "scripts/chains/$chain.txt" ]] || {
 	echo "Unknown chain '$chain'; choose a file in scripts/chains/ without its .txt suffix." >&2
@@ -27,16 +37,23 @@ esac
 if [ "${WII64_SKIP_BUILD:-0}" != 1 ]; then
 	.dev/build_profiling.sh "$target"
 fi
+dol="${WII64_DOL:-$dol}"
 [[ -f "$dol" ]] || { echo "Missing $dol; build it or unset WII64_SKIP_BUILD=1." >&2; exit 1; }
 mkdir -p .dev/runs
 out="$(mktemp -d ".dev/runs/hardware-${target}-$(date +%Y%m%d-%H%M%S)-XXXX")"
 cp "scripts/chains/$chain.txt" "$out/diag.cfg"
 printf 'result_host=%s\n' "$mac_ip" >> "$out/diag.cfg"
+if [ -n "${WII64_ROM_DIR:-}" ]; then
+	[ -d "$WII64_ROM_DIR" ] || { echo "ROM folder does not exist: $WII64_ROM_DIR" >&2; exit 1; }
+	printf 'rom_fetch=1\n' >> "$out/diag.cfg"
+fi
 receiver_python=python3
 if [ "$(uname -s)" = Darwin ] && [ -x /usr/bin/python3 ]; then receiver_python=/usr/bin/python3; fi
 receiver_timeout=1200
 if [ "$chain" = hardware ]; then receiver_timeout=2400; fi
-"$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac_ip" --wii-ip "$wii_ip" --timeout "$receiver_timeout" >"$out/receiver.log" 2>&1 &
+receiver_cmd=("$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac_ip" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
+if [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
+"${receiver_cmd[@]}" >"$out/receiver.log" 2>&1 &
 receiver=$!
 cleanup() { kill "$receiver" 2>/dev/null || true; }
 trap cleanup EXIT
@@ -52,6 +69,10 @@ diag_args=()
 while IFS= read -r line; do
 	[[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 	((${#line} < 192)) || { echo "Diagnostic line exceeds the Wii limit of 191 bytes." >&2; exit 1; }
+	if [[ "$line" =~ ,input=([A-Za-z0-9_-]+) ]] && [ ! -f "scripts/inputs/${BASH_REMATCH[1]}.txt" ]; then
+		echo "Missing replay scripts/inputs/${BASH_REMATCH[1]}.txt; stage replays on SD with .dev/hardware_setup.sh." >&2
+		exit 1
+	fi
 	diag_args+=("--diag=$line")
 done < "$out/diag.cfg"
 ((${#diag_args[@]} <= 32)) || { echo "The Wii accepts at most 32 diagnostic lines." >&2; exit 1; }
@@ -64,7 +85,8 @@ echo "Waiting for Homebrew Channel to return..."
 python3 -c 'import socket,sys,time; host=sys.argv[1]; end=time.monotonic()+90
 while time.monotonic()<end:
     try:
-        socket.create_connection((host,4299),2).close()
+        s=socket.create_connection((host,4299),2)
+        s.sendall(b"PING"+bytes(12)); s.close()
         print("Homebrew Channel is ready for another run")
         break
     except OSError:

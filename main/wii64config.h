@@ -44,8 +44,8 @@ enum audioEnabled
 extern char audioQuality;
 enum audioQuality
 {
-	AUDIOQUALITY_HIFI=0,	// 4-tap interpolated resample (default, matches original behavior)
-	AUDIOQUALITY_FAST	// nearest-sample resample -- cheaper, some audio fidelity loss
+	AUDIOQUALITY_ACCURATE=0,	// original 4-tap N64 resample (default)
+	AUDIOQUALITY_FAST=1	// nearest-sample resample -- cheaper, some audio fidelity loss
 };
 
 extern char showFPSonScreen;

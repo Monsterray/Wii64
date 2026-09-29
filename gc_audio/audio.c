@@ -78,11 +78,15 @@ char scalePitch = 0;
    Counted once per gap (fed -> starved), and only after this game's audio has started --
    before a game first writes AI, every DSP frame is "starved" and means nothing. */
 static int streamStarted, starved;
+static volatile unsigned int streamRequests, streamFed;
 #endif
 
 static void aesnd_callback(AESNDPB *pb, uint32_t state)
 {
 	if (state == VOICE_STATE_STREAM) {
+#ifdef PERF_PROF
+		streamRequests++;
+#endif
 		if (buffered >= DSP_STREAMBUFFER_SIZE) {
 			AESND_SetVoiceBuffer(pb, read_ptr, DSP_STREAMBUFFER_SIZE);
 			read_ptr += DSP_STREAMBUFFER_SIZE;
@@ -90,6 +94,7 @@ static void aesnd_callback(AESNDPB *pb, uint32_t state)
 				read_ptr = buffer;
 			buffered -= DSP_STREAMBUFFER_SIZE;
 #ifdef PERF_PROF
+			streamFed++;
 			starved = 0;
 		} else if (streamStarted && !starved) {
 			starved = 1;
@@ -107,8 +112,27 @@ static void reset_buffer(void)
 	memset(buffer, 0, BUFFER_SIZE);
 #ifdef PERF_PROF
 	streamStarted = starved = 0;
+	streamRequests = streamFed = 0;
 #endif
 }
+
+#ifdef PERF_PROF
+/* Queued PCM only. AESND/DSP output delay is not included. */
+unsigned int audioQueuedMilliseconds(void)
+{
+	return freq ? ((unsigned int)buffered * 250u) / freq : 0;
+}
+
+/* Counts only callback requests and supplied buffers, not speaker latency. */
+void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *hz)
+{
+	uint32_t level = IRQ_Disable();
+	*requests = streamRequests;
+	*fed = streamFed;
+	*hz = freq;
+	IRQ_Restore(level);
+}
+#endif
 
 EXPORT void CALL AiDacrateChanged(int SystemType)
 {
@@ -133,18 +157,19 @@ EXPORT void CALL AiDacrateChanged(int SystemType)
 EXPORT void CALL AiLenChanged(void)
 {
 	if (audioEnabled) {
+		size_t length = *AudioInfo.AI_LEN_REG;
+		if (length == 0)
+			return;
 #ifdef RVL_LIBWIIDRC
 		while(buffered > (DSP_STREAMBUFFER_SIZE * 24))
 			usleep(100);
 #endif
 		uint32_t level = IRQ_Disable();
 		
-		unsigned char *stream = AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF);
-		int length = *AudioInfo.AI_LEN_REG;
-		
-		if (buffered + length < BUFFER_SIZE) {
+		if (length < (size_t)(BUFFER_SIZE - buffered)) {
+			unsigned char *stream = AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF);
 			do {
-				int size = MIN(end_ptr - write_ptr, length);
+				size_t size = MIN((size_t)(end_ptr - write_ptr), length);
 				memcpy(write_ptr, stream, size);
 				stream += size;
 				length -= size;

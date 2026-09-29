@@ -1,0 +1,4 @@
+# Fast Wii repeat for games using the exponential envelope mixer.
+audio_quality=accurate
+chain=900 sd:/wii64/roms/Super Mario 64.v64
+chain=900 sd:/wii64/roms/Pokemon Snap.rom

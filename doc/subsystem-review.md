@@ -300,6 +300,7 @@ The save/load path itself needs re-testing now that the flag actually fires.
 
 **Future work**:
 - Pre-existing upstream TODO/FIXME markers, flagged for completeness only (no DSP math rewrites per this project's established risk constraint): `alist_nead.c:539,550` ("FIXME: implement proper ucode" for `nead_mats`/`nead_efz`), `alist_nead.c:142`, `alist_naudio.c:240,291,305` ("TODO: check which ABI supports it"), `musyx.c:307` (unhandled `ptr_10` case, warns only).
+- These TODOs remain open, not silently resolved. Current `HleForwardTask()` always returns `-1`; Mats completes without audio and EFZ uses the F-Zero X approximation. The review's other audio fixes are already applied. The [audio test matrix](audio-development-plan.md#roms-needed-for-microcode-coverage) lists ROMs needed to collect task traces before changing these paths; Mats and EFZ require 64DD coverage. No tested ROM in the current eight-game survey exercises GE, NEAD, or MusyX.
 
 ## 5. menu + libgui + gui
 

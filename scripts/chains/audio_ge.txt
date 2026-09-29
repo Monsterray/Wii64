@@ -1,0 +1,4 @@
+# Fixed intro scenes for GE envelope A/B/A checks.
+audio_quality=accurate
+chain=900 sd:/wii64/roms/GoldenEye 007 (USA).z64
+chain=900 sd:/wii64/roms/Diddy Kong Racing (USA) (En,Fr) (Rev 1).z64

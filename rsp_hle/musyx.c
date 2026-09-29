@@ -31,6 +31,7 @@
 #include "hle_external.h"
 #include "hle_internal.h"
 #include "memory.h"
+#include "../main/perf_audio.h"
 
 /* various constants */
 enum { SUBFRAME_SIZE = 192 };
@@ -304,6 +305,7 @@ void musyx_v2_task(struct hle_t* hle)
         init_subframes_v2(&musyx);
 
         if (ptr_10) {
+            perfProf_audioGap(PERF_AUDIO_GAP_MUSYX_PTR10);
             /* TODO */
             HleWarnMessage(hle->user_defined,
                            "ptr_10=%08x mask_14=%02x ptr_24=%08x",
@@ -464,6 +466,7 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
     /* voice stage can be skipped if first voice has no samples */
     if (*dram_u16(hle, voice_ptr + VOICE_CATSRC_0 + CATSRC_SIZE1) == 0) {
         HleVerboseMessage(hle->user_defined, "Skipping Voice stage");
+        perfProf_musyxVoices(0);
         output_ptr = *dram_u32(hle, voice_ptr + VOICE_INTERLEAVED_PTR);
     } else {
         /* otherwise process voices until a non null output_ptr is encountered */
@@ -486,8 +489,10 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
 
             /* check break condition */
             output_ptr = *dram_u32(hle, voice_ptr + VOICE_INTERLEAVED_PTR);
-            if (output_ptr != 0)
+            if (output_ptr != 0) {
+                perfProf_musyxVoices(i + 1);
                 break;
+            }
 
             /* next voice */
             ++i;
@@ -671,6 +676,7 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
                               unsigned segbase, unsigned offset, uint32_t last_sample_ptr)
 {
     int i, k;
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_MUSYX_VOICE, SUBFRAME_SIZE);
 
     /* parse VOICE structure */
     const uint16_t pitch_q16   = *dram_u16(hle, voice_ptr + VOICE_PITCH_Q16);
@@ -754,6 +760,7 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
     HleVerboseMessage(hle->user_defined,
                       "last_sample = %04x %04x %04x %04x",
                       v4[0], v4[1], v4[2], v4[3]);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_MUSYX_VOICE, timer);
 }
 
 
@@ -790,6 +797,7 @@ static void sfx_stage(struct hle_t* hle, mix_sfx_with_main_subframes_t mix_sfx_w
     cbuffer_length = *dram_u32(hle, sfx_ptr + SFX_CBUFFER_LENGTH);
 
     tap_count      = *dram_u16(hle, sfx_ptr + SFX_TAP_COUNT);
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_MUSYX_FX, tap_count);
 
     dram_load_u32(hle, tap_delays, sfx_ptr + SFX_TAP_DELAYS, 8);
     dram_load_u16(hle, (uint16_t *)tap_gains,  sfx_ptr + SFX_TAP_GAINS,  8);
@@ -848,6 +856,7 @@ static void sfx_stage(struct hle_t* hle, mix_sfx_with_main_subframes_t mix_sfx_w
     memcpy(musyx->subframe_740_last4, subframe + SUBFRAME_SIZE - 4, 4 * sizeof(int16_t));
     mix_fir4(musyx->e50, buffer + 1, fir4_hgain, fir4_hcoeffs);
     dram_store_u16(hle, (uint16_t *)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_MUSYX_FX, timer);
 }
 
 static void mix_sfx_with_main_subframes_v1(musyx_t *musyx, const int16_t *subframe,

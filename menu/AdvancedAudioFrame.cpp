@@ -26,7 +26,7 @@
 #include "../main/wii64config.h"
 
 void Func_AudioQualityFast();
-void Func_AudioQualityHiFi();
+void Func_AudioQualityAccurate();
 void Func_ReturnFromAdvancedAudioFrame();
 
 #define NUM_FRAME_BUTTONS 2
@@ -37,10 +37,10 @@ void Func_ReturnFromAdvancedAudioFrame();
 
 static char FRAME_STRINGS[5][50] =
 	{ "Fast",
-	  "Hi-Fi",
+	  "Accurate",
 	  "Advanced Sound Settings",
 	  "Fast: lower CPU cost, some audio quality loss",
-	  "Hi-Fi: full quality (default)"
+	  "Accurate: original N64 resampling (default)"
 };
 
 struct ButtonInfo
@@ -61,7 +61,7 @@ struct ButtonInfo
 } FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
 { //	button	buttonStyle	buttonString		x		y		width	height	Up	Dwn	Lft	Rt	clickFunc				returnFunc
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	210.0,	180.0,	100.0,	50.0,	-1,	-1,	 1,	 1,	Func_AudioQualityFast,	Func_ReturnFromAdvancedAudioFrame }, // Fast
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	325.0,	180.0,	100.0,	50.0,	-1,	-1,	 0,	 0,	Func_AudioQualityHiFi,	Func_ReturnFromAdvancedAudioFrame }, // Hi-Fi
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	325.0,	180.0,	100.0,	50.0,	-1,	-1,	 0,	 0,	Func_AudioQualityAccurate,	Func_ReturnFromAdvancedAudioFrame }, // Accurate
 };
 
 struct TextBoxInfo
@@ -76,7 +76,7 @@ struct TextBoxInfo
 { //	textBox	textBoxString		x		y		scale	centered
 	{	NULL,	FRAME_STRINGS[2],	320.0,	110.0,	 1.0,	true }, // Title
 	{	NULL,	FRAME_STRINGS[3],	320.0,	260.0,	 0.75,	true }, // Fast description
-	{	NULL,	FRAME_STRINGS[4],	320.0,	290.0,	 0.75,	true }, // Hi-Fi description
+	{	NULL,	FRAME_STRINGS[4],	320.0,	290.0,	 0.75,	true }, // Accurate description
 };
 
 AdvancedAudioFrame::AdvancedAudioFrame()
@@ -140,11 +140,11 @@ void Func_AudioQualityFast()
 	audioQuality = AUDIOQUALITY_FAST;
 }
 
-void Func_AudioQualityHiFi()
+void Func_AudioQualityAccurate()
 {
 	FRAME_BUTTONS[0].button->setSelected(false);
 	FRAME_BUTTONS[1].button->setSelected(true);
-	audioQuality = AUDIOQUALITY_HIFI;
+	audioQuality = AUDIOQUALITY_ACCURATE;
 }
 
 extern MenuContext *pMenuContext;

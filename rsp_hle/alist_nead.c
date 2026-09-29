@@ -31,6 +31,7 @@
 #include "hle_internal.h"
 #include "memory.h"
 #include "ucodes.h"
+#include "../main/perf_audio.h"
 
 /* remove windows define to 0x06 */
 #ifdef DUPLICATE
@@ -536,6 +537,7 @@ void alist_process_nead_ac(struct hle_t* hle)
 
 void alist_process_nead_mats(struct hle_t* hle)
 {
+	perfProf_audioGap(PERF_AUDIO_GAP_NEAD_MATS);
     /* FIXME: implement proper ucode
      * Forward the task if possible,
      * otherwise better to have no sound than garbage sound
@@ -547,6 +549,7 @@ void alist_process_nead_mats(struct hle_t* hle)
 
 void alist_process_nead_efz(struct hle_t* hle)
 {
+	perfProf_audioGap(PERF_AUDIO_GAP_NEAD_EFZ);
     /* FIXME: implement proper ucode
      * Forward the task if possible,
      * otherwise use FZero ucode which should be very similar

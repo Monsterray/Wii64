@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <malloc.h>
+#include <aesndlib.h>
 #include <ogc/system.h>
 #include <ogc/machine/processor.h>
 
@@ -120,8 +121,17 @@ static struct {
 	u64 start, flushTicks, pmc[4];
 	unsigned long long sleepUs;
 	unsigned int exceptions, cacheResets, batches, verts, texStalls, recompiles;
-	unsigned int treeDepthMax, flushes, visN, fpsN, vi0Retrace;
-	double visSum, fpsSum;
+	unsigned int treeDepthMax, flushes, visN, fpsN, dspN, vi0Retrace, queuePeakMs;
+	unsigned int alistResampleCalls, alistResampleSamples, alistZohCalls, alistZohSamples;
+	unsigned int musyxSubframes, musyxVoices, musyxVoicePeak;
+	unsigned int audioStageCalls[PERF_AUDIO_STAGE_COUNT], audioStageSamples[PERF_AUDIO_STAGE_COUNT];
+	unsigned int audioSteadyCalls[PERF_AUDIO_STAGE_COUNT];
+	unsigned int audioGapCalls[PERF_AUDIO_GAP_COUNT];
+	unsigned int audioTimedCalls[PERF_AUDIO_STAGE_COUNT], audioTimedSamples[PERF_AUDIO_STAGE_COUNT];
+	unsigned int audioTimerCountdown[PERF_AUDIO_STAGE_COUNT];
+	u64 audioTimedTicks[PERF_AUDIO_STAGE_COUNT];
+	double visSum, fpsSum, dspSum;
+	float dspPeak;
 } g;
 static volatile unsigned int g_underruns, g_overruns;
 
@@ -205,6 +215,59 @@ void perfProf_recompile(void)         { g.recompiles++; }
 void perfProf_texStall(void)          { g.texStalls++; }
 void perfProf_audioUnderrun(void)     { g_underruns++; }
 void perfProf_audioOverrun(void)      { g_overruns++; }
+#ifndef PERF_AUDIO_WORK_DISABLE
+static u64 audio_timer_start(unsigned int stage, unsigned int samples)
+{
+#ifdef PERF_AUDIO_TIMING_DISABLE
+	(void)stage; (void)samples;
+	return 0;
+#else
+	if (--g.audioTimerCountdown[stage]) return 0;
+	g.audioTimerCountdown[stage] = 127;
+	g.audioTimedSamples[stage] += samples;
+	return gettime();
+#endif
+}
+unsigned long long perfProf_alistResample(unsigned int samples)
+{
+	g.alistResampleCalls++;
+	g.alistResampleSamples += samples;
+	return audio_timer_start(PERF_AUDIO_RESAMPLE, samples);
+}
+unsigned long long perfProf_alistZoh(unsigned int samples)
+{
+	g.alistZohCalls++;
+	g.alistZohSamples += samples;
+	return audio_timer_start(PERF_AUDIO_ZOH, samples);
+}
+void perfProf_musyxVoices(unsigned int voices)
+{
+	g.musyxSubframes++;
+	g.musyxVoices += voices;
+	if (voices > g.musyxVoicePeak) g.musyxVoicePeak = voices;
+}
+unsigned long long perfProf_audioStage(unsigned int stage, unsigned int samples)
+{
+	if (stage >= PERF_AUDIO_STAGE_COUNT) return 0;
+	g.audioStageCalls[stage]++;
+	g.audioStageSamples[stage] += samples;
+	return audio_timer_start(stage, samples);
+}
+void perfProf_audioStageEnd(unsigned int stage, unsigned long long start)
+{
+	if (!start || stage >= PERF_AUDIO_STAGE_COUNT) return;
+	g.audioTimedCalls[stage]++;
+	g.audioTimedTicks[stage] += gettime() - start;
+}
+void perfProf_audioSteady(unsigned int stage)
+{
+	if (stage < PERF_AUDIO_STAGE_COUNT) g.audioSteadyCalls[stage]++;
+}
+void perfProf_audioGap(unsigned int gap)
+{
+	if (gap < PERF_AUDIO_GAP_COUNT) g.audioGapCalls[gap]++;
+}
+#endif
 
 /* Triangle batches (each re-sends the full GX vertex descriptor/format) and
    the vertices they carry. */
@@ -231,9 +294,17 @@ void perfProf_limiterSleep(long us)
 void perfProf_cpuSample(void)
 {
 	pmc_accumulate();
-	buf_printf("cpu: exceptions=%u cacheResets=%u batches=%u verts=%u texStalls=%u recompiles=%u underruns=%u overruns=%u sleep_us=%llu\n",
+	extern unsigned int audioQueuedMilliseconds(void);
+	unsigned int queuedMs = audioQueuedMilliseconds();
+	if (queuedMs > g.queuePeakMs) g.queuePeakMs = queuedMs;
+	/* AESND reports usage of its latest 2 ms DSP block. Sample outside hot audio paths. */
+	float dsp = AESND_GetDSPProcessUsage();
+	g.dspSum += dsp;
+	g.dspN++;
+	if (dsp > g.dspPeak) g.dspPeak = dsp;
+	buf_printf("cpu: exceptions=%u cacheResets=%u batches=%u verts=%u texStalls=%u recompiles=%u underruns=%u overruns=%u sleep_us=%llu queue_ms=%u\n",
 		g.exceptions, g.cacheResets, g.batches, g.verts, g.texStalls, g.recompiles,
-		g_underruns, g_overruns, g.sleepUs);
+		g_underruns, g_overruns, g.sleepUs, queuedMs);
 	if (++g_samples % PERF_FLUSH_SAMPLES == 0)
 		buf_flush();
 }
@@ -300,6 +371,7 @@ void perfProf_gameBegin(void)
 {
 	buf_flush();
 	memset(&g, 0, sizeof(g));
+	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++) g.audioTimerCountdown[i] = 127;
 	g_underruns = g_overruns = 0;
 	g_padN = 0;
 	g.start = gettime();
@@ -320,20 +392,56 @@ void perfProf_clockStart(void)
 
 void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const char* how)
 {
+	static const char *const audioStageNames[] = {
+		"resample", "zoh", "adpcm", "envmix_exp", "envmix_ge", "envmix_lin",
+		"envmix_nead", "mix", "musyx_voice", "musyx_fx"
+	};
 	struct mallinfo mi = mallinfo();
 	unsigned long long wallUs = ticks_to_microsecs(gettime() - g.start);
 	pmc_accumulate();
+	unsigned int streamRequests, streamFed, outputHz;
+	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *);
+	audioOutputStats(&streamRequests, &streamFed, &outputHz);
 	extern float VILimit; // main/timers.c: the VI rate this ROM is paced at (50/60)
+	buf_printf("audio: alist_resample_calls=%u alist_resample_samples=%u alist_zoh_calls=%u alist_zoh_samples=%u musyx_subframes=%u musyx_voices=%u musyx_voice_peak=%u\n",
+		g.alistResampleCalls, g.alistResampleSamples, g.alistZohCalls,
+		g.alistZohSamples, g.musyxSubframes,
+		g.musyxVoices, g.musyxVoicePeak);
+	unsigned int envmixCalls = 0, envmixSamples = 0;
+	for (unsigned int i = PERF_AUDIO_ENVMIX_EXP; i <= PERF_AUDIO_ENVMIX_NEAD; i++) {
+		envmixCalls += g.audioStageCalls[i];
+		envmixSamples += g.audioStageSamples[i];
+	}
+	buf_printf("audio_stages: adpcm_calls=%u adpcm_samples=%u envmix_calls=%u envmix_samples=%u mix_calls=%u mix_samples=%u musyx_fx_calls=%u musyx_fx_taps=%u\n",
+		g.audioStageCalls[PERF_AUDIO_ADPCM], g.audioStageSamples[PERF_AUDIO_ADPCM],
+		envmixCalls, envmixSamples,
+		g.audioStageCalls[PERF_AUDIO_MIX], g.audioStageSamples[PERF_AUDIO_MIX],
+		g.audioStageCalls[PERF_AUDIO_MUSYX_FX], g.audioStageSamples[PERF_AUDIO_MUSYX_FX]);
+	buf_printf("audio_envmix: exp_calls=%u ge_calls=%u lin_calls=%u nead_calls=%u exp_steady=%u ge_steady=%u lin_steady=%u\n",
+		g.audioStageCalls[PERF_AUDIO_ENVMIX_EXP], g.audioStageCalls[PERF_AUDIO_ENVMIX_GE],
+		g.audioStageCalls[PERF_AUDIO_ENVMIX_LIN], g.audioStageCalls[PERF_AUDIO_ENVMIX_NEAD],
+		g.audioSteadyCalls[PERF_AUDIO_ENVMIX_EXP], g.audioSteadyCalls[PERF_AUDIO_ENVMIX_GE],
+		g.audioSteadyCalls[PERF_AUDIO_ENVMIX_LIN]);
+	buf_printf("audio_gaps: nead_mats=%u nead_efz=%u resample_flag2=%u musyx_ptr10=%u\n",
+		g.audioGapCalls[PERF_AUDIO_GAP_NEAD_MATS], g.audioGapCalls[PERF_AUDIO_GAP_NEAD_EFZ],
+		g.audioGapCalls[PERF_AUDIO_GAP_RESAMPLE_FLAG2], g.audioGapCalls[PERF_AUDIO_GAP_MUSYX_PTR10]);
+	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u\n",
+		streamRequests, streamFed, outputHz);
+	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++)
+		buf_printf("audio_time: stage=%s sampled_calls=%u sampled_samples=%u sampled_us=%llu\n",
+			audioStageNames[i], g.audioTimedCalls[i], g.audioTimedSamples[i],
+			(unsigned long long)ticks_to_microsecs(g.audioTimedTicks[i]));
 	buf_printf("game: n=%d/%d how=%s vis=%u vi_rate=%.0f vi0_retrace=%u wall_us=%llu sleep_us=%llu avg_vis=%.2f avg_fps=%.2f"
 		" exceptions=%u cacheResets=%u recompiles=%u batches=%u verts=%u texStalls=%u"
-		" treeDepthMax=%u underruns=%u overruns=%u"
+		" treeDepthMax=%u underruns=%u overruns=%u queue_peak_ms=%u dsp_avg=%.2f dsp_peak=%.2f"
 		" pmc1=%llu pmc2=%llu pmc3=%llu pmc4=%llu mmcr0=%08x mmcr1=%08x"
 		" heap_used=%d heap_free=%d arena1_free=%u arena2_free=%u"
 		" flushes=%u flush_us=%llu padtrace=%d rom=%s\n",
 		n, total, how, vis, VILimit, g.vi0Retrace, wallUs, g.sleepUs,
 		g.visN ? g.visSum / g.visN : 0.0, g.fpsN ? g.fpsSum / g.fpsN : 0.0,
 		g.exceptions, g.cacheResets, g.recompiles, g.batches, g.verts, g.texStalls,
-		g.treeDepthMax, g_underruns, g_overruns,
+		g.treeDepthMax, g_underruns, g_overruns, g.queuePeakMs,
+		g.dspN ? g.dspSum / g.dspN : 0.0, g.dspPeak,
 		g.pmc[0], g.pmc[1], g.pmc[2], g.pmc[3], (unsigned)PMC_MMCR0, (unsigned)PMC_MMCR1,
 		mi.uordblks, mi.fordblks,
 		(unsigned)((u32)SYS_GetArena1Hi() - (u32)SYS_GetArena1Lo()),

@@ -6,6 +6,7 @@ import http.server
 import pathlib
 import re
 import time
+import urllib.parse
 
 MAX_FILE = 2 * 1024 * 1024
 FILE_NAME = re.compile(r"/(perf\.log|(?:xfb_\d{2}\.bin|padtrace_\d{2}\.csv))\Z")
@@ -13,6 +14,29 @@ FILE_NAME = re.compile(r"/(perf\.log|(?:xfb_\d{2}\.bin|padtrace_\d{2}\.csv))\Z")
 
 class Receiver(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.0"
+
+    def do_GET(self):
+        if self.client_address[0] != self.server.wii_ip or not self.path.startswith("/rom/"):
+            self.send_error(403)
+            return
+        name = urllib.parse.unquote(self.path[5:])
+        if (not name or "/" in name or "\\" in name or ".." in name or
+                pathlib.Path(name).suffix.lower() not in {".z64", ".v64", ".n64", ".bin", ".rom"} or
+                name not in self.server.rom_names):
+            self.send_error(404)
+            return
+        source = self.server.rom_dir / name
+        if not source.is_file() or source.is_symlink() or source.stat().st_size > 64 * 1024 * 1024:
+            self.send_error(404)
+            return
+        size = source.stat().st_size
+        self.send_response(200)
+        self.send_header("Content-Length", str(size))
+        self.end_headers()
+        with source.open("rb") as rom:
+            while data := rom.read(64 * 1024):
+                self.wfile.write(data)
+        print(f"sent ROM {name}: {size} bytes", flush=True)
 
     def do_POST(self):
         self.connection.settimeout(10)
@@ -62,11 +86,21 @@ def main():
     parser.add_argument("--wii-ip", required=True)
     parser.add_argument("--port", type=int, default=39364)
     parser.add_argument("--timeout", type=int, default=1200)
+    parser.add_argument("--rom-dir", type=pathlib.Path, help="serve only ROMs named in diag.cfg")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     with http.server.HTTPServer((args.bind, args.port), Receiver) as server:
         server.output = args.output
         server.wii_ip = args.wii_ip
+        server.rom_dir = args.rom_dir
+        server.rom_names = set()
+        if args.rom_dir:
+            for line in (args.output / "diag.cfg").read_text().splitlines():
+                if line.startswith("chain="):
+                    rom = line.partition(" ")[2]
+                    prefix = "sd:/wii64/roms/"
+                    if rom.startswith(prefix):
+                        server.rom_names.add(rom[len(prefix):])
         server.done = False
         server.timeout = 1
         (args.output / ".ready").touch()

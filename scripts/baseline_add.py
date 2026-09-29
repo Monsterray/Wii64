@@ -29,7 +29,7 @@ GAMES = BASELINES / "games.csv"
 FIELDS = ["id", "date", "rom", "build", "purpose"] + KEYS
 GAME_FIELDS = ["id", "date", "platform", "plugin", "build", "n", "rom", "how", "vis", "vi_rate", "wall_s",
                "speed", "idle_pct", "avg_vis", "avg_fps", "exceptions", "cacheResets", "recompiles",
-               "batches", "verts", "texStalls", "treeDepthMax", "underruns", "overruns",
+               "batches", "verts", "texStalls", "treeDepthMax", "underruns", "overruns", "dsp_avg", "dsp_peak",
                "pmc1", "pmc2", "ipc", "heap_used", "heap_free", "arena1_free", "arena2_free",
                "flushes", "flush_us", "padtrace", "purpose"]
 

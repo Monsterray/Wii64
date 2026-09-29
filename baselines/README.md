@@ -34,7 +34,8 @@ baselines/media/<id>/        xfb_NN.png screenshots -- kept out of git (.gitigno
 `games.csv` columns worth knowing: `speed` = guest VIs per wall second / the ROM's VI rate
 (1.00 = full speed); `idle_pct` = share of wall time the frame limiter slept, the headroom;
 `ipc` = instructions per cycle from Broadway's counters (hardware only, 0 in Dolphin);
-`underruns` = audible audio gaps; `treeDepthMax` = the dynarec's worst function-tree
+`underruns` = audio buffer gaps; `dsp_avg` and `dsp_peak` = sampled AESND DSP use
+(hardware runs only); `treeDepthMax` = the dynarec's worst function-tree
 lookup depth; `flush_us` = what writing `perf.log` itself cost.
 
 ## Capturing a single run

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that a Wii run used the requested chain and loaded its pad replays."""
+"""Validate the Wii chain, pad replays, and requested audio mode."""
 import pathlib
 import re
 import sys
@@ -23,6 +23,9 @@ def main(run_dir):
     rows = games(log_path)
     if "mark: diag config: wiiload arguments" not in log:
         errors.append("run did not confirm it used the selected wiiload configuration")
+    quality = next((line.split("=", 1)[1] for line in config if line.startswith("audio_quality=")), None)
+    if quality and f"mark: audio quality: {quality}" not in log:
+        errors.append(f"requested audio quality {quality} was not applied")
     core = next((line.split("=", 1)[1] for line in config if line.startswith("dynacore=")), None)
     if core:
         expected_core = "pure interpreter" if core == "pureinterp" else "dynarec" if core == "dynarec" else None

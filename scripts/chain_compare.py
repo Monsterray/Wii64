@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from chain_table import games
 
 ROOT = pathlib.Path(__file__).parent.parent
-METRICS = ["speed", "idle_pct", "avg_fps", "exceptions", "recompiles", "treeDepthMax", "underruns", "ipc"]
+METRICS = ["speed", "idle_pct", "avg_fps", "exceptions", "recompiles", "treeDepthMax", "underruns", "dsp_avg", "dsp_peak", "ipc"]
 
 
 def load(src):

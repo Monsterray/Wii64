@@ -32,6 +32,33 @@ receiver accepts files only from the configured Wii IP.
 If transfer fails or a game hangs outside the watchdog, use the SD results below.
 The Wii must be on for the first run. Later LAN runs can start directly from Homebrew
 Channel. Use only a trusted LAN: this simple result channel is not encrypted.
+If the Wii answers ping but uploads fail, check that Homebrew Channel's lower-right
+network icon is lit. Press HOME there to confirm its IP matches `.dev/hardware.env`.
+The runner retries the upload port five times, then stops without sending a build.
+Its probe sends a complete rejected `PING` header; a bare connect-and-close
+can hold an older Homebrew Channel loader thread and make later uploads fail.
+
+For a LAN-only test with new ROMs, leave the files in a folder outside the repository.
+For example, from the repo root:
+
+```bash
+WII64_ROM_DIR="$(dirname "$PWD")/temp-roms" .dev/hardware_run.sh glN64_wii audio_coverage
+```
+
+The diagnostic build downloads only missing ROMs named in that chain to
+`sd:/wii64/roms/` before testing. It writes each download to a temporary file
+and renames it after transfer. Keep Homebrew Channel open and the SD card in the
+Wii. Without `WII64_ROM_DIR`, the run uses ROMs already on the card. This
+transfer is for local tests on a trusted LAN; do not commit ROMs or run the
+receiver on an untrusted network.
+
+If HBC-Reborn 1.2.0 or later is running, its `tools/hbc.py status` shows the
+mounted SD/USB device, and `tools/hbc.py put` can copy individual files there
+with CRC-checked transfers and no partial destination file on failure. Its
+`sync` command copies only changed files. These commands are optional; the
+Wii64 runner also works with the original Homebrew Channel. Submit Wii tests
+through HBC-Reborn's shared `tools/wii-bench/wiibench.py` queue. This keeps
+another project from starting an upload during a test.
 
 ## What is on the card
 
@@ -82,8 +109,48 @@ that mean something only on hardware:
   cycle. Dolphin does not count instructions completed, so this is 0 there. Other events
   can be selected at build time (`-DPMC_MMCR0=...`, see `main/perf_prof.c`).
 - **underruns** -- audible audio gaps. Dolphin's DSP timing is not the Wii's.
+- **dsp_avg / dsp_peak** -- AESND DSP use, in percent of its latest 2 ms work period. Wii64 samples about twice per second. These are the mean and peak of those samples, not a continuous average or true peak. Compare only Wii runs.
 - **flush_us** -- what writing `perf.log` itself cost; it should stay a few ms per game.
   If it is large, the SD card is slow and the probes are disturbing the run.
+
+## Audio mode check
+
+The menu has two measured modes. **Accurate** (the default, formerly called Hi-Fi)
+uses the original N64 4-tap resampler. **Fast** uses a nearest-sample lookup. Both
+send PCM to the Wii's AESND DSP for playback at 48 kHz. There is no separate Hi-Fi
+mode yet: AESND has no documented filter-quality control, and a new host resampler
+needs output-quality and CPU tests before it can earn that name.
+
+The Wii audio hardware path is already active: Wii64 streams one stereo PCM voice;
+AESND handles output rate, pitch, mute, mixing, and the Wii DSP transfer. libogc2
+also aligns and flushes its DSP input buffer. N64 RSP ADPCM decoding, envelopes,
+and the 4-tap filter remain on the CPU. AESND accepts PCM voices, not N64 audio
+commands; moving those commands to the DSP requires a separate DSP program and
+accuracy tests, not another AESND setting.
+
+For a matched Wii check, run:
+
+```bash
+.dev/build_profiling.sh glN64_wii
+WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_accurate
+WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_fast
+```
+
+The chains use the Super Mario 64 title screen for 3,600 VIs. Keep Homebrew
+Channel open between runs. For Dolphin audio checks, set
+`WII64_DOLPHIN_DSP_HLE=False` when running `.dev/dolphin_test.sh`; DSP HLE does not
+recognize this AESND ucode. Compare only runs from the same platform and scene.
+
+On 2026-09-26, one matched Wii pair had 23.77 billion CPU cycles in Accurate and
+23.30 billion in Fast (2.0% less), with 0 overruns in both. DSP use was 1.54% and
+1.48% on average. These are sampled title-screen results, not a claim about game
+play or audible quality. See `baselines/2026-09-26_hw_audio_accurate/` and
+`baselines/2026-09-26_hw_audio_fast/` for the raw logs.
+
+The `audio_smash_accurate` and `audio_smash_fast` chains repeat the check with
+Super Smash Bros. Both 2026-09-26 Wii runs completed with one underrun and zero
+overruns. An earlier nine-entry repeat had 3,204 Smash Bros. overruns; this
+single-game title-screen check did not reproduce that result. Its cause remains open.
 
 ## Running the same chain in Dolphin
 

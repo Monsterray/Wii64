@@ -1,0 +1,3 @@
+#ifndef TEST_LWP_WATCHDOG_H
+#define TEST_LWP_WATCHDOG_H
+#endif

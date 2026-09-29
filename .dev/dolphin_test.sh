@@ -13,6 +13,7 @@ DOL="${1:?usage: .dev/dolphin_test.sh <path-to.dol> [seconds-to-wait]}"
 WAIT="${2:-25}"
 PROFILE_POSIX="${WII64_DOLPHIN_PROFILE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dolphin_profile}"
 folder_sync="${WII64_DOLPHIN_FOLDER_SYNC:-True}"
+dsp_hle="${WII64_DOLPHIN_DSP_HLE:-True}"
 
 case "$(uname -s)" in
 	Darwin)
@@ -35,7 +36,7 @@ fi
 mac_dolphin_pids() {
 	pgrep -f '/Applications/Dolphin.app/Contents/MacOS/Dolphin' 2>/dev/null | while IFS= read -r pid; do
 		command_line="$(ps -p "$pid" -o command= 2>/dev/null || true)"
-		[[ "$command_line" == *"$PROFILE_POSIX"* ]] && echo "$pid"
+		if [[ "$command_line" == *"$PROFILE_POSIX"* ]]; then echo "$pid"; fi
 	done
 }
 
@@ -99,6 +100,7 @@ fi
 if [ "$(uname -s)" = Darwin ] && [ "$WAIT" = interactive ]; then
 	open -n -a /Applications/Dolphin.app --args -e "$DOL_ARG" -u "$PROFILE_ARG" \
 		-C Dolphin.Core.MMU=True \
+		-C Dolphin.Core.DSPHLE="$dsp_hle" \
 		-C Dolphin.Core.WiiSDCard=True \
 		-C Dolphin.Core.WiiSDCardAllowWrites=True \
 		-C Dolphin.Core.WiiSDCardEnableFolderSync="$folder_sync" \
@@ -122,6 +124,7 @@ args=(-b -e "$DOL_ARG" -u "$PROFILE_ARG" \
 	-C Graphics.Hacks.ImmediateXFBEnable=True \
 	-C Dolphin.Core.CPUThread=True \
 	-C Dolphin.Core.MMU=True \
+	-C Dolphin.Core.DSPHLE="$dsp_hle" \
 	-C Dolphin.Core.WiiSDCard=True \
 	-C Dolphin.Core.WiiSDCardAllowWrites=True \
 	-C Dolphin.Core.WiiSDCardEnableFolderSync="$folder_sync" \
@@ -207,14 +210,20 @@ else
 fi
 
 frame="$PROFILE_POSIX/Dump/Frames/framedump_1.png"
-if [ -f "$frame" ]; then
+if [ "$dump_frames" = True ] && [ -f "$frame" ]; then
 	echo "Booted OK, frame dumped to: $frame"
 else
 	if [ "$dump_frames" = True ]; then
 		echo "No frame was dumped -- check $PROFILE_POSIX/Logs/dolphin.log" >&2
 	fi
 fi
-tail -20 "$PROFILE_POSIX/Logs/dolphin.log" 2>/dev/null || tail -20 "$PROFILE_POSIX/dolphin-test.log" 2>/dev/null || true
+if [ -f "$PROFILE_POSIX/Logs/dolphin.log" ]; then
+	# Dolphin appends boots to this log; report only the run just launched.
+	awk '/Starting core = Wii mode/ { delete lines; n = 0 } { lines[++n] = $0 } END { for (i = 1; i <= n; i++) print lines[i] }' \
+		"$PROFILE_POSIX/Logs/dolphin.log" | tail -20
+else
+	tail -20 "$PROFILE_POSIX/dolphin-test.log" 2>/dev/null || true
+fi
 [ "$dolphin_status" -eq 0 ] || exit 1
 if [ "$folder_sync" = False ] || { [ "$chain_count" -gt 0 ] && [ ! -s "$LOCAL_WII64/perf.log" ]; }; then
 	for name in diag.cfg perf.log; do

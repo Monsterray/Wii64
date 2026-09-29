@@ -23,6 +23,8 @@
 #ifndef PERF_PROF_H
 #define PERF_PROF_H
 
+#include "perf_audio.h"
+
 #ifdef PERF_PROF
 #include <ogc/lwp_watchdog.h>
 

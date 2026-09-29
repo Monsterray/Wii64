@@ -31,6 +31,8 @@
 #include "hle_external.h"
 #include "hle_internal.h"
 #include "memory.h"
+#include "../main/wii64config.h"
+#include "../main/perf_audio.h"
 
 struct ramp_t
 {
@@ -265,6 +267,7 @@ void alist_envmix_exp(
         const int32_t *rate,
         uint32_t address)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_EXP, count / 2);
     size_t n = (aux) ? 4 : 2;
 
     const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
@@ -283,10 +286,10 @@ void alist_envmix_exp(
 
 	memcpy((uint8_t *)save_buffer, (hle->dram + address), sizeof(save_buffer));
     if (init) {
-        ramps[0].value  = (vol[0] << 16);
-        ramps[1].value  = (vol[1] << 16);
-        ramps[0].target = (target[0] << 16);
-        ramps[1].target = (target[1] << 16);
+        ramps[0].value  = vol[0] * 65536;
+        ramps[1].value  = vol[1] * 65536;
+        ramps[0].target = target[0] * 65536;
+        ramps[1].target = target[1] * 65536;
         exp_rates[0]    = rate[0];
         exp_rates[1]    = rate[1];
         exp_seq[0]      = (vol[0] * rate[0]);
@@ -304,10 +307,31 @@ void alist_envmix_exp(
         ramps[1].value  = *(int32_t *)(save_buffer + 18); /* 14-15 */
     }
 
-    /* init which ensure ramp.step != 0 iff ramp.value == ramp.target */
+    /* A zero step means value == target; neither ramp nor exp_seq advances. */
     ramps[0].step = ramps[0].target - ramps[0].value;
     ramps[1].step = ramps[1].target - ramps[1].value;
+    bool steady = ramps[0].step == 0 && ramps[1].step == 0;
+    if (steady)
+        perfProf_audioSteady(PERF_AUDIO_ENVMIX_EXP);
 
+    if (steady && count != 0) {
+        int16_t l_vol = (int16_t)(ramps[0].value >> 16);
+        int16_t r_vol = (int16_t)(ramps[1].value >> 16);
+        int16_t gains[4] = {
+            clamp_s16((l_vol * dry + 0x4000) >> 15),
+            clamp_s16((r_vol * dry + 0x4000) >> 15),
+            clamp_s16((l_vol * wet + 0x4000) >> 15),
+            clamp_s16((r_vol * wet + 0x4000) >> 15)
+        };
+        for (y = 0; y < count; y += 16) {
+            for (x = 0; x < 8; ++x) {
+                int16_t* buffers[4] = { dl + (ptr^S), dr + (ptr^S),
+                                        wl + (ptr^S), wr + (ptr^S) };
+                alist_envmix_mix(n, buffers, gains, in[ptr^S]);
+                ++ptr;
+            }
+        }
+    } else {
     for (y = 0; y < count; y += 16) {
 
         if (ramps[0].step != 0)
@@ -342,6 +366,7 @@ void alist_envmix_exp(
             ++ptr;
         }
     }
+    }
 
     *(int16_t *)(save_buffer +  0) = wet;               /* 0-1 */
     *(int16_t *)(save_buffer +  2) = dry;               /* 2-3 */
@@ -354,6 +379,7 @@ void alist_envmix_exp(
     *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value;    /* 12-13 */
     *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value;    /* 14-15 */
     memcpy(hle->dram + address, (uint8_t *)save_buffer, sizeof(save_buffer));
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ENVMIX_EXP, timer);
 }
 
 void alist_envmix_ge(
@@ -369,6 +395,7 @@ void alist_envmix_ge(
         const int32_t *rate,
         uint32_t address)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_GE, count / 2);
     unsigned k;
     size_t n = (aux) ? 4 : 2;
 
@@ -383,10 +410,10 @@ void alist_envmix_ge(
 
 	memcpy((uint8_t *)save_buffer, (hle->dram + address), 80);
     if (init) {
-        ramps[0].value  = (vol[0] << 16);
-        ramps[1].value  = (vol[1] << 16);
-        ramps[0].target = (target[0] << 16);
-        ramps[1].target = (target[1] << 16);
+        ramps[0].value  = vol[0] * 65536;
+        ramps[1].value  = vol[1] * 65536;
+        ramps[0].target = target[0] * 65536;
+        ramps[1].target = target[1] * 65536;
         ramps[0].step   = rate[0] / 8;
         ramps[1].step   = rate[1] / 8;
     } else {
@@ -402,24 +429,43 @@ void alist_envmix_ge(
         ramps[1].value  = *(int32_t *)(save_buffer + 18);   /* 14-15 */
     }
 
+    bool steady = ramps[0].step == 0 && ramps[1].step == 0;
+    if (steady)
+        perfProf_audioSteady(PERF_AUDIO_ENVMIX_GE);
     count >>= 1;
-    for (k = 0; k < count; ++k) {
-        int16_t  gains[4];
-        int16_t* buffers[4];
+    if (steady && count != 0) {
         int16_t l_vol = ramp_step(&ramps[0]);
         int16_t r_vol = ramp_step(&ramps[1]);
+        int16_t gains[4] = {
+            clamp_s16((l_vol * dry + 0x4000) >> 15),
+            clamp_s16((r_vol * dry + 0x4000) >> 15),
+            clamp_s16((l_vol * wet + 0x4000) >> 15),
+            clamp_s16((r_vol * wet + 0x4000) >> 15)
+        };
+        for (k = 0; k < count; ++k) {
+            int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
+                                    wl + (k^S), wr + (k^S) };
+            alist_envmix_mix(n, buffers, gains, in[k^S]);
+        }
+    } else {
+        for (k = 0; k < count; ++k) {
+            int16_t  gains[4];
+            int16_t* buffers[4];
+            int16_t l_vol = ramp_step(&ramps[0]);
+            int16_t r_vol = ramp_step(&ramps[1]);
 
-        buffers[0] = dl + (k^S);
-        buffers[1] = dr + (k^S);
-        buffers[2] = wl + (k^S);
-        buffers[3] = wr + (k^S);
+            buffers[0] = dl + (k^S);
+            buffers[1] = dr + (k^S);
+            buffers[2] = wl + (k^S);
+            buffers[3] = wr + (k^S);
 
-        gains[0] = clamp_s16((l_vol * dry + 0x4000) >> 15);
-        gains[1] = clamp_s16((r_vol * dry + 0x4000) >> 15);
-        gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
-        gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
+            gains[0] = clamp_s16((l_vol * dry + 0x4000) >> 15);
+            gains[1] = clamp_s16((r_vol * dry + 0x4000) >> 15);
+            gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
+            gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-        alist_envmix_mix(n, buffers, gains, in[k^S]);
+            alist_envmix_mix(n, buffers, gains, in[k^S]);
+        }
     }
 
     *(int16_t *)(save_buffer +  0) = wet;               /* 0-1 */
@@ -433,6 +479,7 @@ void alist_envmix_ge(
     *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value;    /* 12-13 */
     *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value;    /* 14-15 */
     memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ENVMIX_GE, timer);
 }
 
 void alist_envmix_lin(
@@ -447,6 +494,7 @@ void alist_envmix_lin(
         const int32_t *rate,
         uint32_t address)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_LIN, count / 2);
     size_t k;
     struct ramp_t ramps[2];
     int16_t save_buffer[40];
@@ -460,24 +508,44 @@ void alist_envmix_lin(
 	memcpy((uint8_t *)save_buffer, hle->dram + address, 80);
     if (init) {
         ramps[0].step   = rate[0] / 8;
-        ramps[0].value  = (vol[0] << 16);
-        ramps[0].target = (target[0] << 16);
+        ramps[0].value  = vol[0] * 65536;
+        ramps[0].target = target[0] * 65536;
         ramps[1].step   = rate[1] / 8;
-        ramps[1].value  = (vol[1] << 16);
-        ramps[1].target = (target[1] << 16);
+        ramps[1].value  = vol[1] * 65536;
+        ramps[1].target = target[1] * 65536;
     }
     else {
         wet             = *(int16_t *)(save_buffer +  0); /* 0-1 */
         dry             = *(int16_t *)(save_buffer +  2); /* 2-3 */
-        ramps[0].target = *(int16_t *)(save_buffer +  4) << 16; /* 4-5 */
-        ramps[1].target = *(int16_t *)(save_buffer +  6) << 16; /* 6-7 */
+        ramps[0].target = *(int16_t *)(save_buffer +  4) * 65536; /* 4-5 */
+        ramps[1].target = *(int16_t *)(save_buffer +  6) * 65536; /* 6-7 */
         ramps[0].step   = *(int32_t *)(save_buffer +  8); /* 8-9 (save_buffer is a 16bit pointer) */
         ramps[1].step   = *(int32_t *)(save_buffer + 10); /* 10-11 */
         ramps[0].value  = *(int32_t *)(save_buffer + 16); /* 16-17 */
         ramps[1].value  = *(int32_t *)(save_buffer + 18); /* 16-17 */
     }
 
+    bool steady = ramps[0].step == 0 && ramps[1].step == 0;
+    if (steady)
+        perfProf_audioSteady(PERF_AUDIO_ENVMIX_LIN);
     count >>= 1;
+    if (steady && count != 0) {
+        /* A zero-step ramp becomes constant after its first ramp_step,
+           including the case where that step clamps value to target. */
+        int16_t l_vol = ramp_step(&ramps[0]);
+        int16_t r_vol = ramp_step(&ramps[1]);
+        int16_t gains[4] = {
+            clamp_s16((l_vol * dry + 0x4000) >> 15),
+            clamp_s16((r_vol * dry + 0x4000) >> 15),
+            clamp_s16((l_vol * wet + 0x4000) >> 15),
+            clamp_s16((r_vol * wet + 0x4000) >> 15)
+        };
+        for (k = 0; k < count; ++k) {
+            int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
+                                    wl + (k^S), wr + (k^S) };
+            alist_envmix_mix(4, buffers, gains, in[k^S]);
+        }
+    } else {
     for(k = 0; k < count; ++k) {
         int16_t  gains[4];
         int16_t* buffers[4];
@@ -496,6 +564,7 @@ void alist_envmix_lin(
 
         alist_envmix_mix(4, buffers, gains, in[k^S]);
     }
+    }
 
     *(int16_t *)(save_buffer +  0) = wet;            /* 0-1 */
     *(int16_t *)(save_buffer +  2) = dry;            /* 2-3 */
@@ -506,6 +575,7 @@ void alist_envmix_lin(
     *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value; /* 16-17 */
     *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value; /* 18-19 */
     memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ENVMIX_LIN, timer);
 }
 
 void alist_envmix_nead(
@@ -521,6 +591,7 @@ void alist_envmix_nead(
         uint16_t *env_steps,
         const int16_t *xors)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_NEAD, align(count, 8));
     int16_t *in = (int16_t*)(hle->alist_buffer + dmemi);
     int16_t *dl = (int16_t*)(hle->alist_buffer + dmem_dl);
     int16_t *dr = (int16_t*)(hle->alist_buffer + dmem_dr);
@@ -558,11 +629,13 @@ void alist_envmix_nead(
         in += 8;
         count -= 8;
     }
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ENVMIX_NEAD, timer);
 }
 
 
 void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_MIX, count / 2);
     int16_t       *dst = (int16_t*)(hle->alist_buffer + dmemo);
     const int16_t *src = (int16_t*)(hle->alist_buffer + dmemi);
 
@@ -575,6 +648,7 @@ void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
         ++src;
         --count;
     }
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_MIX, timer);
 }
 
 void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain)
@@ -637,15 +711,13 @@ static void alist_resample_save(struct hle_t* hle, uint32_t address, uint16_t po
     *dram_u16(hle, address + 8) = pitch_accu;
 }
 
-/* Wii64 setting -- see wii64config.h. 0 (AUDIOQUALITY_HIFI, default) keeps
-   the original 4-tap interpolation below; nonzero (AUDIOQUALITY_FAST) skips
+/* Wii64 setting -- see wii64config.h. Accurate keeps
+   the original 4-tap interpolation below; Fast skips
    straight to a nearest-sample pick, cutting this loop's per-sample cost
    from 4 multiplies+a LUT fetch down to a single fetch, at the cost of some
    resampled audio fidelity (more aliasing/harshness on pitch-shifted
    sounds). Same load/reset/save history handling either way, so streaming
    state stays consistent if the setting is changed between calls. */
-extern char audioQuality;
-
 void alist_resample(
         struct hle_t* hle,
         bool init,
@@ -657,15 +729,18 @@ void alist_resample(
         uint32_t address)
 {
     uint32_t pitch_accu;
-    bool fast = (audioQuality != 0);
+    bool fast = (audioQuality == AUDIOQUALITY_FAST);
 
     uint16_t ipos = dmemi >> 1;
     uint16_t opos = dmemo >> 1;
     count >>= 1;
+    unsigned long long timer = perfProf_alistResample(count);
     ipos -= 4;
 
-    if (flag2)
+    if (flag2) {
+        perfProf_audioGap(PERF_AUDIO_GAP_RESAMPLE_FLAG2);
         HleWarnMessage(hle->user_defined, "alist_resample: flag2 is not implemented");
+    }
 
     if (init)
         alist_resample_reset(hle, ipos, &pitch_accu);
@@ -692,6 +767,7 @@ void alist_resample(
     }
 
     alist_resample_save(hle, address, ipos, pitch_accu);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_RESAMPLE, timer);
 }
 
 void alist_resample_zoh(
@@ -705,6 +781,7 @@ void alist_resample_zoh(
     uint16_t ipos = dmemi >> 1;
     uint16_t opos = dmemo >> 1;
     count >>= 1;
+    unsigned long long timer = perfProf_alistZoh(count);
 
     while(count != 0) {
 
@@ -715,6 +792,7 @@ void alist_resample_zoh(
         pitch_accu &= 0xffff;
         --count;
     }
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ZOH, timer);
 }
 
 typedef unsigned int (*adpcm_predict_frame_t)(struct hle_t* hle,
@@ -766,6 +844,7 @@ void alist_adpcm(
         uint32_t loop_address,
         uint32_t last_frame_address)
 {
+    unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ADPCM, count / 2);
     int16_t last_frame[16];
     size_t i;
 
@@ -801,6 +880,7 @@ void alist_adpcm(
     }
 
     dram_store_u16(hle, (uint16_t*)last_frame, last_frame_address, 16);
+    if (timer) perfProf_audioStageEnd(PERF_AUDIO_ADPCM, timer);
 }
 
 

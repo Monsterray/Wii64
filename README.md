@@ -10,7 +10,7 @@
 **Wii64/Cube64 and their respective logos are trademarks of Team Wii64 and should not be used in unofficial builds.**
 
 ## QUICK USAGE:
- * ROMs can be z64 (big-endian) or v64 (little endian), or .n64, of any size
+ * On SD/USB, use uncompressed N64 ROM images (`.z64`, `.v64`, `.n64`, `.bin`, or `.rom`). Wii64 does not open ROMs inside `.zip` or `.7z` archives.
  * To install: Extract the contents of the latest release zip to the root of your SD card
  * For SD/USB: Put ROMs in the directory named /wii64/roms,
     All save types will automatically be placed in /wii64/saves
