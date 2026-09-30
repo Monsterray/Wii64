@@ -79,6 +79,7 @@ char scalePitch = 0;
    before a game first writes AI, every DSP frame is "starved" and means nothing. */
 static int streamStarted, starved;
 static volatile unsigned int streamRequests, streamFed;
+static unsigned int queuePeakBytes;
 #endif
 
 static void aesnd_callback(AESNDPB *pb, uint32_t state)
@@ -113,6 +114,7 @@ static void reset_buffer(void)
 #ifdef PERF_PROF
 	streamStarted = starved = 0;
 	streamRequests = streamFed = 0;
+	queuePeakBytes = 0;
 #endif
 }
 
@@ -123,13 +125,16 @@ unsigned int audioQueuedMilliseconds(void)
 	return freq ? ((unsigned int)buffered * 250u) / freq : 0;
 }
 
-/* Counts only callback requests and supplied buffers, not speaker latency. */
-void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *hz)
+/* Queue peak is exact in bytes, converted to ms at the most recent input rate.
+   Counts and queue occupancy do not measure speaker latency. */
+void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *hz,
+		unsigned int *peakMs)
 {
 	uint32_t level = IRQ_Disable();
 	*requests = streamRequests;
 	*fed = streamFed;
 	*hz = freq;
+	*peakMs = freq ? queuePeakBytes * 250u / freq : 0;
 	IRQ_Restore(level);
 }
 #endif
@@ -180,6 +185,8 @@ EXPORT void CALL AiLenChanged(void)
 				buffered += size;
 			} while (length > 0);
 #ifdef PERF_PROF
+			if ((unsigned int)buffered > queuePeakBytes)
+				queuePeakBytes = buffered;
 			streamStarted = 1;
 #endif
 		} else

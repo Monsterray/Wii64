@@ -26,9 +26,15 @@ implementation. Do not add a DSP On/Off control.
   case; it does not establish correct emulation. `scripts/audio_report.py`
   prints nonzero gaps and sampled queue min/mean/p95/max without new Wii probes.
 - `audio_output:` counts AESND stream requests and buffers supplied, and logs
-  the N64 AI input rate since `RomOpen`, including loading before the first
-  guest VI. This distinguishes a stalled callback from a full queue when an
-  overrun occurs. It is not a measure of speaker latency.
+  the N64 AI input rate and exact producer-side queue peak in bytes since `RomOpen`,
+  including loading before the first guest VI. This distinguishes a stalled
+  callback from a full queue when an overrun occurs. It is not a measure of
+  speaker latency. The reported milliseconds use the last input rate, so they
+  are approximate if a game changes DAC rate during the run.
+- A 900-VI Super Mario 64 Dolphin DSP LLE run with this counter reached 1.00x
+  speed, zero overruns, and a 112 ms producer peak. The older twice-per-second
+  samples peaked at 93 ms in the same run. The Wii check is pending: its
+  `wiiload` transfer stalled before Wii64 booted, so it supplied no game data.
 - `audio_time:` samples one in 127 calls for resampling (including ZOH),
   ADPCM, each envelope variant, mixing, MusyX voices, and MusyX effects. It reports
   sampled calls, samples, and microseconds. The time is inclusive of clock
@@ -89,6 +95,12 @@ implementation. Do not add a DSP On/Off control.
   from the filename or from the existence of a WAV alone. This capture includes
   boot/menu audio and Dolphin's emulated DSP output, not the Wii analog output.
   Compare aligned gameplay segments and listen before claiming a quality gain.
+  `python3 scripts/audio_capture_compare.py A.wav B.wav` aligns a short active
+  segment and reports sample-difference RMS and peak. These values detect a
+  changed signal; they do not rate fidelity. For the existing Accurate/Fast
+  Super Mario 64 captures, a 1,024-frame segment differed by RMS 192.01 and
+  peak 984 after an 18-frame alignment. A longer gameplay capture and listening
+  check are still needed.
 - The AI output ring now rejects oversized lengths without signed arithmetic,
   ignores zero-length writes, and preserves its spare-space rule. Check its
   boundaries with `cc -std=c11 -Wall -Wextra -Werror -DPERF_PROF -Itests/audio_stubs
@@ -104,12 +116,12 @@ screen alone does not prove that its music or effects path ran.
 
 | Path | First game to add | Alternative or special case |
 | --- | --- | --- |
-| ABI1 GE envelope | GoldenEye 007 | No equivalent game listed in dispatch |
+| ABI1 GE envelope | GoldenEye 007 (staged and verified) | Diddy Kong Racing also reached GE in the tested scene |
 | ABI1 BC | Diddy Kong Racing | Blast Corps |
 | NEAD | Wave Race 64 (Europe) | F-Zero X, Star Fox 64, or 1080° Snowboarding; Mario Kart 64 currently has a black-screen blocker |
 | MusyX v1 | The World Is Not Enough | Gauntlet Legends or Rogue Squadron |
 | MusyX v2 | Indiana Jones and the Infernal Machine | Star Wars: Battle for Naboo |
-| NAUDIO DK | Donkey Kong 64 | No equivalent game listed in dispatch |
+| NAUDIO DK | Donkey Kong 64 (staged and verified) | No equivalent game listed in dispatch |
 | NAUDIO MP3 | Banjo-Tooie | Jet Force Gemini or Perfect Dark |
 | NAUDIO CBFD | Conker's Bad Fur Day | No equivalent game listed in dispatch |
 

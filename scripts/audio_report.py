@@ -58,7 +58,9 @@ def report(path):
                     print("  unsupported    " + ", ".join(active_gaps))
                 if output:
                     print(f"  AESND stream   {output['stream_fed']}/{output['stream_requests']} "
-                          f"buffers fed, input {output['input_hz']} Hz")
+                          f"buffers fed, input {output['input_hz']} Hz"
+                          + (f", producer queue peak {output['queue_peak_ms']} ms"
+                             if 'queue_peak_ms' in output else ''))
                 for name, data in stages.items():
                     key = {
                         "resample": "alist_resample_calls", "zoh": "alist_zoh_calls",

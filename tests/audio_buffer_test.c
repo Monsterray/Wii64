@@ -73,10 +73,11 @@ int main(void)
 	aesnd_callback(voice, VOICE_STATE_STREAM);
 	assert(buffered == BUFFER_SIZE - 4 - DSP_STREAMBUFFER_SIZE);
 	assert(last_length == DSP_STREAMBUFFER_SIZE);
-	unsigned int requests, fed, hz;
-	audioOutputStats(&requests, &fed, &hz);
+	unsigned int requests, fed, hz, peakMs;
+	audioOutputStats(&requests, &fed, &hz, &peakMs);
 	assert(requests == 2 && fed == 1);
 	assert(hz == 48681812u / 1520u);
+	assert(peakMs == (BUFFER_SIZE - 4u) * 250u / hz);
 	assert(memcmp(last_buffer, rdram, DSP_STREAMBUFFER_SIZE) == 0);
 	address = DSP_STREAMBUFFER_SIZE;
 	length = DSP_STREAMBUFFER_SIZE;
