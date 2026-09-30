@@ -158,7 +158,7 @@ Other targets: `Makefile.glN64_gc[_exp]`, `Makefile.glN64_wiivc`, `Makefile.Rice
 
 For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, the same build script uses the existing devkitPro paths; Dolphin testing uses `DOLPHIN_EXE` if Dolphin is installed outside its default location.
 
-For RSP audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supports AddressSanitizer and UndefinedBehaviorSanitizer. It checks ADPCM samples and saved state in both DMEM layouts, plus envelope-mixer snapshots.
+For audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supports AddressSanitizer and UndefinedBehaviorSanitizer. It checks synthesis, output streaming, queue boundaries, settings, and diagnostics. See [the optimization handoff](doc/optimization-handoff.md) for current audio status and test-profile storage limits.
 
 For a real Wii, see [hardware testing](doc/hardware-session.md). The one-time setup prepares an SD test chain. `.dev/hardware_baseline.sh` builds a profiling DOL, sends it from Homebrew Channel with `wiiload`, collects the results over the local network, and files a baseline. SD results remain available if the network transfer fails.
 

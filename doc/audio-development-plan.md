@@ -6,6 +6,17 @@ its public interface has no reverb, mixer-precision, interpolation-quality, or
 pitch-preserving time-stretch control. Do not display controls without a working
 implementation. Do not add a DSP On/Off control.
 
+## Closeout: 1.6.1
+
+The compatibility cleanup is complete for the tested alist and MusyX v1 scenes.
+Defaults remain Accurate / Wii DSP / Accurate / Stable / Native Rate.
+The optional Hi-Fi and Preserve Pitch paths are implemented, but are not
+validated quality improvements. Their Wii CPU cost and overruns are recorded in
+[Audio settings](audio-settings.md). Broader microcode coverage, listening tests,
+wide multivoice accumulation, separate voice routing, and custom DSP synthesis
+remain open. See [the optimization handoff](optimization-handoff.md) for the
+next measurement target, regression checks, and local storage limits.
+
 ## 1. Measure the path
 
 - Record time in ADPCM decode, per-voice resample, envelope/mix, effects, and
@@ -26,11 +37,14 @@ implementation. Do not add a DSP On/Off control.
   case; it does not establish correct emulation. `scripts/audio_report.py`
   prints nonzero gaps and sampled queue min/mean/p95/max without new Wii probes.
 - `audio_output:` counts AESND stream requests and buffers supplied, and logs
-  the N64 AI input rate and exact producer-side queue peak in bytes since `RomOpen`,
+  the N64 AI input rate, requested playback rate, and producer-side queue peak
+  in integer milliseconds since `RomOpen`,
   including loading before the first guest VI. This distinguishes a stalled
   callback from a full queue when an overrun occurs. It is not a measure of
-  speaker latency. The reported milliseconds use the last playback rate, so they
-  are approximate if a game changes DAC rate during the run.
+  speaker latency. Since 1.6.1, each producer observation uses its current
+  requested playback rate, including Follow Speed. DAC and mode changes clear
+  queued PCM, but retain per-ROM counters and the historical duration peak.
+  `playback_hz` is the requested rate, not a measured hardware clock.
 - A 900-VI Super Mario 64 Dolphin DSP LLE run with this counter reached 1.00x
   speed, zero overruns, and a 112 ms producer peak. The older twice-per-second
   samples peaked at 93 ms in the same run. The first two Wii uploads failed
@@ -120,9 +134,8 @@ implementation. Do not add a DSP On/Off control.
   magenta, so it also does not prove the selected interval was gameplay.
 - The AI output ring now rejects oversized lengths without signed arithmetic,
   ignores zero-length writes, and preserves its spare-space rule. Check its
-  boundaries with `cc -std=c11 -Wall -Wextra -Werror -DPERF_PROF -Itests/audio_stubs
-  -fsanitize=address,undefined tests/audio_buffer_test.c -o
-  /tmp/wii64_audio_buffer_test && /tmp/wii64_audio_buffer_test`.
+  boundaries with `.dev/test_rsp_audio.sh`. This links the real output
+  processor and also checks config, report, capture, and Dolphin log handling.
 
 ### ROMs needed for microcode coverage
 
@@ -172,35 +185,37 @@ per-voice history and a multivoice wide accumulation bus are not implemented.
 
 - Keep explicit mode IDs: Accurate is the N64 4-tap filter; Fast is nearest
   sample. New IDs must have their own code paths, diagnostics, and tests.
-- Prototype Hi-Fi as a separate CPU-side filter on the *N64 voice* before it is
-  mixed. The current alist history retains four samples, so an eight-tap filter
+- Hi-Fi currently uses cubic interpolation on the *N64 voice* before it is
+  mixed. The alist history retains four samples, so a future eight-tap filter
   needs new history handling across task boundaries. Include MusyX or document
   that the option applies only to compatible microcode. Do not relabel the
   existing 4-tap filter Hi-Fi.
 - The finished stereo signal still uses AESND's DSP voice and output-rate
   conversion. AESND does not expose a selectable DSP resampler. A custom DSP
   program would be a separate project with its own compatibility tests.
-- Expose Hi-Fi only if spectral/listening tests show a benefit and hardware
-  runs show acceptable CPU cost, game speed, and zero new underruns.
+- Promote Hi-Fi from experimental only if spectral/listening tests show a
+  benefit and hardware runs show acceptable CPU cost, game speed, and zero
+  new underruns.
 
 ## 3. Mixer precision and reverb
 
-- For a Hi-Fi mixer, prototype wider intermediate accumulation before final
-  16-bit output. Compare it with the original fixed-point, saturating N64
-  behavior. Replacing saturation can change game audio, so retain Accurate as
-  the default and expose Hi-Fi only after measured improvement.
+- Hi-Fi currently rounds wider gain products before 16-bit command boundaries.
+  A future wide multivoice bus needs comparison with the original fixed-point,
+  saturating N64 behavior. Replacing saturation can change game audio. Retain
+  Accurate as the default; require measured benefit before promoting Hi-Fi.
 - AESND has no reverb option. Games may already mix reverb into the PCM, so
   output-stage processing cannot remove it. Do not add a Reverb control unless
   a separate optional post-mix effect is implemented and named as such.
 
 ## 4. Latency and pitch
 
-- Measure actual queue occupancy and output delay first. Then test bounded
-  Low, Balanced, and Stable queue targets. Never wait indefinitely for the DSP;
+- Low and Balanced bound queued PCM; Stable retains the legacy ring capacity.
+  These are not measured end-to-end output delays. Never wait indefinitely
+  for the DSP;
   compare audible delay, underruns, game speed, and frame-time variance on Wii.
-- AESND frequency changes alter pitch. Pitch-preserving sync requires a new
-  time-stretch path on the finished stereo stream; test a small overlap-add or
-  WSOLA prototype against music, speech, and silence before adding a setting.
+- AESND frequency changes alter pitch. Preserve Pitch now uses joint-stereo
+  WSOLA on the finished stereo stream. Test music, speech, transients, and silence
+  before treating it as a quality improvement.
   The DSP API cannot do this itself. Wii locked cache (LC) is fast scratch
   memory, not a second processor; use it only if profiling proves it helps.
 

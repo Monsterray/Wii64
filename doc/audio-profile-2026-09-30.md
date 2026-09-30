@@ -92,7 +92,9 @@ Fast uses nearest-sample interpolation; Accurate uses the N64 four-tap filter.
 This single pair measures the existing mode tradeoff. It does not establish
 a quality improvement or a repeatable whole-game gain. Keep Accurate as the
 compatibility reference. An aligned PCM reference and listening checks are
-still needed before exposing Hi-Fi processing.
+still needed before claiming a Hi-Fi quality improvement. The later 1.6.0
+settings change exposes experimental enhancements; see
+[Audio settings](audio-settings.md) for their separate tests and costs.
 
 - Accurate: `hardware-glN64_wii-20260930-111908-Bm6c`
 - Fast: `hardware-glN64_wii-20260930-112527-UTVt`
@@ -129,7 +131,9 @@ boundaries. Then repeat Dolphin checks and the same Wii scene.
 MusyX v2, NEAD, NAUDIO MP3/CBFD, and the unsupported 64DD cases still need
 appropriate ROMs or captured tasks. The long TWINE chain supplies MusyX v1
 voice coverage; it does not cover those other paths. Hi-Fi resampling,
-precision, pitch-preserving sync, and separate voice routing remain open.
+precision, and pitch-preserving sync were subsequently implemented in 1.6.0
+as experimental CPU paths. Wide multivoice accumulation, separate voice
+routing, and quality validation remain open.
 
 ## ADPCM follow-up
 

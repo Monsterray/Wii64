@@ -28,6 +28,7 @@ envelopes. N64 command boundaries still saturate to 16 bits. This is not a
 floating-point multivoice bus and does not undo clipping in existing PCM.
 
 Low and Balanced limit queued PCM to approximately 40 and 80 ms. Limits are
+computed from the requested playback rate, including Follow Speed, then
 rounded down to whole AESND input chunks, with a two-chunk minimum. Stable
 retains the original queue capacity. These values exclude DSP/output delay
 and the time-stretch window. Low/Balanced discard old unread chunks when
@@ -43,6 +44,9 @@ it does not adjust playback pitch. Search starts at the nominal position
 and rejects worse candidates early to reduce CPU work.
 All enhancements run outside the interrupt-disabled queue copy. Changing
 output/sync modes, ROM, or DAC rate clears processing history and queued PCM.
+Per-ROM stream counters and the producer duration peak survive DAC/mode changes;
+loading a new ROM resets them. `audio_output.playback_hz` logs the requested
+playback rate. It does not measure the DSP clock or speaker latency.
 
 Hi-Fi and Preserve Pitch are experimental. They can cost CPU time and add
 artifacts, particularly on transients. Leave them off for compatibility
@@ -119,3 +123,36 @@ and broader game checks establish a benefit. Low latency does not suit every
 title; complex audio can still expose WSOLA artifacts or N64 command-boundary
 clipping. Custom DSP synthesis and wide multivoice accumulation remain separate
 work, not features enabled by these controls.
+
+## Cleanup verification: 1.6.1
+
+Host regressions reproduced the old Follow Speed duration error and counter
+reset on a changed DAC. The complete sanitized suite passes after both fixes.
+Accurate PCM reference snapshots remain unchanged. No new hot-path probes
+were added; the existing output summary now includes `playback_hz`.
+
+The two-game reference chain completed 3,600 VIs per title on Dolphin LLE/MMU
+and the Wii. Dolphin host playback was muted; guest audio remained enabled.
+The Wii returned to HBC. Relative to the final 1.6.0 reference:
+
+| Wii scene | CPU cycles, 1.6.0 → cleanup | Speed | Underruns | Overruns |
+| --- | --- | --- | --- | --- |
+| Super Mario 64 | 23.657 → 23.632 billion (-0.11%) | 1.00x → 1.00x | 11 → 14 | 0 → 0 |
+| TWINE (MusyX) | 9.276 → 9.257 billion (-0.21%) | 0.94x → 0.94x | 30 → 29 | 0 → 0 |
+
+This single repeat supports compatibility, not a speed improvement. Producer
+queue peaks were 117/200 ms; requested rates were 32,006/22,047 Hz.
+The sampled queue peaks are separate metrics. Results are preserved in
+`.dev/runs/hardware-glN64_wii-20260930-151048-4Yyy` with the matching DOL/ELF.
+An earlier cleanup repeat, `hardware-glN64_wii-20260930-145726-5iYQ`, had
+12/31 underruns and zero overruns. The long Dolphin run is preserved in
+`.dev/runs/dolphin-audio-closeout-20260930`; the final version's 900-VI
+default-mode check is in `.dev/runs/dolphin-audio-1.6.1-final` (1.00x,
+six underruns, zero overruns).
+
+A separate 900-VI Dolphin check exercised Balanced / Follow Speed and the timed
+launcher. It completed at 1.00x, but recorded 150 underruns and 18 latency-cap
+drops. This does not establish acceptable audio quality for that policy. The
+long reference used Stable / Native and had zero overruns. Dolphin diagnostic
+XFB captures remain solid magenta; the Wii captures showed the expected scenes.
+Use Wii captures for scene confirmation until the Dolphin capture issue is fixed.
