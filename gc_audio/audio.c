@@ -73,7 +73,7 @@ static unsigned int freq;
 static AESNDPB *voice;
 static unsigned char dsp_buffer[DSP_STREAMBUFFER_SIZE] __attribute__((aligned(32)));
 static audio_output_t output;
-static unsigned int playbackRate;
+static unsigned int playbackRate, effectiveRate;
 static int activeResampler = -1, activeSync = -1;
 
 char audioEnabled;
@@ -87,7 +87,7 @@ char audioSync;
    before a game first writes AI, every DSP frame is "starved" and means nothing. */
 static int streamStarted, starved;
 static volatile unsigned int streamRequests, streamFed;
-static unsigned int queuePeakBytes;
+static unsigned int queuePeakMs;
 #endif
 
 static void aesnd_callback(AESNDPB *pb, uint32_t state)
@@ -124,21 +124,25 @@ static void reset_buffer(void)
 	memset(buffer, 0, BUFFER_SIZE);
 #ifdef PERF_PROF
 	streamStarted = starved = 0;
-	streamRequests = streamFed = 0;
-	queuePeakBytes = 0;
 #endif
 }
 
-static void configure_output(void)
+static void configure_output(int newRom)
 {
 	uint32_t level = IRQ_Disable();
 	reset_buffer();
+#ifdef PERF_PROF
+	if (newRom) streamRequests = streamFed = queuePeakMs = 0;
+#else
+	(void)newRom;
+#endif
 	IRQ_Restore(level);
 	audio_output_reset(&output, freq ? freq : DEFAULT_FREQUENCY,
 		audioOutputResampler == AUDIOOUTPUT_HIFI, audioSync == AUDIOSYNC_PRESERVE);
 	activeResampler = audioOutputResampler;
 	activeSync = audioSync;
 	playbackRate = output.hifi ? 48000 : output.rate;
+	effectiveRate = playbackRate;
 	AESND_SetVoiceFrequency(voice, playbackRate);
 	AESND_SetVoiceLoop(voice, audioSync == AUDIOSYNC_NATIVE);
 }
@@ -147,7 +151,7 @@ static unsigned int queue_limit(void)
 {
 	if (audioLatency == AUDIOLATENCY_STABLE) return BUFFER_SIZE - 4;
 	unsigned int ms = audioLatency == AUDIOLATENCY_LOW ? 40 : 80;
-	unsigned int limit = playbackRate * 4u * ms / 1000u;
+	unsigned int limit = effectiveRate * 4u * ms / 1000u;
 	limit = limit / DSP_STREAMBUFFER_SIZE * DSP_STREAMBUFFER_SIZE;
 	if (limit < DSP_STREAMBUFFER_SIZE * 2) limit = DSP_STREAMBUFFER_SIZE * 2;
 	if (limit > BUFFER_SIZE - 4) limit = BUFFER_SIZE - 4;
@@ -190,10 +194,14 @@ static void enqueue_pcm(void *unused, const int16_t *samples, size_t frames)
 			dropped = 1;
 		}
 #ifdef PERF_PROF
-		if ((unsigned int)buffered > queuePeakBytes) queuePeakBytes = buffered;
 		streamStarted = 1;
 #endif
 	} else dropped = 1;
+#ifdef PERF_PROF
+	/* A slower Follow Speed rate also lengthens a full, rejected queue. */
+	unsigned int ms = effectiveRate ? (unsigned int)buffered * 250u / effectiveRate : 0;
+	if (ms > queuePeakMs) queuePeakMs = ms;
+#endif
 	if (dropped) perfProf_audioOverrun(); /* includes intentional latency-cap drops */
 	IRQ_Restore(level);
 }
@@ -202,19 +210,20 @@ static void enqueue_pcm(void *unused, const int16_t *samples, size_t frames)
 /* Queued PCM only. AESND/DSP output delay is not included. */
 unsigned int audioQueuedMilliseconds(void)
 {
-	return playbackRate ? ((unsigned int)buffered * 250u) / playbackRate : 0;
+	return effectiveRate ? ((unsigned int)buffered * 250u) / effectiveRate : 0;
 }
 
-/* Queue peak is exact in bytes, converted to ms at the output playback rate.
+/* Retain the largest queued duration at its contemporaneous requested DSP rate.
    Counts and queue occupancy do not measure speaker latency. */
 void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *hz,
-		unsigned int *peakMs)
+		unsigned int *peakMs, unsigned int *playbackHz)
 {
 	uint32_t level = IRQ_Disable();
 	*requests = streamRequests;
 	*fed = streamFed;
 	*hz = freq;
-	*peakMs = playbackRate ? queuePeakBytes * 250u / playbackRate : 0;
+	*peakMs = queuePeakMs;
+	*playbackHz = effectiveRate;
 	IRQ_Restore(level);
 }
 #endif
@@ -240,7 +249,7 @@ EXPORT void CALL AiDacrateChanged(int SystemType)
 	if (freq < 1000) freq = 1000;
 	if (freq > 144000) freq = 144000;
 	if (previous != freq || activeResampler != audioOutputResampler || activeSync != audioSync)
-		configure_output();
+		configure_output(0);
 }
 
 EXPORT void CALL AiLenChanged(void)
@@ -255,7 +264,7 @@ EXPORT void CALL AiLenChanged(void)
 			return;
 		}
 		if (activeResampler != audioOutputResampler || activeSync != audioSync)
-			configure_output();
+			configure_output(0);
 		float speed = VILimit > 0 ? Timers.vis / VILimit : 1;
 		if (!isfinite(speed) || speed <= 0) speed = 1;
 		if (speed < 0.5f) speed = 0.5f;
@@ -272,6 +281,8 @@ EXPORT void CALL AiLenChanged(void)
 			speed *= 1 + correction;
 		}
 		/* Always restore the ratio, including a return from faster emulation. */
+		effectiveRate = (unsigned int)(playbackRate *
+			(audioSync == AUDIOSYNC_FOLLOW ? speed : 1) + 0.5f);
 		AESND_SetVoiceFrequencyRatio(voice, playbackRate / (float)DSP_DEFAULT_FREQ *
 			(audioSync == AUDIOSYNC_FOLLOW ? speed : 1));
 		unsigned long long timer = perfProf_audioStage(PERF_AUDIO_OUTPUT, length / 4);
@@ -302,7 +313,7 @@ EXPORT BOOL CALL InitiateAudio(AUDIO_INFO Audio_Info)
 
 EXPORT void CALL RomOpen(void)
 {
-	configure_output();
+	configure_output(1);
 	AESND_SetVoiceStop(voice, false);
 }
 
@@ -324,8 +335,9 @@ void pauseAudio(void)
 void resumeAudio(void)
 {
 	if (activeResampler != audioOutputResampler || activeSync != audioSync)
-		configure_output();
+		configure_output(0);
 	AESND_SetVoiceFrequency(voice, playbackRate);
+	effectiveRate = playbackRate;
 	AESND_SetVoiceLoop(voice, audioSync == AUDIOSYNC_NATIVE);
 	AESND_SetVoiceMute(voice, !audioEnabled);
 }

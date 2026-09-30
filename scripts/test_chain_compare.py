@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Keep repeated ROM entries when comparing baselines."""
 
-from chain_compare import ROOT, load
+from chain_compare import ROOT, load, METRICS
+
+assert {"pmc1", "overruns", "queue_peak_ms"} <= set(METRICS)
 
 for source in ("2026-09-25_hw_glN64_full", str(ROOT / "baselines/2026-09-25_hw_glN64_full")):
     rows = load(source)

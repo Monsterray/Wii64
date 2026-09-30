@@ -82,9 +82,9 @@ int main(void)
 	aesnd_callback(voice, VOICE_STATE_STREAM);
 	assert(buffered == BUFFER_SIZE - 4 - DSP_STREAMBUFFER_SIZE);
 	assert(last_length == DSP_STREAMBUFFER_SIZE);
-	unsigned int requests, fed, hz, peakMs;
-	audioOutputStats(&requests, &fed, &hz, &peakMs);
-	assert(requests == 2 && fed == 1);
+	unsigned int requests, fed, hz, peakMs, playbackHz;
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	assert(requests == 2 && fed == 1 && playbackHz == playbackRate);
 	assert(hz == 48681812u / 1520u);
 	assert(peakMs == (BUFFER_SIZE - 4u) * 250u / hz);
 	assert(memcmp(last_buffer, rdram, DSP_STREAMBUFFER_SIZE) == 0);
@@ -127,6 +127,12 @@ int main(void)
 	Timers.vis = 90;
 	AiLenChanged();
 	assert(fabsf(last_ratio - playbackRate * 1.5f / DSP_DEFAULT_FREQ) < 0.00001f);
+	assert(audioQueuedMilliseconds() == (unsigned int)buffered * 250u /
+		(unsigned int)(playbackRate * 1.5f + 0.5f));
+	Timers.vis = 30;
+	AiLenChanged();
+	assert((unsigned int)buffered <= queue_limit());
+	assert(audioQueuedMilliseconds() <= 80);
 	Timers.vis = 60;
 	AiLenChanged();
 	assert(fabsf(last_ratio - playbackRate / DSP_DEFAULT_FREQ) < 0.00001f);
@@ -149,6 +155,49 @@ int main(void)
 	dacrate = UINT32_MAX;
 	AiDacrateChanged(SYSTEM_NTSC);
 	assert(freq == 1000);
+
+	/* Counters and the peak belong to the ROM, not the current DAC/mode. */
+	dacrate = 1519;
+	AiDacrateChanged(SYSTEM_NTSC);
+	audioLatency = AUDIOLATENCY_STABLE;
+	address = 0;
+	length = 8 * DSP_STREAMBUFFER_SIZE;
+	RomOpen();
+	AiLenChanged();
+	aesnd_callback(voice, VOICE_STATE_STREAM);
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	unsigned int oldPeak = peakMs;
+	assert(requests == 1 && fed == 1);
+	dacrate = 2207;
+	AiDacrateChanged(SYSTEM_NTSC);
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	assert(requests == 1 && fed == 1 && peakMs == oldPeak);
+	audioOutputResampler = AUDIOOUTPUT_HIFI;
+	resumeAudio();
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	assert(requests == 1 && fed == 1 && peakMs == oldPeak);
+	RomOpen();
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	assert(requests == 0 && fed == 0 && peakMs == 0);
+
+	/* Follow Speed queue duration uses its requested DSP frequency, not input Hz. */
+	audioOutputResampler = AUDIOOUTPUT_DSP;
+	audioSync = AUDIOSYNC_FOLLOW;
+	Timers.vis = 90;
+	RomOpen();
+	AiLenChanged();
+	unsigned int followedHz = (unsigned int)(playbackRate * 1.5f + 0.5f);
+	assert(audioQueuedMilliseconds() == (unsigned int)buffered * 250u / followedHz);
+	RomOpen();
+	length = BUFFER_SIZE - 4;
+	AiLenChanged();
+	Timers.vis = 30;
+	length = 4;
+	AiLenChanged(); /* Stable rejects the write, but slower playback extends the peak. */
+	audioOutputStats(&requests, &fed, &hz, &peakMs, &playbackHz);
+	assert(buffered == BUFFER_SIZE - 4);
+	assert(peakMs == audioQueuedMilliseconds());
+	assert(playbackHz == (unsigned int)(playbackRate * 0.5f + 0.5f));
 	CloseDLL();
 	puts("audio buffer boundaries: ok");
 	return 0;

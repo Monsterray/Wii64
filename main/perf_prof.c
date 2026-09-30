@@ -399,9 +399,9 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	struct mallinfo mi = mallinfo();
 	unsigned long long wallUs = ticks_to_microsecs(gettime() - g.start);
 	pmc_accumulate();
-	unsigned int streamRequests, streamFed, outputHz, queuePeakMs;
-	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *, unsigned int *);
-	audioOutputStats(&streamRequests, &streamFed, &outputHz, &queuePeakMs);
+	unsigned int streamRequests, streamFed, inputHz, queuePeakMs, playbackHz;
+	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *);
+	audioOutputStats(&streamRequests, &streamFed, &inputHz, &queuePeakMs, &playbackHz);
 	extern float VILimit; // main/timers.c: the VI rate this ROM is paced at (50/60)
 	buf_printf("audio: alist_resample_calls=%u alist_resample_samples=%u alist_zoh_calls=%u alist_zoh_samples=%u musyx_subframes=%u musyx_voices=%u musyx_voice_peak=%u\n",
 		g.alistResampleCalls, g.alistResampleSamples, g.alistZohCalls,
@@ -426,8 +426,8 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("audio_gaps: nead_mats=%u nead_efz=%u resample_flag2=%u musyx_ptr10=%u\n",
 		g.audioGapCalls[PERF_AUDIO_GAP_NEAD_MATS], g.audioGapCalls[PERF_AUDIO_GAP_NEAD_EFZ],
 		g.audioGapCalls[PERF_AUDIO_GAP_RESAMPLE_FLAG2], g.audioGapCalls[PERF_AUDIO_GAP_MUSYX_PTR10]);
-	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u queue_peak_ms=%u\n",
-		streamRequests, streamFed, outputHz, queuePeakMs);
+	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u playback_hz=%u queue_peak_ms=%u\n",
+		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++)
 		buf_printf("audio_time: stage=%s sampled_calls=%u sampled_samples=%u sampled_us=%llu\n",
 			audioStageNames[i], g.audioTimedCalls[i], g.audioTimedSamples[i],

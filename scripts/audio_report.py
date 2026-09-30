@@ -59,6 +59,8 @@ def report(path):
                 if output:
                     print(f"  AESND stream   {output['stream_fed']}/{output['stream_requests']} "
                           f"buffers fed, input {output['input_hz']} Hz"
+                          + (f", playback {output['playback_hz']} Hz"
+                             if 'playback_hz' in output else '')
                           + (f", producer queue peak {output['queue_peak_ms']} ms"
                              if 'queue_peak_ms' in output else ''))
                 for name, data in stages.items():
