@@ -832,6 +832,17 @@ static unsigned int adpcm_predict_frame_2bits(struct hle_t* hle,
     return 4;
 }
 
+static void adpcm_store_frame(struct hle_t* hle, uint16_t dmemo, const int16_t* frame)
+{
+    /* Broadway's halfwords are contiguous; retain wrapping/swapped DMEM stores. */
+    if (S16 == 0 && (dmemo & 0xfff) <= 0xfe0) {
+        memcpy(hle->alist_buffer + (dmemo & 0xfff), frame, 32);
+    } else {
+        for (size_t i = 0; i < 16; ++i, dmemo += 2)
+            *alist_s16(hle, dmemo) = frame[i];
+    }
+}
+
 void alist_adpcm(
         struct hle_t* hle,
         bool init,
@@ -846,7 +857,6 @@ void alist_adpcm(
 {
     unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ADPCM, count / 2);
     int16_t last_frame[16];
-    size_t i;
 
     adpcm_predict_frame_t predict_frame = (two_bit_per_sample)
         ? adpcm_predict_frame_2bits
@@ -859,8 +869,8 @@ void alist_adpcm(
     else
         dram_load_u16(hle, (uint16_t*)last_frame, (loop) ? loop_address : last_frame_address, 16);
 
-    for(i = 0; i < 16; ++i, dmemo += 2)
-        *alist_s16(hle, dmemo) = last_frame[i];
+    adpcm_store_frame(hle, dmemo, last_frame);
+    dmemo += 32;
 
     while (count != 0) {
         int16_t frame[16];
@@ -873,8 +883,8 @@ void alist_adpcm(
         adpcm_compute_residuals(last_frame    , frame    , cb_entry, last_frame + 14, 8);
         adpcm_compute_residuals(last_frame + 8, frame + 8, cb_entry, last_frame + 6 , 8);
 
-        for(i = 0; i < 16; ++i, dmemo += 2)
-            *alist_s16(hle, dmemo) = last_frame[i];
+        adpcm_store_frame(hle, dmemo, last_frame);
+        dmemo += 32;
 
         count -= 32;
     }

@@ -1,0 +1,4 @@
+# Shared ADPCM arithmetic: alist and MusyX, with neutral port 1 input.
+audio_quality=accurate
+chain=3600,input=neutral sd:/wii64/roms/Super Mario 64.v64
+chain=3600,input=neutral sd:/wii64/roms/007 - The World Is Not Enough (USA).z64

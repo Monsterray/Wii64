@@ -94,16 +94,16 @@ const int16_t RESAMPLE_LUT[64 * 4] = {
 
 int32_t rdot(size_t n, const int16_t *x, const int16_t *y)
 {
-    int32_t accu = 0;
+    uint32_t accu = 0;
 
     y += n;
 
     while (n != 0) {
-        accu += *(x++) * *(--y);
+        accu += (uint32_t)(*(x++) * *(--y));
         --n;
     }
 
-    return accu;
+    return (int32_t)accu;
 }
 
 void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
@@ -120,9 +120,12 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
     assert(count <= 8);
 
     for(i = 0; i < count; ++i) {
-        int32_t accu = (int32_t)src[i] << 11;
-        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src);
-        dst[i] = clamp_s16(accu >> 11);
+        /* Keep the original 32-bit wrapping sum before shift and saturation. */
+        uint32_t accu = (uint32_t)((int32_t)src[i] * 2048);
+        accu += (uint32_t)(book1[i]*l1);
+        accu += (uint32_t)(book2[i]*l2);
+        accu += (uint32_t)rdot(i, book2, src);
+        dst[i] = clamp_s16((int32_t)accu >> 11);
    }
 }
 

@@ -130,3 +130,75 @@ MusyX v2, NEAD, NAUDIO MP3/CBFD, and the unsupported 64DD cases still need
 appropriate ROMs or captured tasks. The long TWINE chain supplies MusyX v1
 voice coverage; it does not cover those other paths. Hi-Fi resampling,
 precision, pitch-preserving sync, and separate voice routing remain open.
+
+## ADPCM follow-up
+
+The shared residual code shifted negative signed samples and could overflow
+signed sums. The new host check reproduced `left shift of negative value
+-32768` under UBSan. Residual and reverse-dot sums now use unsigned 32-bit
+wrapping, then the original signed shift and 16-bit saturation. This preserves
+the tested output rather than replacing it with a wider, different mix.
+
+Alist ADPCM now copies each contiguous native-DMEM frame with `memcpy`.
+Wrapped frames and swapped-halfword layouts retain the original stores.
+No new hot-path probes were added. `.dev/test_rsp_audio.sh` checks the real
+production functions under ASan/UBSan:
+
+- 4,608 residual reference cases, with counts 0–8 and overlapping buffers.
+- Reverse-dot sums at counts 0–32, including extreme signed samples.
+- Fourteen boundary cases per layout, including exact-end and wrapped frames.
+- 512 whole-alist snapshots per layout: both ADPCM formats, init, loop,
+  resumed state, input/output overlap, and DMEM wrapping. The original hashes
+  remain `9b02f6bc319d81f1` and `06b765ee2c02a0c4`.
+- The three existing envelope snapshots, unchanged.
+
+The command passed on this Intel Mac, including `/bin/bash` (Bash 3.2).
+The script selects Apple's or GNU's unused-section linker option; Windows
+and Linux execution of this new command has not been tested here.
+
+An indirect-decoder-call removal was tested first. Its Super Mario 64 ADPCM
+estimate was 1,160.3 ms between baseline runs of 1,126.1 and 1,118.1 ms.
+It supplied no measured gain and was discarded. Its first Dolphin run also
+hit the time limit at 3,116/3,600 TWINE VIs, so it was not a complete chain pass.
+
+The first frame-copy run received changing controller values and reached
+26.006B cycles in a different title animation. It is excluded from performance
+comparisons. `scripts/chains/audio_adpcm.txt` now uses the existing replay
+system with `scripts/inputs/neutral.txt` to hold port 1 at rest. Stage that
+file on the Wii once with HBC-Reborn's `put` command or hardware setup;
+Dolphin launchers stage it automatically. Other controller ports remain active.
+
+| Matched Wii, 3,600 VIs per title | Baseline | Frame copy | Frame-copy repeat |
+| --- | ---: | ---: | ---: |
+| SM64 ADPCM estimate | 1,135.3 ms | 1,027.1 ms | 1,041.3 ms |
+| SM64 whole-run cycles | 23.155B | 23.056B | 23.055B |
+| SM64 underruns / overruns | 13 / 0 | 12 / 0 | 12 / 0 |
+| SM64 producer queue peak | 110 ms | 114 ms | 121 ms |
+| TWINE voice estimate | 254.1 ms | 256.2 ms | 252.5 ms |
+| TWINE underruns / overruns | 29 / 0 | 31 / 0 | 30 / 0 |
+
+The two frame-copy runs reduced the SM64 ADPCM estimate by 9.5% and 8.3%;
+whole-run cycles were 0.43% lower in each. ADPCM work counts differed by about
+0.16% from baseline. SM64 held 1.00x speed; TWINE held 0.94x. All three runs
+loaded both neutral replays, reached both VI targets, and returned to HBC.
+SM64's captured port 1 values stayed zero. MusyX timing stayed
+near baseline, with 13,131 voice operations and a peak of 11 in both runs.
+These are sampled estimates, not a sound-quality gain or elimination of
+underruns. The host snapshots establish equivalence for their test cases.
+
+Local results:
+
+- Baseline binary: `.dev/runs/adpcm-baseline-EWHHqW/`, code at `525c55c`.
+- First baseline: `hardware-glN64_wii-20260930-120836-xsB2`.
+- Discarded inlining: `hardware-glN64_wii-20260930-121129-I1Tn`.
+- Baseline repeat: `hardware-glN64_wii-20260930-121308-DfuA`.
+- Live-input run, excluded: `hardware-glN64_wii-20260930-122028-Ttvt`.
+- Matched neutral baseline: `hardware-glN64_wii-20260930-122814-ufno`.
+- Matched frame copy: `hardware-glN64_wii-20260930-123126-Nzlk`.
+- Frame-copy repeat: `hardware-glN64_wii-20260930-123753-vY9S`.
+- Muted Dolphin DSP LLE: `dolphin-audio-adpcm-neutral-20260930`.
+
+Dolphin completed both 3,600-VI targets with zero overruns and confirmed both
+one-record neutral replays. SM64 and TWINE had 34 and 36 underruns. The Mac
+test process needed a forced close after result collection; the game targets
+had completed. This does not prove clean Dolphin shutdown or Wii sound quality.

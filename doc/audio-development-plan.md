@@ -197,6 +197,11 @@ running a MusyX v2 title does not by itself prove that branch executes.
 
 ## 5. Per-voice synthesis and optional Wii routing
 
+- Run `.dev/test_rsp_audio.sh` before changing RSP arithmetic. It checks
+  ADPCM residuals against a 64-bit reference with explicit 32-bit wrapping,
+  both ADPCM formats and saved state, DMEM boundary stores in both layouts,
+  and the existing envelope snapshots under ASan/UBSan. This host check does
+  not replace Dolphin and Wii runs.
 - Profile per-voice ADPCM decode, resampling, envelope, gain, and pan by audio
   microcode. Optimize the hottest operation first, preserving a sample-level
   comparison to Accurate output. Prefer lookup reuse, fixed-point arithmetic,
