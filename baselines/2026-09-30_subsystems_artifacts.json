@@ -1,0 +1,25 @@
+{
+  "source": "ea7802e plus uncommitted subsystem probes; original Wii triple version 1.6.1, final Dolphin version 1.6.2",
+  "toolchain": "Intel macOS, devkitPPC r50-1, GCC 16.1.0, libogc2",
+  "artifact_directory": ".dev/runs/subsystem-survey-20260930",
+  "full": {
+    "flags": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES",
+    "dol_sha256": "b12c058ac1db4ebcd1d20a934a276862d8e86839c5fbd4492b91ec625a4c2289",
+    "elf_sha256": "e2f82892422a06b373f0f3a6ad0c9d8f1ca307e0badcec34189af34f4ca1150f",
+    "jobs": ["20260930-162632-e226a4", "20260930-163031-410e37"],
+    "baselines": ["2026-09-30_hw_subsystems_full1", "2026-09-30_hw_subsystems_full2"]
+  },
+  "control": {
+    "flags": "-DPERF_PROF",
+    "dol_sha256": "b401165268664cddfcd03075e208365d2ca06d26b9fc0e03b41975980ae84195",
+    "elf_sha256": "820d5b6027eecf66f6d13cfb39682d3095a42a0090e825c17158fe21b5e9a7ae",
+    "jobs": ["20260930-163031-ff4576"],
+    "baselines": ["2026-09-30_hw_subsystems_control"]
+  },
+  "wii64-1.6.2-full": {
+    "flags": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES",
+    "dol_sha256": "1ec537cfe0b22381d4757299c9be645ae1bc2a402ee8a3a105e74f7ba0f260ba",
+    "elf_sha256": "98c56fc194ad5bf5796cb6612aa9aaa92b20f0cae041e1e453c2d4cfb3fea951",
+    "baselines": ["2026-09-30_dolphin_subsystems_1.6.2"]
+  }
+}

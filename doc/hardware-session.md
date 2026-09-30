@@ -7,16 +7,30 @@ waiting in Homebrew Channel.
 
 ## Network workflow
 
-1. Once, run `.dev/hardware_setup.sh`. The guided setup records the Wii and computer
+1. Install HBC-Reborn's workstation queue client once. From its source checkout, run:
+
+   ```bash
+   python3 tools/wii-bench/wiibench.py setup --server http://homeserver.local:4310
+   ```
+
+   That URL is this development LAN's lease server; use your server's URL elsewhere.
+   The installed client is `~/.wii-bench/wiibench.py` on macOS/Linux and
+   `C:\tools\wii-bench\wiibench.py` on Windows. Its saved `server` file selects the
+   central server. `WII_BENCH_SERVER` can override it. Keep the HBC-Reborn checkout
+   available: the installed shim imports that checkout.
+2. Once, run `.dev/hardware_setup.sh`. The guided setup records the Wii and computer
    IP addresses in ignored `.dev/hardware.env`. Insert the SD card when prompted.
    It checks the named ROMs, backs up any existing `wii64/diag.cfg`, and writes the
    selected test chain plus `result_host=<computer IPv4>` to the card. Start with
    `smoke` (two ROMs); rerun setup and select `hardware` for the full chain.
-2. Eject the SD card, insert it into the Wii, and leave Homebrew Channel open.
+3. Eject the SD card, insert it into the Wii, and leave Homebrew Channel open.
    Run `.dev/hardware_run.sh` from the repo root. For Rice, use
-   `.dev/hardware_run.sh Rice_wii`. The script builds with `PERF_PROF`, starts a
-   one-run result receiver, then sends the DOL with devkitPro's `wiiload`.
-3. Wii64 runs the chain without a controller. At the end, it sends `perf.log`,
+   `.dev/hardware_run.sh Rice_wii`. The script queues itself and waits for the
+   central lease before it contacts the Wii. Within that lease it builds with
+   `PERF_PROF`, starts a one-run receiver, and sends the DOL with `wiiload`.
+   Missing server configuration stops the run; a server outage does not permit
+   direct upload. The dispatcher waits for Homebrew Channel between jobs.
+4. Wii64 runs the chain without a controller. At the end, it sends `perf.log`,
    available `xfb_NN.bin` frames, and `padtrace_NN.csv` files to the computer.
    The script waits for Homebrew Channel to return, then makes PNGs and prints a
    per-game table under `.dev/runs/`. Smoke runs also fail if a game stops rendering.
@@ -24,6 +38,15 @@ waiting in Homebrew Channel.
 For a filed nine-entry baseline, run `.dev/hardware_baseline.sh` instead. It runs the
 hardware workflow and files the result in `baselines/` only after every entry reports.
 Its status and detailed hardware log are under `.dev/runs/<baseline id>.*`.
+
+Use `python3 ~/.wii-bench/wiibench.py status` to inspect the queue on macOS/Linux;
+use the installed Windows path in the devkitPro MSYS2 shell. To enqueue without
+waiting, set `WII64_QUEUE_ONLY=1`. The command prints the job ID. To test a frozen
+build, also set `WII64_SKIP_BUILD=1 WII64_DOL=/absolute/path/to/build.dol`.
+Keep that file unchanged until its job finishes, and retain the matching ELF.
+The job preserves these settings and `WII64_ROM_DIR` even if the dispatcher was
+already running. Only the dispatcher supplies `WII_BENCH_JOB`; normal callers
+use the queued entry point.
 
 Keep the computer awake. On macOS, the receiver uses Apple's built-in Python so the
 firewall can allow it without a repeated Homebrew Python prompt. If the firewall does
@@ -56,9 +79,8 @@ If HBC-Reborn 1.2.0 or later is running, its `tools/hbc.py status` shows the
 mounted SD/USB device, and `tools/hbc.py put` can copy individual files there
 with CRC-checked transfers and no partial destination file on failure. Its
 `sync` command copies only changed files. These commands are optional; the
-Wii64 runner also works with the original Homebrew Channel. Submit Wii tests
-through HBC-Reborn's shared `tools/wii-bench/wiibench.py` queue. This keeps
-another project from starting an upload during a test.
+Wii64 runner also works with the original Homebrew Channel. The installed
+workstation client and central lease coordinate all projects' Wii tests.
 
 ## What is on the card
 
@@ -102,9 +124,11 @@ python scripts/chain_compare.py <matching Dolphin baseline id> 2026-MM-DD_hw_glN
 Dolphin answers what the code does; only the Wii answers how long it takes. The columns
 that mean something only on hardware:
 
-- **speed / idle** -- `idle` is the share of wall time the frame limiter slept: the
-  headroom. `speed` under 1.00 with `idle` at 0% means that game does not run full speed
-  on a Wii. Under Dolphin these describe the workstation.
+- **speed / idle** -- `speed` is completed VIs divided by wall time and the ROM's
+  nominal VI rate. `idle` uses requested limiter sleep, not measured free CPU
+  capacity. A game can stall during ROM paging and still request substantial
+  sleep. The optional subsystem probes measure actual limiter sleep. Under
+  Dolphin these timings describe emulation on the workstation.
 - **ipc** (`pmc2 / pmc1`) -- Broadway's performance counters: instructions completed per
   cycle. Dolphin does not count instructions completed, so this is 0 there. Other events
   can be selected at build time (`-DPMC_MMCR0=...`, see `main/perf_prof.c`).

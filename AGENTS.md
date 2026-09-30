@@ -9,3 +9,4 @@ For build, Dolphin, controller, or performance work, read [the Wii64 build-and-t
 - On macOS, `.dev/dolphin_test.sh wii64-glN64.dol interactive` prepares the profile and starts Dolphin. The script copies the Mac Wii Remote mapping, passes an absolute profile path, and enables MMU and SD folder sync.
 - On Windows, use the devkitPro MSYS2 shell and the Windows Dolphin helpers in `.dev/`. Keep native `TMP` and `TEMP` paths for the linker.
 - Read only the latest boot segment in Dolphin's append-only log. A null access is a guest fault to trace against the matching ELF; a successful build does not make it harmless.
+- For Wii uploads, leases, or subsystem timing, read [hardware sessions](doc/hardware-session.md) and [the subsystem survey](doc/subsystem-profile-2026-09-30.md). Use the queued entry point and matched probe/control builds.

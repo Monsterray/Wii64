@@ -1,4 +1,4 @@
-# Optimization handoff: 1.6.1
+# Optimization handoff: 1.6.2
 
 ## Audio status
 
@@ -19,11 +19,26 @@ ROM/scene/input, VI count, DOL/ELF, toolchain, and probe flags for comparisons.
 and overruns. Its `queue_peak_ms` is the sampled game summary; the producer
 duration peak is reported separately by `scripts/audio_report.py`.
 
-## Next candidate: dynarec function lookup
+## Next candidate: large-ROM paging
+
+The [six-game subsystem survey](subsystem-profile-2026-09-30.md) found 2.6–3.3
+seconds inside ROM copies for three 32 MB titles, versus 14–25 ms for the 8–16 MB
+ROMs. Those larger ROMs exceed the 16 MB cache and use the NAND-backed VM path.
+Count and time page-ins and evictions before changing VM behavior. Actual limiter
+sleep matched requested sleep within 3 ms per scene, so oversleep does not explain
+the observed seconds-scale stalls. Pokémon Snap's graphics span is a separate
+candidate at 36.7% of Wii wall time. These startup scenes are not whole-game results.
+
+Use `.dev/profile_subsystems.sh` for frozen full/control/full builds through the
+central Wii lease. New timers stay opt-in. Inclusive sparse timings are estimates,
+not additive CPU utilization; preserve the matching binaries and configurations.
+
+## Secondary candidate: dynarec function lookup
 
 `r4300/ppc/FuncTree.c` uses an unbalanced address-range tree. Existing probes
 observed depth 25 in TWINE and 31 in Banjo-Kazooie. Depth alone does not establish
-CPU cost. Measure lookup frequency and sparse inclusive timing before choosing
+CPU cost. The new sparse timings estimated 1.6–4.8% of wall time in MP3/SM64/Banjo,
+with lower shares in TWINE/DK64. Confirm with another interval before choosing
 a change. Compare full/disabled/full probes on the same Wii scene.
 
 1. Profile `find_func` separately from compilation and cache eviction. Freeze

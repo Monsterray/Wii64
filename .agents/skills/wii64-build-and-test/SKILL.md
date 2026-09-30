@@ -41,4 +41,18 @@ For chain tests, Dolphin can render the game correctly while `xfb_NN.bin` is a s
 
 ## Deeper checks
 
+For real Wii tests, configure the installed HBC-Reborn queue client with the
+central server first; see [hardware sessions](../../../doc/hardware-session.md).
+Use `.dev/hardware_run.sh`: it queues and waits before contacting the Wii.
+Keep each queued DOL unchanged and retain its matching ELF. The same workflow
+uses the installed macOS/Linux or Windows client; server failure leaves the
+job waiting rather than permitting a direct upload.
+
+For subsystem selection or probe overhead, read [the subsystem survey](../../../doc/subsystem-profile-2026-09-30.md).
+Run `.dev/test_subsystems.sh`, then `.dev/profile_subsystems.sh` for clean frozen
+full/control/full Wii builds and reports. New timers require both `PERF_PROF`
+and `PERF_SUBSYSTEM_PROBES`; ordinary profiling builds have no new timer cost.
+Interpret inclusive spans separately. Hot-operation estimates can alias, and
+requested limiter sleep is not a measurement of available CPU capacity.
+
 Use [controller testing](../../../doc/controller-testing.md) for input checks and [hardware sessions](../../../doc/hardware-session.md) for Wii results. Use `.dev/build_profiling.sh`, `.dev/wii64_diag.sh`, and the existing performance baselines when comparing speed. Compare dynarec and interpreter runs separately. Check the target's preprocessor branches before changing code: Wii builds and host builds do not execute every branch. Keep ROMs, profiles, logs, screenshots, and build products out of Git.
