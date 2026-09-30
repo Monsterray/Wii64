@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""Compare full / disabled / full probe overhead for the same hardware chain."""
+import argparse
+from pathlib import Path
+
+from subsystem_report import load, speed
+
+
+def compare(a, b, c):
+    signature = lambda rows: [(r["rom"], r["vis"], r["vi_rate"], r["how"]) for r in rows]
+    if not a or signature(a) != signature(b) or signature(a) != signature(c):
+        raise ValueError("ROM order, VI targets, region rate and stop reason must match")
+    if any(r["how"] != "vis" or not r.get("pmc2") or not r.get("pmc1") for rows in (a, b, c) for r in rows):
+        raise ValueError("requires successful hardware VI runs with CPU counters")
+    if any(not r["subsystems"] for rows in (a, c) for r in rows) or any(r["subsystems"] for r in b):
+        raise ValueError("expected full / disabled / full subsystem probes")
+    return [{"rom": x["rom"], "cycles_percent": 100 * ((x["pmc1"] + z["pmc1"]) / 2 / y["pmc1"] - 1),
+             "wall_percent": 100 * ((x["wall_us"] + z["wall_us"]) / 2 / y["wall_us"] - 1),
+             "speed": [speed(row) for row in (x, y, z)],
+             "underruns": [row.get("underruns", 0) for row in (x, y, z)],
+             "overruns": [row.get("overruns", 0) for row in (x, y, z)]}
+            for x, y, z in zip(a, b, c)]
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("runs", nargs=3, type=Path)
+    args = parser.parse_args()
+    configs = [[line.strip() for line in (root / "diag.cfg").read_text().splitlines()
+                if line.strip() and not line.startswith(("#", "result_host="))] for root in args.runs]
+    if configs[0] != configs[1] or configs[0] != configs[2]:
+        parser.error("diagnostic settings/input chains differ")
+    try:
+        results = compare(*(load(root) for root in args.runs))
+    except ValueError as error:
+        parser.error(str(error))
+    for row in results:
+        print(f"{Path(row['rom']).name}: cycles {row['cycles_percent']:+.2f}%, wall {row['wall_percent']:+.2f}%; "
+              f"speed {'/'.join(f'{v:.3f}' for v in row['speed'])}; "
+              f"underruns {row['underruns']}; overruns {row['overruns']}")
+    print("Full mean versus disabled control; one A/B/A triple does not calibrate probe cost.")

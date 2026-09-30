@@ -32,6 +32,7 @@
 #include "RDP.h"
 #include "VI.h"
 #include "Config.h"
+#include "../main/perf_subsystem.h"
 #include "Textures.h"
 #include "Combiner.h"
 
@@ -203,7 +204,9 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL UpdateScreen (void)
 {
+	unsigned long long timer = perfProf_subsystemBegin(PERF_SUB_PRESENT);
 	VI_UpdateScreen();
+	perfProf_subsystemEnd(PERF_SUB_PRESENT, timer);
 }
 
 EXPORT void CALL ViStatusChanged (void)

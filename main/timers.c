@@ -153,7 +153,9 @@ void new_vi(void) {
 				CalculatedTime = CounterTime + (double)VILimitMicroseconds * (double)VI_Counter;
 				time = (int)(CalculatedTime - CurrentFPSTime);
 				if (time>0&&time<1000000) {
+					unsigned long long sleepTimer = perfProf_subsystemBegin(PERF_SUB_LIMITER);
 					usleep(time);
+					perfProf_subsystemEnd(PERF_SUB_LIMITER, sleepTimer);
 					perfProf_limiterSleep(time);
 				}
 				CurrentFPSTime = CurrentFPSTime + time;

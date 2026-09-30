@@ -49,9 +49,11 @@ static inline PowerPC_func_node** _find(PowerPC_func_node** node, unsigned int a
 }
 
 PowerPC_func* find_func(PowerPC_func_node** root, unsigned int addr){
+	unsigned long long timer = perfProf_subsystemBegin(PERF_SUB_LOOKUP);
 	start_section(FUNCS_SECTION);
 	PowerPC_func_node* node = *_find(root, addr);
 	end_section(FUNCS_SECTION);
+	perfProf_subsystemEnd(PERF_SUB_LOOKUP, timer);
 	return node ? node->function : NULL;
 }
 
@@ -84,4 +86,3 @@ void remove_func(PowerPC_func_node** root, PowerPC_func* func){
 
 	MetaCache_Free(old);
 }
-

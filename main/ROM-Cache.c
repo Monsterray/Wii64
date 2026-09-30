@@ -150,7 +150,9 @@ static void ensure_block(u32 block){
 
 void ROMCache_read(u8* ram_dest, u32 rom_offset, u32 length){
 #ifdef HW_RVL
+	unsigned long long timer = perfProf_subsystemBegin(PERF_SUB_ROM_COPY);
 	memcpy(ram_dest, ROMBase + rom_offset, length);
+	perfProf_subsystemEnd(PERF_SUB_ROM_COPY, timer);
 #endif
 #ifdef HW_DOL
 #ifdef PROFILE
@@ -292,6 +294,5 @@ int ROMCache_load(fileBrowser_file* file){
 	return 0;
 #endif
 }
-
 
 

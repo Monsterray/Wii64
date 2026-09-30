@@ -2,12 +2,35 @@
 # Build, launch through Homebrew Channel, and collect one Wii hardware run.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# Every workstation must hold the central lease before it contacts the Wii.
+if [ -z "${WII_BENCH_JOB:-}" ]; then
+	bench_default="$HOME/.wii-bench"
+	if [ "$(uname -s)" != Darwin ] && [[ "$(uname -s)" != Linux ]]; then bench_default=/c/tools/wii-bench; fi
+	bench_state="${WII_BENCH_HOME:-$bench_default}"
+	bench_client="${WII_BENCH_CLIENT:-$bench_state/wiibench.py}"
+	[[ -f "$bench_client" ]] || { echo "Set up the workstation's wiibench.py client first; see doc/hardware-session.md." >&2; exit 2; }
+	bench_server="${WII_BENCH_SERVER-$(sed -n '1p' "$bench_state/server" 2>/dev/null || true)}"
+	[[ -n "${bench_server//[[:space:]]/}" ]] || { echo "Configure the central lease server with wiibench.py setup --server URL before testing." >&2; exit 2; }
+	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}")
+	if [ -n "${WII64_DOL:-}" ]; then job_env+=("WII64_DOL=$WII64_DOL"); fi
+	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
+	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --cwd "$PWD" -- \
+		env "${job_env[@]}" bash "$PWD/.dev/hardware_run.sh" "$@")"
+	if [ "${WII64_QUEUE_ONLY:-0}" = 1 ]; then
+		echo "Queued Wii64 hardware run: $job." >&2
+		printf '%s\n' "$job"
+		exit 0
+	fi
+	echo "Queued Wii64 hardware run: $job. Waiting for the central lease and Homebrew Channel."
+	exec python3 "$bench_client" wait "$job"
+fi
 source .dev/env.sh
 
 config=.dev/hardware.env
 [ -f "$config" ] || { echo "Run .dev/hardware_setup.sh first." >&2; exit 1; }
 value() { sed -n "s/^$1=//p" "$config" | tail -n 1; }
-wii_ip="$(value WII64_WII_IP)"
+wii_ip="${WII_BENCH_IP:-$(value WII64_WII_IP)}"
 mac_ip="$(value WII64_MAC_IP)"
 python3 -c 'import ipaddress,sys; [ipaddress.IPv4Address(x) for x in sys.argv[1:]]' "$wii_ip" "$mac_ip"
 python3 -c 'import socket,sys; s=socket.socket(); s.bind((sys.argv[1],0)); s.close()' "$mac_ip" || { echo "This Mac cannot bind to $mac_ip; check .dev/hardware.env." >&2; exit 1; }

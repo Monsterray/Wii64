@@ -176,6 +176,7 @@ void dynarec(unsigned int address){
 
 		start_section(TRAMP_SECTION);
 #endif
+		unsigned long long dispatchTimer = perfProf_subsystemBegin(PERF_SUB_DISPATCH);
 		unsigned long paddr = update_invalid_addr(address);
 		/*
 		sprintf(txtbuffer, "trampolining to 0x%08x\n", address);
@@ -211,7 +212,9 @@ void dynarec(unsigned int address){
 			start_section(COMPILER_SECTION);
 #endif
 			//print_gecko("Recompile %08X\r\n",address);
+			unsigned long long compileTimer = perfProf_subsystemBegin(PERF_SUB_COMPILE);
 			func = recompile_block(blocks[address>>12], address);
+			perfProf_subsystemEnd(PERF_SUB_COMPILE, compileTimer);
 #ifdef PROFILE
 			end_section(COMPILER_SECTION);
 #endif
@@ -231,7 +234,10 @@ void dynarec(unsigned int address){
 			RecompCache_Link(last_func, link_branch, func, code);
 		clear_freed_funcs();
 
+		perfProf_subsystemEnd(PERF_SUB_DISPATCH, dispatchTimer);
+		unsigned long long executeTimer = perfProf_subsystemBegin(PERF_SUB_EXECUTE);
 		r4300.pc = address = dyna_run(func, code);
+		perfProf_subsystemEnd(PERF_SUB_EXECUTE, executeTimer);
 		
 		if(!r4300.noCheckInterrupt){
 			r4300.last_pc = r4300.pc;

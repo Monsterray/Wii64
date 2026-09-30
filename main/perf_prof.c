@@ -371,6 +371,7 @@ void perfProf_gameBegin(void)
 {
 	buf_flush();
 	memset(&g, 0, sizeof(g));
+	perfProf_subsystemReset();
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++) g.audioTimerCountdown[i] = 127;
 	g_underruns = g_overruns = 0;
 	g_padN = 0;
@@ -383,6 +384,7 @@ void perfProf_gameBegin(void)
 void perfProf_clockStart(void)
 {
 	g.start = gettime();
+	perfProf_subsystemReset();
 	extern volatile unsigned int diag_retraces; // main_gc-menu2.cpp
 	g.vi0Retrace = diag_retraces; // host frame of guest VI 1: scripts/dtm2input.py --offset
 	buf_printf("first_vi: vi0_retrace=%u\n", g.vi0Retrace); // in a recording run, which never reaches gameEnd
@@ -428,6 +430,18 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		g.audioGapCalls[PERF_AUDIO_GAP_RESAMPLE_FLAG2], g.audioGapCalls[PERF_AUDIO_GAP_MUSYX_PTR10]);
 	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u playback_hz=%u queue_peak_ms=%u\n",
 		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
+#ifdef PERF_SUBSYSTEM_ENABLED
+	static const char *const subsystemNames[] = {
+		"rsp_gfx", "rsp_audio", "rsp_other", "lookup", "compile", "dispatch",
+		"execute_inclusive", "rom_copy", "present", "limiter"
+	};
+	for (unsigned int i = 0; i < PERF_SUB_COUNT; i++) {
+		struct perf_subsystem_stats s = perfProf_subsystemRead(i);
+		buf_printf("subsystem_time: stage=%s calls=%u timed_calls=%u period=%u timed_us=%llu\n",
+			subsystemNames[i], s.calls, s.timed_calls, perfProf_subsystemPeriod(i),
+			(unsigned long long)ticks_to_microsecs(s.ticks));
+	}
+#endif
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++)
 		buf_printf("audio_time: stage=%s sampled_calls=%u sampled_samples=%u sampled_us=%llu\n",
 			audioStageNames[i], g.audioTimedCalls[i], g.audioTimedSamples[i],

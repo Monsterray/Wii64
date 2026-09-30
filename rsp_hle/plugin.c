@@ -29,6 +29,10 @@
 #include "hle.h"
 #include "hle_internal.h"
 #include "hle_external.h"
+#include "../main/perf_subsystem.h"
+#ifdef PERF_SUBSYSTEM_ENABLED
+#include "memory.h"
+#endif
 
 #include "RSPPlugin.h"
 #include "Rsp_#1.1.h"
@@ -123,7 +127,15 @@ EXPORT void CALL CloseDLL(void)
 
 EXPORT unsigned int CALL DoRspCycles(unsigned int Cycles)
 {
+#ifdef PERF_SUBSYSTEM_ENABLED
+    unsigned int type = *dmem_u32(&g_hle, TASK_TYPE);
+    unsigned int stage = type == 1 ? PERF_SUB_GFX : type == 2 ? PERF_SUB_AUDIO : PERF_SUB_RSP_OTHER;
+    unsigned long long timer = perfProf_subsystemBegin(stage);
+#endif
     hle_execute(&g_hle);
+#ifdef PERF_SUBSYSTEM_ENABLED
+    perfProf_subsystemEnd(stage, timer);
+#endif
     return Cycles;
 }
 
