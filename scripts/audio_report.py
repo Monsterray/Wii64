@@ -64,7 +64,7 @@ def report(path):
                 for name, data in stages.items():
                     key = {
                         "resample": "alist_resample_calls", "zoh": "alist_zoh_calls",
-                        "musyx_fx": "musyx_fx_calls",
+                        "musyx_fx": "musyx_fx_calls", "musyx_voice": "musyx_voices",
                     }.get(name, f"{name}_calls" if name in ("adpcm", "mix")
                           else f"{name[7:]}_calls" if name.startswith("envmix_") else "")
                     calls = int(counts.get(key, 0))

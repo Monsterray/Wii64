@@ -33,10 +33,11 @@ implementation. Do not add a DSP On/Off control.
   are approximate if a game changes DAC rate during the run.
 - A 900-VI Super Mario 64 Dolphin DSP LLE run with this counter reached 1.00x
   speed, zero overruns, and a 112 ms producer peak. The older twice-per-second
-  samples peaked at 93 ms in the same run. The Wii check is pending: its
-  first `wiiload` transfer stalled, and a retry closed during data transfer
-  (exit 141), both before Wii64 booted. HBC-Reborn 1.8.1 still answered status
-  requests after the retry; neither attempt supplied game data.
+  samples peaked at 93 ms in the same run. The first two Wii uploads failed
+  before boot. The 2026-09-30 retry passed both survey chains and longer checks;
+  Super Mario 64's 3,600-VI Accurate run had a 109 ms producer peak and zero
+  overruns. See [the current Wii measurements](audio-profile-2026-09-30.md).
+  The earlier transfer failures remain unexplained.
 - `audio_time:` samples one in 127 calls for resampling (including ZOH),
   ADPCM, each envelope variant, mixing, MusyX voices, and MusyX effects. It reports
   sampled calls, samples, and microseconds. The time is inclusive of clock
@@ -76,7 +77,10 @@ implementation. Do not add a DSP On/Off control.
   billion cycles over the same 3,600-VI Super Mario 64 scene. The timed-run
   mean was 0.05% above the control, below the variation between timed runs;
   this does not resolve a timer cost. Speed held at 1.00x. This check preceded
-  the per-variant and steady-call counters, so their overhead needs a new check.
+  the per-variant and steady-call counters. A current full/disabled/full check
+  gave 23.116/23.144/23.131 billion cycles, all at 1.00x speed. The full mean
+  was 0.09% below the control; this does not resolve a calibrated probe cost.
+  See [the current Wii measurements](audio-profile-2026-09-30.md).
 - The eight-game Wii envelope survey and verified linear-mixer optimization are
   recorded in [audio-profile-2026-09-27.md](audio-profile-2026-09-27.md).
 - Use the same scenes and ROMs in Dolphin DSP LLE and on the Wii. Keep Accurate
@@ -144,7 +148,10 @@ The tested Diddy Kong Racing scene used the GE envelope, not a distinct BC
 envelope. The USA Wave Race 64 scene used the exponential envelope, not NEAD;
 the NEAD recommendation above is specifically the Europe version. The World Is
 Not Enough called MusyX effects but reported zero MusyX voice calls in this
-scene. Select gameplay scenes before claiming per-voice coverage.
+scene. The 2026-09-30 `audio_musyx_long` chain reached a first-person attract
+demo at 3,600 VIs and recorded 13,131 MusyX voice operations, with a peak of
+11 voices per subframe. Use this longer chain for MusyX v1 voice measurements.
+Select verified scenes before claiming per-voice coverage for other paths.
 
 The review's unsupported NEAD Mats path needs Mario Artist: Talent Studio;
 the EFZ path needs F-Zero X Expansion Kit. Both are 64DD titles and need a

@@ -1,0 +1,3 @@
+# TWINE reaches MusyX voices after its intro without a controller replay.
+audio_quality=accurate
+chain=3600 sd:/wii64/roms/007 - The World Is Not Enough (USA).z64
