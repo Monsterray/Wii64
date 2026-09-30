@@ -35,6 +35,8 @@ host playback while the guest audio engine remains active. Reuse an isolated
 profile; frame dumping remains opt-in. A guest log can remain inside the raw
 SD image until shutdown, when the launcher extracts it. Hardware validation
 also checks wiiload arguments and is not a Dolphin-result validator.
+Menu-only Dolphin boots retain earlier logs but do not print their stale chain
+tables as new results.
 
 ## Probe boundaries
 

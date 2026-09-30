@@ -270,7 +270,8 @@ if [ "$folder_sync" = False ] || { [ "$chain_count" -gt 0 ] && [ ! -s "$LOCAL_WI
 		done
 	done
 fi
-if [ -f "$LOCAL_WII64/perf.log" ] && grep -q '^game:' "$LOCAL_WII64/perf.log"; then
+# A menu-only boot can leave the previous chain's log in the reused profile.
+if [ "$chain_count" -gt 0 ] && [ -f "$LOCAL_WII64/perf.log" ] && grep -q '^game:' "$LOCAL_WII64/perf.log"; then
 	python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/chain_table.py" "$LOCAL_WII64"
 fi
 exit "$test_status"
