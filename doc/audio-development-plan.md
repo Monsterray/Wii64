@@ -75,6 +75,20 @@ implementation. Do not add a DSP On/Off control.
   mode as the reference; include titles using both alist and MusyX audio.
 - Save a short PCM capture from each mode for sample, spectrum, and listening
   comparisons. Do not use total-frame speed alone to judge audio quality.
+- Dolphin can capture this without changing Wii64's audio hot path. Run
+  `WII64_DOLPHIN_DSP_HLE=False WII64_DOLPHIN_DUMP_AUDIO=True
+  .dev/dolphin_test.sh wii64-glN64.dol 90 audio_quality=accurate
+  'chain=900 sd:/wii64/roms/Super Mario 64.v64'`, then repeat with
+  `audio_quality=fast`. Automated Dolphin runs are muted on the Mac by default;
+  interactive runs remain audible. Set `WII64_DOLPHIN_MUTE_AUDIO=False` to hear
+  an automated run. WAVs stay under the ignored
+  `.dev/dolphin_profile/AudioCaptures/` directory. Run
+  `python3 scripts/audio_capture_report.py <capture-directory>` to identify
+  non-silent files. In the tested DSP LLE build, `dspdump.wav` and `dtkdump.wav`
+  were silent, while `dspdump1.wav` held the AESND output; do not infer signal
+  from the filename or from the existence of a WAV alone. This capture includes
+  boot/menu audio and Dolphin's emulated DSP output, not the Wii analog output.
+  Compare aligned gameplay segments and listen before claiming a quality gain.
 - The AI output ring now rejects oversized lengths without signed arithmetic,
   ignores zero-length writes, and preserves its spare-space rule. Check its
   boundaries with `cc -std=c11 -Wall -Wextra -Werror -DPERF_PROF -Itests/audio_stubs

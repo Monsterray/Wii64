@@ -186,3 +186,15 @@ proves audio quality. The ignored local run directories are:
 After these runs, the Wii reported HBC-Reborn 1.5.0, developer protocol 3,
 and `sd` as its mounted device. The local HBC-Reborn source checkout documents
 1.4.1, so its version-specific documentation may lag the installed channel.
+
+## Dolphin PCM capture, 2026-09-29
+
+The isolated Dolphin runner captured the same 900-VI Super Mario 64 opening
+in Accurate and Fast with DSP LLE and Mac playback muted. Both reached 900 VIs.
+The `dspdump1.wav` track was non-silent 48 kHz stereo in both runs: 18.41 s,
+RMS 2433.4 in Accurate and 2476.0 in Fast. The `dspdump.wav` and `dtkdump.wav`
+tracks were silent. Muting Mac playback did not mute the WAV capture. These
+whole-capture levels include Wii64 boot/menu time and do not measure audible
+quality or prove sample-level equivalence. The ignored capture directories are
+`.dev/dolphin_profile/AudioCaptures/run-EdaIUu/` (Accurate) and
+`.dev/dolphin_profile/AudioCaptures/run-JdL4O3/` (Fast).

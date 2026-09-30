@@ -60,6 +60,15 @@ fi
 
 mkdir -p "$PROFILE_POSIX"
 dump_frames="${WII64_DOLPHIN_DUMP_FRAMES:-False}"
+dump_audio="${WII64_DOLPHIN_DUMP_AUDIO:-False}"
+default_mute=True
+if [ "$WAIT" = interactive ]; then default_mute=False; fi
+mute_audio="${WII64_DOLPHIN_MUTE_AUDIO:-$default_mute}"
+audio_dump_root="$PROFILE_POSIX/Dump"
+if [ "$dump_audio" = True ]; then
+	mkdir -p "$PROFILE_POSIX/AudioCaptures"
+	audio_dump_root="$(mktemp -d "$PROFILE_POSIX/AudioCaptures/run-XXXXXX")"
+fi
 if [ "$dump_frames" = True ]; then
 	mkdir -p "$PROFILE_POSIX/Dump/Frames"
 	rm -f "$PROFILE_POSIX/Dump/Frames/"*.png
@@ -101,6 +110,9 @@ if [ "$(uname -s)" = Darwin ] && [ "$WAIT" = interactive ]; then
 	open -n -a /Applications/Dolphin.app --args -e "$DOL_ARG" -u "$PROFILE_ARG" \
 		-C Dolphin.Core.MMU=True \
 		-C Dolphin.Core.DSPHLE="$dsp_hle" \
+		-C Dolphin.DSP.DumpAudio="$dump_audio" \
+		-C Dolphin.DSP.Muted="$mute_audio" \
+		-C Dolphin.General.DumpPath="$audio_dump_root" \
 		-C Dolphin.Core.WiiSDCard=True \
 		-C Dolphin.Core.WiiSDCardAllowWrites=True \
 		-C Dolphin.Core.WiiSDCardEnableFolderSync="$folder_sync" \
@@ -109,6 +121,7 @@ if [ "$(uname -s)" = Darwin ] && [ "$WAIT" = interactive ]; then
 		-C Logger.Logs.MASTER=True \
 		-C Logger.Logs.BOOT=True
 	echo "Dolphin opened with the isolated Wii64 profile."
+	if [ "$dump_audio" = True ]; then echo "Audio capture will be under $audio_dump_root"; fi
 	exit 0
 fi
 
@@ -125,6 +138,9 @@ args=(-b -e "$DOL_ARG" -u "$PROFILE_ARG" \
 	-C Dolphin.Core.CPUThread=True \
 	-C Dolphin.Core.MMU=True \
 	-C Dolphin.Core.DSPHLE="$dsp_hle" \
+	-C Dolphin.DSP.DumpAudio="$dump_audio" \
+	-C Dolphin.DSP.Muted="$mute_audio" \
+	-C Dolphin.General.DumpPath="$audio_dump_root" \
 	-C Dolphin.Core.WiiSDCard=True \
 	-C Dolphin.Core.WiiSDCardAllowWrites=True \
 	-C Dolphin.Core.WiiSDCardEnableFolderSync="$folder_sync" \
@@ -216,6 +232,9 @@ else
 	if [ "$dump_frames" = True ]; then
 		echo "No frame was dumped -- check $PROFILE_POSIX/Logs/dolphin.log" >&2
 	fi
+fi
+if [ "$dump_audio" = True ]; then
+	python3 scripts/audio_capture_report.py "$audio_dump_root"
 fi
 if [ -f "$PROFILE_POSIX/Logs/dolphin.log" ]; then
 	# Dolphin appends boots to this log; report only the run just launched.
