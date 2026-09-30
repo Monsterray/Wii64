@@ -34,7 +34,9 @@ implementation. Do not add a DSP On/Off control.
 - A 900-VI Super Mario 64 Dolphin DSP LLE run with this counter reached 1.00x
   speed, zero overruns, and a 112 ms producer peak. The older twice-per-second
   samples peaked at 93 ms in the same run. The Wii check is pending: its
-  `wiiload` transfer stalled before Wii64 booted, so it supplied no game data.
+  first `wiiload` transfer stalled, and a retry closed during data transfer
+  (exit 141), both before Wii64 booted. HBC-Reborn 1.8.1 still answered status
+  requests after the retry; neither attempt supplied game data.
 - `audio_time:` samples one in 127 calls for resampling (including ZOH),
   ADPCM, each envelope variant, mixing, MusyX voices, and MusyX effects. It reports
   sampled calls, samples, and microseconds. The time is inclusive of clock
@@ -101,6 +103,16 @@ implementation. Do not add a DSP On/Off control.
   Super Mario 64 captures, a 1,024-frame segment differed by RMS 192.01 and
   peak 984 after an 18-frame alignment. A longer gameplay capture and listening
   check are still needed.
+- For a chosen interval, add `--start-s 25 --duration-s 1`. The start is
+  measured from the WAV start, not from the first guest VI. `--lag-frames N`
+  reuses a known offset; correlation helps identify captures that do not
+  align. Two 2,400-VI Dolphin runs with the same `sm64_start` input replay
+  produced non-silent 43.4-second WAVs, but had 60 and 9 underruns. Their
+  first active 1,024 frames correlated at 0.956 after alignment; a later
+  one-second interval at 25 seconds correlated at only 0.104 after a new
+  alignment. These post-DSP captures are not a reliable sample-level
+  fidelity comparison across these runs. The diagnostic XFB image was solid
+  magenta, so it also does not prove the selected interval was gameplay.
 - The AI output ring now rejects oversized lengths without signed arithmetic,
   ignores zero-length writes, and preserves its spare-space rule. Check its
   boundaries with `cc -std=c11 -Wall -Wextra -Werror -DPERF_PROF -Itests/audio_stubs
