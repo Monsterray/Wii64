@@ -115,11 +115,12 @@ that mean something only on hardware:
 
 ## Audio mode check
 
-The menu has two measured modes. **Accurate** (the default, formerly called Hi-Fi)
-uses the original N64 4-tap resampler. **Fast** uses a nearest-sample lookup. Both
-send PCM to the Wii's AESND DSP for playback at 48 kHz. There is no separate Hi-Fi
-mode yet: AESND has no documented filter-quality control, and a new host resampler
-needs output-quality and CPU tests before it can earn that name.
+Settings, Audio, Advanced has synthesis, output, mixer, latency, and sync controls.
+**Accurate** keeps the original N64 4-tap filter. **Fast** uses a nearest sample.
+Optional **Hi-Fi** modes add cubic synthesis, a CPU sinc output converter, and
+higher-precision gain arithmetic. **Preserve Pitch** adds CPU time stretching.
+See [Audio settings](audio-settings.md) for limits, defaults, and diagnostic keys.
+These enhancements do not replace AESND's DSP firmware or its output filter.
 
 The Wii audio hardware path is already active: Wii64 streams one stereo PCM voice;
 AESND handles output rate, pitch, mute, mixing, and the Wii DSP transfer. libogc2
@@ -134,6 +135,9 @@ For a matched Wii check, run:
 .dev/build_profiling.sh glN64_wii
 WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_accurate
 WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_fast
+# All enhancements versus explicit legacy defaults, alist and MusyX:
+WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_reference
+WII64_SKIP_BUILD=1 .dev/hardware_run.sh glN64_wii audio_hifi
 ```
 
 The chains use the Super Mario 64 title screen for 3,600 VIs. Keep Homebrew

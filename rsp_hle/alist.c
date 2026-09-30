@@ -67,15 +67,24 @@ static int16_t* alist_s16(struct hle_t* hle, uint16_t dmem)
 
 static void sample_mix(int16_t* dst, int16_t src, int16_t gain)
 {
-    *dst = clamp_s16(*dst + ((src * gain) >> 15));
+    if (audioMixerPrecision == AUDIOMIX_HIFI)
+        *dst = audio_mix_hifi(*dst, src, gain, 15);
+    else
+        *dst = clamp_s16(*dst + ((src * gain) >> 15));
 }
 
-static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src)
+static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src,
+                            int16_t left, int16_t right, int16_t dry, int16_t wet)
 {
     size_t i;
 
-    for(i = 0; i < n; ++i)
-        sample_mix(dst[i], src, gains[i]);
+    for(i = 0; i < n; ++i) {
+        if (audioMixerPrecision == AUDIOMIX_HIFI) {
+            int64_t gain = (int64_t)((i & 1) ? right : left) * (i < 2 ? dry : wet);
+            *dst[i] = audio_mix_hifi(*dst[i], src, gain, 30);
+        } else
+            sample_mix(dst[i], src, gains[i]);
+    }
 }
 
 static int16_t ramp_step(struct ramp_t* ramp)
@@ -327,7 +336,7 @@ void alist_envmix_exp(
             for (x = 0; x < 8; ++x) {
                 int16_t* buffers[4] = { dl + (ptr^S), dr + (ptr^S),
                                         wl + (ptr^S), wr + (ptr^S) };
-                alist_envmix_mix(n, buffers, gains, in[ptr^S]);
+                alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet);
                 ++ptr;
             }
         }
@@ -362,7 +371,7 @@ void alist_envmix_exp(
             gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
             gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-            alist_envmix_mix(n, buffers, gains, in[ptr^S]);
+            alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet);
             ++ptr;
         }
     }
@@ -445,7 +454,7 @@ void alist_envmix_ge(
         for (k = 0; k < count; ++k) {
             int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
                                     wl + (k^S), wr + (k^S) };
-            alist_envmix_mix(n, buffers, gains, in[k^S]);
+            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
         }
     } else {
         for (k = 0; k < count; ++k) {
@@ -464,7 +473,7 @@ void alist_envmix_ge(
             gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
             gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-            alist_envmix_mix(n, buffers, gains, in[k^S]);
+            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
         }
     }
 
@@ -543,7 +552,7 @@ void alist_envmix_lin(
         for (k = 0; k < count; ++k) {
             int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
                                     wl + (k^S), wr + (k^S) };
-            alist_envmix_mix(4, buffers, gains, in[k^S]);
+            alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
         }
     } else {
     for(k = 0; k < count; ++k) {
@@ -562,7 +571,7 @@ void alist_envmix_lin(
         gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
         gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-        alist_envmix_mix(4, buffers, gains, in[k^S]);
+        alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
     }
     }
 
@@ -611,6 +620,13 @@ void alist_envmix_nead(
             int16_t r  = (((int32_t)in[i^S] * (uint32_t)env_values[1]) >> 16) ^ xors[1];
             int16_t l2 = (((int32_t)l * (uint32_t)env_values[2]) >> 16) ^ xors[2];
             int16_t r2 = (((int32_t)r * (uint32_t)env_values[2]) >> 16) ^ xors[3];
+
+            if (audioMixerPrecision == AUDIOMIX_HIFI) {
+                l = audio_mix_hifi(0, in[i^S], env_values[0], 16) ^ xors[0];
+                r = audio_mix_hifi(0, in[i^S], env_values[1], 16) ^ xors[1];
+                l2 = audio_mix_hifi(0, l, env_values[2], 16) ^ xors[2];
+                r2 = audio_mix_hifi(0, r, env_values[2], 16) ^ xors[3];
+            }
 
             dl[i^S] = clamp_s16(dl[i^S] + l);
             dr[i^S] = clamp_s16(dr[i^S] + r);
@@ -750,6 +766,10 @@ void alist_resample(
     while (count != 0) {
         if (fast) {
             *sample(hle, opos++) = *sample(hle, ipos + 2);
+        } else if (audioQuality == AUDIOQUALITY_HIFI) {
+            int16_t values[4] = { *sample(hle, ipos), *sample(hle, ipos + 1),
+                                  *sample(hle, ipos + 2), *sample(hle, ipos + 3) };
+            *sample(hle, opos++) = audio_cubic(values, pitch_accu);
         } else {
             const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
 

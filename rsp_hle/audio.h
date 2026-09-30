@@ -31,6 +31,10 @@ extern const int16_t RESAMPLE_LUT[64 * 4];
 
 int32_t rdot(size_t n, const int16_t *x, const int16_t *y);
 
+/* Enhancements keep their rounding separate from N64-exact arithmetic. */
+int16_t audio_mix_hifi(int16_t dst, int16_t src, int64_t gain, unsigned int shift);
+int16_t audio_cubic(const int16_t samples[4], uint32_t phase);
+
 static inline int16_t adpcm_predict_sample(uint8_t byte, uint8_t mask,
         unsigned lshift, unsigned rshift)
 {

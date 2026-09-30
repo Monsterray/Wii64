@@ -45,8 +45,18 @@ extern char audioQuality;
 enum audioQuality
 {
 	AUDIOQUALITY_ACCURATE=0,	// original 4-tap N64 resample (default)
-	AUDIOQUALITY_FAST=1	// nearest-sample resample -- cheaper, some audio fidelity loss
+	AUDIOQUALITY_FAST=1,	// nearest-sample resample -- cheaper, some audio fidelity loss
+	AUDIOQUALITY_HIFI=2	// full-phase cubic interpolation (enhancement, not N64-exact)
 };
+
+extern char audioOutputResampler;
+enum audioOutputResampler { AUDIOOUTPUT_DSP=0, AUDIOOUTPUT_HIFI };
+extern char audioMixerPrecision;
+enum audioMixerPrecision { AUDIOMIX_ACCURATE=0, AUDIOMIX_HIFI };
+extern char audioLatency;
+enum audioLatency { AUDIOLATENCY_LOW=0, AUDIOLATENCY_BALANCED, AUDIOLATENCY_STABLE };
+extern char audioSync;
+enum audioSync { AUDIOSYNC_NATIVE=0, AUDIOSYNC_FOLLOW, AUDIOSYNC_PRESERVE };
 
 extern char showFPSonScreen;
 enum showFPSonScreen

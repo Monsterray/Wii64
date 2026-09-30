@@ -394,7 +394,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 {
 	static const char *const audioStageNames[] = {
 		"resample", "zoh", "adpcm", "envmix_exp", "envmix_ge", "envmix_lin",
-		"envmix_nead", "mix", "musyx_voice", "musyx_fx"
+		"envmix_nead", "mix", "musyx_voice", "musyx_fx", "output"
 	};
 	struct mallinfo mi = mallinfo();
 	unsigned long long wallUs = ticks_to_microsecs(gettime() - g.start);
@@ -412,11 +412,12 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		envmixCalls += g.audioStageCalls[i];
 		envmixSamples += g.audioStageSamples[i];
 	}
-	buf_printf("audio_stages: adpcm_calls=%u adpcm_samples=%u envmix_calls=%u envmix_samples=%u mix_calls=%u mix_samples=%u musyx_fx_calls=%u musyx_fx_taps=%u\n",
+	buf_printf("audio_stages: adpcm_calls=%u adpcm_samples=%u envmix_calls=%u envmix_samples=%u mix_calls=%u mix_samples=%u musyx_fx_calls=%u musyx_fx_taps=%u output_calls=%u output_samples=%u\n",
 		g.audioStageCalls[PERF_AUDIO_ADPCM], g.audioStageSamples[PERF_AUDIO_ADPCM],
 		envmixCalls, envmixSamples,
 		g.audioStageCalls[PERF_AUDIO_MIX], g.audioStageSamples[PERF_AUDIO_MIX],
-		g.audioStageCalls[PERF_AUDIO_MUSYX_FX], g.audioStageSamples[PERF_AUDIO_MUSYX_FX]);
+		g.audioStageCalls[PERF_AUDIO_MUSYX_FX], g.audioStageSamples[PERF_AUDIO_MUSYX_FX],
+		g.audioStageCalls[PERF_AUDIO_OUTPUT], g.audioStageSamples[PERF_AUDIO_OUTPUT]);
 	buf_printf("audio_envmix: exp_calls=%u ge_calls=%u lin_calls=%u nead_calls=%u exp_steady=%u ge_steady=%u lin_steady=%u\n",
 		g.audioStageCalls[PERF_AUDIO_ENVMIX_EXP], g.audioStageCalls[PERF_AUDIO_ENVMIX_GE],
 		g.audioStageCalls[PERF_AUDIO_ENVMIX_LIN], g.audioStageCalls[PERF_AUDIO_ENVMIX_NEAD],

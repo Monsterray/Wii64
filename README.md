@@ -59,7 +59,7 @@
 	* Save Button Configs: Save all of the controller configuration slots to SD or USB
 	* Auto Load Slot: Select which slot to automatically be loaded for each type of controller
 * Audio
-	* Disable Audio: Select to mute the sound
+	* Audio: Select On or Off
 * Saves
 	* Auto Save Native Saves: When enabled, the emulator will automatically load
      saves from the selected device on ROM load and save when returning to the menu or
@@ -78,12 +78,18 @@ This version isn't really supported much due to the niche nature of it. It enabl
 
 ### Boot time arguments
 The following can be passed in via wiiload or by editing the meta.xml to override settings. They can also be changed via the settings.cfg that's created upon booting up the emulator for the first time.
+
+For synthesis/output resampling, mixer precision, latency, and synchronization,
+see [Audio settings](doc/audio-settings.md). Save menu changes with General,
+Save Settings. Hi-Fi and Preserve Pitch are optional CPU enhancements.
+
 * **MiniMenu** - Which menu style should the emulator default to.
 	 * 0 = Don't boot to Mini Menu
 	 * 1 = Boot to mini menu (default)
 * **Audio** - Audio toggle
 	 * 0 = Disabled
 	 * 1 = Enabled (default)
+
  * **FPS** - FPS display toggle
 	 * 0 = Disabled (default)
 	 * 1 = Enabled

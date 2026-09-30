@@ -130,7 +130,8 @@ OBJ_RSPHLE	=rsp_hle/alist.o \
 		rsp_hle/plugin.o
 
 OBJ_AUDIO	+= \
-		gc_audio/audio.o
+		gc_audio/audio.o \
+		gc_audio/output.o
 
 HEADER		+= \
 		main/rom.h \

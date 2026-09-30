@@ -46,6 +46,8 @@
 #include "../main/winlnxdefs.h"
 #include <gccore.h>
 #include <string.h>
+#include <math.h>
+#include "output.h"
 #include "../main/perf_prof.h"
 #include <aesndlib.h>
 
@@ -69,9 +71,15 @@ static char *write_ptr, *read_ptr;
 static volatile int buffered;
 static unsigned int freq;
 static AESNDPB *voice;
+static unsigned char dsp_buffer[DSP_STREAMBUFFER_SIZE] __attribute__((aligned(32)));
+static audio_output_t output;
+static unsigned int playbackRate;
+static int activeResampler = -1, activeSync = -1;
 
 char audioEnabled;
-char scalePitch = 0;
+char audioOutputResampler;
+char audioLatency = AUDIOLATENCY_STABLE;
+char audioSync;
 
 #ifdef PERF_PROF
 /* Audible gaps, for perf_prof: the DSP asked for the next buffer and there was none.
@@ -89,7 +97,10 @@ static void aesnd_callback(AESNDPB *pb, uint32_t state)
 		streamRequests++;
 #endif
 		if (buffered >= DSP_STREAMBUFFER_SIZE) {
-			AESND_SetVoiceBuffer(pb, read_ptr, DSP_STREAMBUFFER_SIZE);
+			/* AESND may still read this after the callback. Queue trimming must
+			   never let the producer overwrite a handed-off ring region. */
+			memcpy(dsp_buffer, read_ptr, DSP_STREAMBUFFER_SIZE);
+			AESND_SetVoiceBuffer(pb, dsp_buffer, DSP_STREAMBUFFER_SIZE);
 			read_ptr += DSP_STREAMBUFFER_SIZE;
 			if (read_ptr >= end_ptr)
 				read_ptr = buffer;
@@ -118,14 +129,83 @@ static void reset_buffer(void)
 #endif
 }
 
+static void configure_output(void)
+{
+	uint32_t level = IRQ_Disable();
+	reset_buffer();
+	IRQ_Restore(level);
+	audio_output_reset(&output, freq ? freq : DEFAULT_FREQUENCY,
+		audioOutputResampler == AUDIOOUTPUT_HIFI, audioSync == AUDIOSYNC_PRESERVE);
+	activeResampler = audioOutputResampler;
+	activeSync = audioSync;
+	playbackRate = output.hifi ? 48000 : output.rate;
+	AESND_SetVoiceFrequency(voice, playbackRate);
+	AESND_SetVoiceLoop(voice, audioSync == AUDIOSYNC_NATIVE);
+}
+
+static unsigned int queue_limit(void)
+{
+	if (audioLatency == AUDIOLATENCY_STABLE) return BUFFER_SIZE - 4;
+	unsigned int ms = audioLatency == AUDIOLATENCY_LOW ? 40 : 80;
+	unsigned int limit = playbackRate * 4u * ms / 1000u;
+	limit = limit / DSP_STREAMBUFFER_SIZE * DSP_STREAMBUFFER_SIZE;
+	if (limit < DSP_STREAMBUFFER_SIZE * 2) limit = DSP_STREAMBUFFER_SIZE * 2;
+	if (limit > BUFFER_SIZE - 4) limit = BUFFER_SIZE - 4;
+	return limit;
+}
+
+static void discard_queued_chunk(void)
+{
+	read_ptr += DSP_STREAMBUFFER_SIZE;
+	if (read_ptr >= end_ptr) read_ptr = buffer;
+	buffered -= DSP_STREAMBUFFER_SIZE;
+}
+
+static void enqueue_pcm(void *unused, const int16_t *samples, size_t frames)
+{
+	(void)unused;
+	size_t length = frames * 4;
+	uint32_t level = IRQ_Disable();
+	/* Keep the original Stable full-ring rule. Other profiles keep fresh PCM. */
+	int dropped = 0;
+	if (audioLatency != AUDIOLATENCY_STABLE && length < BUFFER_SIZE) {
+		while (buffered >= DSP_STREAMBUFFER_SIZE && length >= (size_t)(BUFFER_SIZE - buffered)) {
+			discard_queued_chunk();
+			dropped = 1;
+		}
+	}
+	if (length < (size_t)(BUFFER_SIZE - buffered)) {
+		const unsigned char *stream = (const unsigned char *)samples;
+		while (length) {
+			size_t size = MIN((size_t)(end_ptr - write_ptr), length);
+			memcpy(write_ptr, stream, size);
+			stream += size;
+			length -= size;
+			write_ptr += size;
+			if (write_ptr >= end_ptr) write_ptr = buffer;
+			buffered += size;
+		}
+		while ((unsigned int)buffered > queue_limit() && buffered >= DSP_STREAMBUFFER_SIZE) {
+			discard_queued_chunk();
+			dropped = 1;
+		}
+#ifdef PERF_PROF
+		if ((unsigned int)buffered > queuePeakBytes) queuePeakBytes = buffered;
+		streamStarted = 1;
+#endif
+	} else dropped = 1;
+	if (dropped) perfProf_audioOverrun(); /* includes intentional latency-cap drops */
+	IRQ_Restore(level);
+}
+
 #ifdef PERF_PROF
 /* Queued PCM only. AESND/DSP output delay is not included. */
 unsigned int audioQueuedMilliseconds(void)
 {
-	return freq ? ((unsigned int)buffered * 250u) / freq : 0;
+	return playbackRate ? ((unsigned int)buffered * 250u) / playbackRate : 0;
 }
 
-/* Queue peak is exact in bytes, converted to ms at the most recent input rate.
+/* Queue peak is exact in bytes, converted to ms at the output playback rate.
    Counts and queue occupancy do not measure speaker latency. */
 void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *hz,
 		unsigned int *peakMs)
@@ -134,29 +214,33 @@ void audioOutputStats(unsigned int *requests, unsigned int *fed, unsigned int *h
 	*requests = streamRequests;
 	*fed = streamFed;
 	*hz = freq;
-	*peakMs = freq ? queuePeakBytes * 250u / freq : 0;
+	*peakMs = playbackRate ? queuePeakBytes * 250u / playbackRate : 0;
 	IRQ_Restore(level);
 }
 #endif
 
 EXPORT void CALL AiDacrateChanged(int SystemType)
 {
+	unsigned int previous = freq;
 	freq = DEFAULT_FREQUENCY;
 	
 	switch (SystemType)
 	{
 		case SYSTEM_NTSC:
-			freq = 48681812 / (*AudioInfo.AI_DACRATE_REG + 1);
+			freq = 48681812 / ((uint64_t)*AudioInfo.AI_DACRATE_REG + 1);
 			break;
 		case SYSTEM_PAL:
-			freq = 49656530 / (*AudioInfo.AI_DACRATE_REG + 1);
+			freq = 49656530 / ((uint64_t)*AudioInfo.AI_DACRATE_REG + 1);
 			break;
 		case SYSTEM_MPAL:
-			freq = 48628316 / (*AudioInfo.AI_DACRATE_REG + 1);
+			freq = 48628316 / ((uint64_t)*AudioInfo.AI_DACRATE_REG + 1);
 			break;
 	}
 	
-	AESND_SetVoiceFrequency(voice, freq);
+	if (freq < 1000) freq = 1000;
+	if (freq > 144000) freq = 144000;
+	if (previous != freq || activeResampler != audioOutputResampler || activeSync != audioSync)
+		configure_output();
 }
 
 EXPORT void CALL AiLenChanged(void)
@@ -165,41 +249,35 @@ EXPORT void CALL AiLenChanged(void)
 		size_t length = *AudioInfo.AI_LEN_REG;
 		if (length == 0)
 			return;
-#ifdef RVL_LIBWIIDRC
-		while(buffered > (DSP_STREAMBUFFER_SIZE * 24))
-			usleep(100);
-#endif
-		uint32_t level = IRQ_Disable();
-		
-		if (length < (size_t)(BUFFER_SIZE - buffered)) {
-			unsigned char *stream = AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF);
-			do {
-				size_t size = MIN((size_t)(end_ptr - write_ptr), length);
-				memcpy(write_ptr, stream, size);
-				stream += size;
-				length -= size;
-				
-				write_ptr += size;
-				if (write_ptr >= end_ptr)
-					write_ptr = buffer;
-				buffered += size;
-			} while (length > 0);
-#ifdef PERF_PROF
-			if ((unsigned int)buffered > queuePeakBytes)
-				queuePeakBytes = buffered;
-			streamStarted = 1;
-#endif
-		} else
+		unsigned int address = *AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF;
+		if ((address & 3) || (length & 3) || address >= 0x800000 || length > 0x800000 - address) {
 			perfProf_audioOverrun();
-
-#ifdef RVL_LIBWIIDRC
-		if (scalePitch)
-#else
-		if (scalePitch || Timers.vis > VILimit)
-#endif
-			AESND_SetVoiceFrequencyRatio(voice, (Timers.vis * freq) / (VILimit * DSP_DEFAULT_FREQ));
-			
-		IRQ_Restore(level);
+			return;
+		}
+		if (activeResampler != audioOutputResampler || activeSync != audioSync)
+			configure_output();
+		float speed = VILimit > 0 ? Timers.vis / VILimit : 1;
+		if (!isfinite(speed) || speed <= 0) speed = 1;
+		if (speed < 0.5f) speed = 0.5f;
+		if (speed > 2) speed = 2;
+		if (audioSync == AUDIOSYNC_PRESERVE) {
+			/* VI-rate estimates drift. Correct tempo, not pitch, to keep the
+			   queue near its target instead of growing until packets drop. */
+			float target = audioLatency == AUDIOLATENCY_LOW ? 25 :
+				audioLatency == AUDIOLATENCY_BALANCED ? 50 : 120;
+			float queuedMs = playbackRate ? buffered * 250.0f / playbackRate : 0;
+			float correction = (queuedMs - target) * 0.002f;
+			if (correction < -0.1f) correction = -0.1f;
+			if (correction > 0.1f) correction = 0.1f;
+			speed *= 1 + correction;
+		}
+		/* Always restore the ratio, including a return from faster emulation. */
+		AESND_SetVoiceFrequencyRatio(voice, playbackRate / (float)DSP_DEFAULT_FREQ *
+			(audioSync == AUDIOSYNC_FOLLOW ? speed : 1));
+		unsigned long long timer = perfProf_audioStage(PERF_AUDIO_OUTPUT, length / 4);
+		audio_output_push(&output, (const int16_t *)(AudioInfo.RDRAM + address), length / 4,
+			speed, enqueue_pcm, NULL);
+		if (timer) perfProf_audioStageEnd(PERF_AUDIO_OUTPUT, timer);
 	}
 }
 
@@ -224,7 +302,7 @@ EXPORT BOOL CALL InitiateAudio(AUDIO_INFO Audio_Info)
 
 EXPORT void CALL RomOpen(void)
 {
-	reset_buffer();
+	configure_output();
 	AESND_SetVoiceStop(voice, false);
 }
 
@@ -245,7 +323,9 @@ void pauseAudio(void)
 
 void resumeAudio(void)
 {
-	AESND_SetVoiceFrequency(voice, freq);
-	AESND_SetVoiceLoop(voice, !scalePitch);
+	if (activeResampler != audioOutputResampler || activeSync != audioSync)
+		configure_output();
+	AESND_SetVoiceFrequency(voice, playbackRate);
+	AESND_SetVoiceLoop(voice, audioSync == AUDIOSYNC_NATIVE);
 	AESND_SetVoiceMute(voice, !audioEnabled);
 }

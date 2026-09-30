@@ -24,6 +24,19 @@ def main(run_dir):
     if "mark: diag config: wiiload arguments" not in log:
         errors.append("run did not confirm it used the selected wiiload configuration")
     quality = next((line.split("=", 1)[1] for line in config if line.startswith("audio_quality=")), None)
+    audio_modes = {
+        "audio_quality": {"accurate": 0, "fast": 1, "hifi": 2},
+        "audio_output": {"dsp": 0, "hifi": 1},
+        "audio_mixer": {"accurate": 0, "hifi": 1},
+        "audio_latency": {"low": 0, "balanced": 1, "stable": 2},
+        "audio_sync": {"native": 0, "follow": 1, "preserve": 2},
+    }
+    modes = re.search(r"mark: audio modes: n64=(\d+) output=(\d+) mixer=(\d+) latency=(\d+) sync=(\d+)", log)
+    for index, (key, choices) in enumerate(audio_modes.items()):
+        value = next((line.split("=", 1)[1] for line in config if line.startswith(key + "=")), None)
+        if value is not None and key != "audio_quality":
+            if value not in choices or not modes or int(modes[index + 1]) != choices[value]:
+                errors.append(f"run did not confirm {key}={value}")
     if quality and f"mark: audio quality: {quality}" not in log:
         errors.append(f"requested audio quality {quality} was not applied")
     core = next((line.split("=", 1)[1] for line in config if line.startswith("dynacore=")), None)

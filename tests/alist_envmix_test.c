@@ -5,6 +5,7 @@
 
 #include "../rsp_hle/alist.h"
 #include "../rsp_hle/hle_internal.h"
+char audioMixerPrecision;
 
 static uint32_t random_state = 0x64a11c7u;
 

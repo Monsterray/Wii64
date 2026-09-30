@@ -27,6 +27,7 @@
 
 #include "arithmetics.h"
 #include "audio.h"
+#include "../main/wii64config.h"
 #include "common.h"
 #include "hle_external.h"
 #include "hle_internal.h"
@@ -727,6 +728,7 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
         /* update sample and lut pointers and then pitch_accu */
         const int16_t *lut = (RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8));
+        uint32_t phase = pitch_accu & 0xffff;
         int dist;
         int16_t v;
 
@@ -740,13 +742,19 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
             sample = sample_restart + dist;
 
         /* apply resample filter */
-        v = clamp_s16(dot4(sample, lut));
+        v = audioQuality == AUDIOQUALITY_HIFI ? audio_cubic(sample, phase) :
+            audioQuality == AUDIOQUALITY_FAST ? sample[2] : clamp_s16(dot4(sample, lut));
 
         for (k = 0; k < 4; ++k) {
             /* envmix */
-            int32_t accu = (v * (v4_env[k] >> 16)) >> 15;
-            v4[k] = clamp_s16(accu);
-            *(v4_dst[k]) = clamp_s16(accu + *(v4_dst[k]));
+            if (audioMixerPrecision == AUDIOMIX_HIFI) {
+                v4[k] = audio_mix_hifi(0, v, v4_env[k], 31);
+                *(v4_dst[k]) = audio_mix_hifi(*(v4_dst[k]), v, v4_env[k], 31);
+            } else {
+                int32_t accu = (v * (v4_env[k] >> 16)) >> 15;
+                v4[k] = clamp_s16(accu);
+                *(v4_dst[k]) = clamp_s16(accu + *(v4_dst[k]));
+            }
 
             /* update envelopes and dst pointers */
             ++(v4_dst[k]);

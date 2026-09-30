@@ -29,7 +29,7 @@ implementation. Do not add a DSP On/Off control.
   the N64 AI input rate and exact producer-side queue peak in bytes since `RomOpen`,
   including loading before the first guest VI. This distinguishes a stalled
   callback from a full queue when an overrun occurs. It is not a measure of
-  speaker latency. The reported milliseconds use the last input rate, so they
+  speaker latency. The reported milliseconds use the last playback rate, so they
   are approximate if a game changes DAC rate during the run.
 - A 900-VI Super Mario 64 Dolphin DSP LLE run with this counter reached 1.00x
   speed, zero overruns, and a 112 ms producer peak. The older twice-per-second
@@ -39,7 +39,8 @@ implementation. Do not add a DSP On/Off control.
   overruns. See [the current Wii measurements](audio-profile-2026-09-30.md).
   The earlier transfer failures remain unexplained.
 - `audio_time:` samples one in 127 calls for resampling (including ZOH),
-  ADPCM, each envelope variant, mixing, MusyX voices, and MusyX effects. It reports
+  ADPCM, each envelope variant, mixing, MusyX voices, MusyX effects, and audio
+  output processing. It reports
   sampled calls, samples, and microseconds. The time is inclusive of clock
   reads and interruptions, and the samples can vary by game segment. Divide
   sampled time by sampled calls or samples for a rough stage ranking; do not
@@ -160,6 +161,14 @@ cartridge-only run. MusyX v2 `ptr_10` also needs a captured task that sets it;
 running a MusyX v2 title does not by itself prove that branch executes.
 
 ## 2. Resampling
+
+Version 1.6.0 adds optional cubic synthesis for alist and MusyX, a CPU sinc
+output converter, rounded 64-bit gain products, bounded latency profiles, and
+joint-stereo WSOLA pitch preservation. Defaults retain the compatibility paths.
+See [Audio settings](audio-settings.md) for the implemented controls and tests.
+These are experimental enhancements, not custom DSP firmware. The design
+checks below remain acceptance criteria for further filter/mixer work; wider
+per-voice history and a multivoice wide accumulation bus are not implemented.
 
 - Keep explicit mode IDs: Accurate is the N64 4-tap filter; Fast is nearest
   sample. New IDs must have their own code paths, diagnostics, and tests.

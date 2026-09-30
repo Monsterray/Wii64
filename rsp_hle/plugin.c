@@ -39,6 +39,7 @@
    than in alist.c/audio.c so those stay close to their mupen64plus-rsp-hle
    upstream. */
 char audioQuality;
+char audioMixerPrecision;
 
 /* local variables */
 static struct hle_t g_hle;

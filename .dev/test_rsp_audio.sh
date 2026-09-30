@@ -6,7 +6,7 @@ compiler="${CC:-cc}"
 link_flag=-Wl,--gc-sections
 if [ "$(uname -s)" = Darwin ]; then link_flag=-Wl,-dead_strip; fi
 task_audio_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-rsp-audio.XXXXXX")"
-trap 'rm -f "$task_audio_tmp/alist_envmix" "$task_audio_tmp/adpcm" "$task_audio_tmp/adpcm_big"; rmdir "$task_audio_tmp"' EXIT
+trap 'rm -f "$task_audio_tmp/alist_envmix" "$task_audio_tmp/adpcm" "$task_audio_tmp/adpcm_big" "$task_audio_tmp/output" "$task_audio_tmp/buffer"; rmdir "$task_audio_tmp"' EXIT
 for name in alist_envmix adpcm adpcm_big; do
     source_name="$name"
     layout_flag=-U_BIG_ENDIAN
@@ -18,3 +18,12 @@ for name in alist_envmix adpcm adpcm_big; do
         -o "$task_audio_tmp/$name"
     "$task_audio_tmp/$name"
 done
+"$compiler" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -fno-sanitize-recover=all tests/audio_output_test.c rsp_hle/audio.c \
+    -lm -o "$task_audio_tmp/output"
+"$task_audio_tmp/output"
+"$compiler" -std=c11 -O2 -Wall -Wextra -Werror -DPERF_PROF -DPERF_AUDIO_WORK_DISABLE -Itests/audio_stubs \
+    -fsanitize=address,undefined -fno-sanitize-recover=all tests/audio_buffer_test.c \
+    gc_audio/output.c -lm -o "$task_audio_tmp/buffer"
+"$task_audio_tmp/buffer"
+python3 tests/audio_settings_test.py

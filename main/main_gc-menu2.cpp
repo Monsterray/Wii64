@@ -150,7 +150,11 @@ static struct {
 } OPTIONS[] =
 { { "MiniMenu", &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE },
   { "Audio", &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE },
-  { "AudioQuality", &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_FAST },
+  { "AudioQuality", &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_HIFI },
+  { "AudioOutputResampler", &audioOutputResampler, AUDIOOUTPUT_DSP, AUDIOOUTPUT_HIFI },
+  { "AudioMixerPrecision", &audioMixerPrecision, AUDIOMIX_ACCURATE, AUDIOMIX_HIFI },
+  { "AudioLatency", &audioLatency, AUDIOLATENCY_LOW, AUDIOLATENCY_STABLE },
+  { "AudioSync", &audioSync, AUDIOSYNC_NATIVE, AUDIOSYNC_PRESERVE },
   { "FPS", &showFPSonScreen, FPS_HIDE, FPS_SHOW },
 //  { "Debug", &printToScreen, DEBUG_HIDE, DEBUG_SHOW },
   { "FBTex", &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE },
@@ -360,6 +364,7 @@ static bool g_diagAutonavSelectRomSD = false;
 static int g_diagAutonavLoadFromSD = 0; // 0=off, 1=open Load from SD, 2=also select the first entry (FileBrowserFrame, not SelectRomFrame)
 static int g_diagDynacoreOverride = -1; // -1 = not requested; else DYNACORE_* value
 static int g_diagAudioQualityOverride = -1; // -1 = use settings.cfg; else AUDIOQUALITY_*
+static int g_diagAudioOutput = -1, g_diagAudioMixer = -1, g_diagAudioLatency = -1, g_diagAudioSync = -1;
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
@@ -579,6 +584,7 @@ static bool chainNext(void) {
 }
 
 static void apply_diag_line(char* line) {
+	line[strcspn(line, "\r\n")] = 0;
 	char romPath[192];
 	char coreName[32];
 	if(!strncmp(line, "dynacore=", 9))
@@ -597,6 +603,10 @@ static void apply_diag_line(char* line) {
 			g_diagSettingsSubmenu = 0; // SettingsFrame::SUBMENU_GENERAL
 		} else if(strncmp(line, "autonav=settings_video", 22) == 0) {
 			g_diagSettingsSubmenu = 1; // SettingsFrame::SUBMENU_VIDEO
+		} else if(strncmp(line, "autonav=settings_audio", 22) == 0) {
+			g_diagSettingsSubmenu = 3;
+		} else if(strncmp(line, "autonav=advanced_audio", 22) == 0) {
+			g_diagSettingsSubmenu = 5;
 		} else if(strncmp(line, "autonav=settings_saves", 22) == 0) {
 			g_diagSettingsSubmenu = 4; // SettingsFrame::SUBMENU_SAVES
 		} else if(sscanf(line, "dynacore=%31[^\r\n]", coreName) == 1) {
@@ -612,8 +622,23 @@ static void apply_diag_line(char* line) {
 			if(sscanf(line + 14, "%15[^\r\n]", quality) == 1) {
 				if(!strcmp(quality, "fast")) g_diagAudioQualityOverride = AUDIOQUALITY_FAST;
 				else if(!strcmp(quality, "accurate")) g_diagAudioQualityOverride = AUDIOQUALITY_ACCURATE;
+				else if(!strcmp(quality, "hifi")) g_diagAudioQualityOverride = AUDIOQUALITY_HIFI;
 				else perfProf_mark("diag audio quality: unknown value ignored");
 			}
+		} else if(!strncmp(line, "audio_output=", 13)) {
+			if(!strcmp(line + 13, "dsp")) g_diagAudioOutput = AUDIOOUTPUT_DSP;
+			else if(!strcmp(line + 13, "hifi")) g_diagAudioOutput = AUDIOOUTPUT_HIFI;
+		} else if(!strncmp(line, "audio_mixer=", 12)) {
+			if(!strcmp(line + 12, "accurate")) g_diagAudioMixer = AUDIOMIX_ACCURATE;
+			else if(!strcmp(line + 12, "hifi")) g_diagAudioMixer = AUDIOMIX_HIFI;
+		} else if(!strncmp(line, "audio_latency=", 14)) {
+			if(!strcmp(line + 14, "low")) g_diagAudioLatency = AUDIOLATENCY_LOW;
+			else if(!strcmp(line + 14, "balanced")) g_diagAudioLatency = AUDIOLATENCY_BALANCED;
+			else if(!strcmp(line + 14, "stable")) g_diagAudioLatency = AUDIOLATENCY_STABLE;
+		} else if(!strncmp(line, "audio_sync=", 11)) {
+			if(!strcmp(line + 11, "native")) g_diagAudioSync = AUDIOSYNC_NATIVE;
+			else if(!strcmp(line + 11, "follow")) g_diagAudioSync = AUDIOSYNC_FOLLOW;
+			else if(!strcmp(line + 11, "preserve")) g_diagAudioSync = AUDIOSYNC_PRESERVE;
 		} else if(strncmp(line, "dynarec_trace=1", 15) == 0) {
 			dynarecTrace_setEnabled(1);
 		} else if(strncmp(line, "randomize_interrupt=0", 21) == 0) {
@@ -726,8 +751,17 @@ void load_config(const char *loaded_path) {
 		}
 		if(g_diagAudioQualityOverride != -1)
 			audioQuality = g_diagAudioQualityOverride;
+		if(g_diagAudioOutput != -1) audioOutputResampler = g_diagAudioOutput;
+		if(g_diagAudioMixer != -1) audioMixerPrecision = g_diagAudioMixer;
+		if(g_diagAudioLatency != -1) audioLatency = g_diagAudioLatency;
+		if(g_diagAudioSync != -1) audioSync = g_diagAudioSync;
 		perfProf_mark(audioQuality == AUDIOQUALITY_FAST ?
-			"audio quality: fast" : "audio quality: accurate");
+			"audio quality: fast" : audioQuality == AUDIOQUALITY_HIFI ?
+			"audio quality: hifi" : "audio quality: accurate");
+		char audioModes[128];
+		snprintf(audioModes, sizeof(audioModes), "audio modes: n64=%d output=%d mixer=%d latency=%d sync=%d",
+			audioQuality, audioOutputResampler, audioMixerPrecision, audioLatency, audioSync);
+		perfProf_mark(audioModes);
 		if(g_diagDynacoreOverride != -1) { // diag.cfg's dynacore= -- see apply_diag_automation's doc comment
 			dynacore = g_diagDynacoreOverride;
 			perfProf_mark(dynacore == DYNACORE_PURE_INTERP ?
@@ -820,6 +854,10 @@ int main(int argc, const char* argv[]) {
 #endif
 	audioEnabled     = 1; // Audio
 	audioQuality     = AUDIOQUALITY_ACCURATE; // Audio resample quality
+	audioOutputResampler = AUDIOOUTPUT_DSP;
+	audioMixerPrecision = AUDIOMIX_ACCURATE;
+	audioLatency = AUDIOLATENCY_STABLE; // retain the legacy queue by default
+	audioSync = AUDIOSYNC_NATIVE;
 	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging
@@ -899,7 +937,9 @@ int main(int argc, const char* argv[]) {
 	// completed in the log, yet the screen never showed it, because this
 	// unconditional reset ran right after and clobbered it before a single
 	// frame was drawn.
-	if(g_diagSettingsSubmenu != -1)
+	if(g_diagSettingsSubmenu == 5)
+		menu->setActiveFrame(MenuContext::FRAME_ADVANCEDAUDIO);
+	else if(g_diagSettingsSubmenu != -1)
 		menu->setActiveFrame(MenuContext::FRAME_SETTINGS, g_diagSettingsSubmenu);
 	perfProf_mark(g_diagAutonavSelectRomSD ? "diag autonav: flag set" : "diag autonav: flag NOT set");
 	if(g_diagAutonavSelectRomSD)
@@ -1240,7 +1280,7 @@ void video_mode_init(GXRModeObj *v,unsigned int *fb1, unsigned int *fb2)
 	xfb[1] = fb2;
 }
 
-void setOption(char* key, char value){
+void setOption(char* key, int value){
 	for(unsigned int i=0; i<sizeof(OPTIONS)/sizeof(OPTIONS[0]); ++i){
 		if(!strcmp(OPTIONS[i].key, key)){
 			if(value >= OPTIONS[i].min && value <= OPTIONS[i].max)
@@ -1251,14 +1291,17 @@ void setOption(char* key, char value){
 }
 
 void handleConfigPair(char* kv){
-	char* vs = kv;
-	while(*vs != ' ' && *vs != '\t' && *vs != ':' && *vs != '=')
-			++vs;
+	kv += strspn(kv, " \t");
+	char* vs = strpbrk(kv, " \t:=");
+	if(!vs) return;
 	*(vs++) = 0;
 	while(*vs == ' ' || *vs == '\t' || *vs == ':' || *vs == '=')
 			++vs;
 
-	setOption(kv, atoi(vs));
+	char* end;
+	long value = strtol(vs, &end, 10);
+	if(end == vs || value < -128 || value > 127) return;
+	setOption(kv, (int)value);
 }
 
 void readConfig(FILE* f){

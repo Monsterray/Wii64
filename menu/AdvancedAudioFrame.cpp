@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * Wii64 - AdvancedAudioFrame.cpp
  *
@@ -14,142 +15,106 @@
  * See the GNU General Public Licence for more details.
  *
 **/
-
 #include "MenuContext.h"
 #include "AdvancedAudioFrame.h"
 #include "SettingsFrame.h"
 #include "../libgui/Button.h"
 #include "../libgui/TextBox.h"
-#include "../libgui/resources.h"
-#include "../libgui/FocusManager.h"
 #include "../libgui/CursorManager.h"
+#include "../libgui/FocusManager.h"
 #include "../main/wii64config.h"
+#include <stdio.h>
 
-void Func_AudioQualityFast();
-void Func_AudioQualityAccurate();
-void Func_ReturnFromAdvancedAudioFrame();
-
-#define NUM_FRAME_BUTTONS 2
-#define FRAME_BUTTONS advancedAudioFrameButtons
-#define FRAME_STRINGS advancedAudioFrameStrings
-#define NUM_FRAME_TEXTBOXES 3
-#define FRAME_TEXTBOXES advancedAudioFrameTextBoxes
-
-static char FRAME_STRINGS[5][50] =
-	{ "Fast",
-	  "Accurate",
-	  "Advanced Sound Settings",
-	  "Fast: lower CPU cost, some audio quality loss",
-	  "Accurate: original N64 resampling (default)"
+static menu::Button *buttons[5];
+static menu::TextBox *texts[8];
+static char values[5][32];
+static char *valueText[5] = { values[0], values[1], values[2], values[3], values[4] };
+static char labels[8][80] = {
+    "Audio Processing", "N64 synthesis resampler", "Output resampler",
+    "Mixer precision", "Latency profile", "Audio synchronization",
+    "Hi-Fi and Preserve Pitch: experimental CPU processing",
+    "Low/Balanced cap queued PCM; excess audio can be dropped"
 };
+static char *labelText[8] = {
+    labels[0], labels[1], labels[2], labels[3], labels[4], labels[5], labels[6], labels[7]
+};
+static char *settings[5] = {
+    &audioQuality, &audioOutputResampler, &audioMixerPrecision, &audioLatency, &audioSync
+};
+static const char *names[5][3] = {
+    { "Accurate", "Fast", "Hi-Fi (cubic)" },
+    { "Wii DSP", "Hi-Fi (sinc)", NULL },
+    { "Accurate", "Hi-Fi", NULL },
+    { "Low", "Balanced", "Stable (legacy)" },
+    { "Native Rate", "Follow Speed", "Preserve Pitch" }
+};
+static const int counts[5] = { 3, 2, 2, 3, 3 };
 
-struct ButtonInfo
+static void refresh(void)
 {
-	menu::Button	*button;
-	int				buttonStyle;
-	char*			buttonString;
-	float			x;
-	float			y;
-	float			width;
-	float			height;
-	int				focusUp;
-	int				focusDown;
-	int				focusLeft;
-	int				focusRight;
-	ButtonFunc		clickedFunc;
-	ButtonFunc		returnFunc;
-} FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
-{ //	button	buttonStyle	buttonString		x		y		width	height	Up	Dwn	Lft	Rt	clickFunc				returnFunc
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[0],	210.0,	180.0,	100.0,	50.0,	-1,	-1,	 1,	 1,	Func_AudioQualityFast,	Func_ReturnFromAdvancedAudioFrame }, // Fast
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[1],	325.0,	180.0,	100.0,	50.0,	-1,	-1,	 0,	 0,	Func_AudioQualityAccurate,	Func_ReturnFromAdvancedAudioFrame }, // Accurate
-};
-
-struct TextBoxInfo
+    for (int i = 0; i < 5; i++) {
+        int value = *settings[i];
+        if (value < 0 || value >= counts[i]) value = 0;
+        snprintf(values[i], sizeof(values[i]), "%s", names[i][value]);
+    }
+}
+static void cycle(int row)
 {
-	menu::TextBox	*textBox;
-	char*			textBoxString;
-	float			x;
-	float			y;
-	float			scale;
-	bool			centered;
-} FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
-{ //	textBox	textBoxString		x		y		scale	centered
-	{	NULL,	FRAME_STRINGS[2],	320.0,	110.0,	 1.0,	true }, // Title
-	{	NULL,	FRAME_STRINGS[3],	320.0,	260.0,	 0.75,	true }, // Fast description
-	{	NULL,	FRAME_STRINGS[4],	320.0,	290.0,	 0.75,	true }, // Accurate description
-};
+    *settings[row] = (*settings[row] + 1) % counts[row];
+    refresh();
+}
+static void synthesis(void) { cycle(0); }
+static void output(void) { cycle(1); }
+static void mixer(void) { cycle(2); }
+static void latency(void) { cycle(3); }
+static void sync(void) { cycle(4); }
+extern MenuContext *pMenuContext;
+static void back(void)
+{
+    pMenuContext->setActiveFrame(MenuContext::FRAME_SETTINGS, SettingsFrame::SUBMENU_AUDIO);
+}
 
 AdvancedAudioFrame::AdvancedAudioFrame()
 {
-	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
-		FRAME_BUTTONS[i].button = new menu::Button(FRAME_BUTTONS[i].buttonStyle, &FRAME_BUTTONS[i].buttonString,
-										FRAME_BUTTONS[i].x, FRAME_BUTTONS[i].y,
-										FRAME_BUTTONS[i].width, FRAME_BUTTONS[i].height);
-
-	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
-	{
-		if (FRAME_BUTTONS[i].focusUp != -1) FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[FRAME_BUTTONS[i].focusUp].button);
-		if (FRAME_BUTTONS[i].focusDown != -1) FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[FRAME_BUTTONS[i].focusDown].button);
-		if (FRAME_BUTTONS[i].focusLeft != -1) FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_LEFT, FRAME_BUTTONS[FRAME_BUTTONS[i].focusLeft].button);
-		if (FRAME_BUTTONS[i].focusRight != -1) FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_RIGHT, FRAME_BUTTONS[FRAME_BUTTONS[i].focusRight].button);
-		FRAME_BUTTONS[i].button->setActive(true);
-		if (FRAME_BUTTONS[i].clickedFunc) FRAME_BUTTONS[i].button->setClicked(FRAME_BUTTONS[i].clickedFunc);
-		if (FRAME_BUTTONS[i].returnFunc) FRAME_BUTTONS[i].button->setReturn(FRAME_BUTTONS[i].returnFunc);
-		add(FRAME_BUTTONS[i].button);
-		menu::Cursor::getInstance().addComponent(this, FRAME_BUTTONS[i].button, FRAME_BUTTONS[i].x,
-												FRAME_BUTTONS[i].x+FRAME_BUTTONS[i].width, FRAME_BUTTONS[i].y,
-												FRAME_BUTTONS[i].y+FRAME_BUTTONS[i].height);
-	}
-
-	for (int i = 0; i < NUM_FRAME_TEXTBOXES; i++)
-	{
-		FRAME_TEXTBOXES[i].textBox = new menu::TextBox(&FRAME_TEXTBOXES[i].textBoxString,
-										FRAME_TEXTBOXES[i].x, FRAME_TEXTBOXES[i].y,
-										FRAME_TEXTBOXES[i].scale, FRAME_TEXTBOXES[i].centered);
-		add(FRAME_TEXTBOXES[i].textBox);
-	}
-
-	setDefaultFocus(FRAME_BUTTONS[0].button);
-	setBackFunc(Func_ReturnFromAdvancedAudioFrame);
-	setEnabled(true);
+    ButtonFunc functions[5] = { synthesis, output, mixer, latency, sync };
+    for (int i = 0; i < 5; i++) {
+        float y = 125 + 50 * i;
+        buttons[i] = new menu::Button(BTN_A_NRM, &valueText[i], 330, y, 265, 42);
+        buttons[i]->setFontSize(0.85f);
+        buttons[i]->setClicked(functions[i]);
+        buttons[i]->setReturn(back);
+        buttons[i]->setActive(true);
+        add(buttons[i]);
+        menu::Cursor::getInstance().addComponent(this, buttons[i], 330, 595, y, y + 42);
+    }
+    for (int i = 0; i < 5; i++) {
+        buttons[i]->setNextFocus(menu::Focus::DIRECTION_UP, buttons[(i + 4) % 5]);
+        buttons[i]->setNextFocus(menu::Focus::DIRECTION_DOWN, buttons[(i + 1) % 5]);
+    }
+    for (int i = 0; i < 8; i++) {
+        float x = i >= 1 && i <= 5 ? 40 : 320;
+        float y = i == 0 ? 95 : i <= 5 ? 146 + (i - 1) * 50 : 395 + (i - 6) * 25;
+        texts[i] = new menu::TextBox(&labelText[i], x, y, i == 0 ? 1.0f : 0.75f,
+                                    !(i >= 1 && i <= 5));
+        add(texts[i]);
+    }
+    refresh();
+    setDefaultFocus(buttons[0]);
+    setBackFunc(back);
+    setEnabled(true);
 }
 
 AdvancedAudioFrame::~AdvancedAudioFrame()
 {
-	for (int i = 0; i < NUM_FRAME_TEXTBOXES; i++)
-		delete FRAME_TEXTBOXES[i].textBox;
-	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
-	{
-		menu::Cursor::getInstance().removeComponent(this, FRAME_BUTTONS[i].button);
-		delete FRAME_BUTTONS[i].button;
-	}
+    for (int i = 0; i < 8; i++) delete texts[i];
+    for (int i = 0; i < 5; i++) {
+        menu::Cursor::getInstance().removeComponent(this, buttons[i]);
+        delete buttons[i];
+    }
 }
 
 void AdvancedAudioFrame::activateSubmenu(int submenu)
 {
-	FRAME_BUTTONS[0].button->setSelected(false);
-	FRAME_BUTTONS[1].button->setSelected(false);
-	if (audioQuality == AUDIOQUALITY_FAST)	FRAME_BUTTONS[0].button->setSelected(true);
-	else									FRAME_BUTTONS[1].button->setSelected(true);
-}
-
-void Func_AudioQualityFast()
-{
-	FRAME_BUTTONS[0].button->setSelected(true);
-	FRAME_BUTTONS[1].button->setSelected(false);
-	audioQuality = AUDIOQUALITY_FAST;
-}
-
-void Func_AudioQualityAccurate()
-{
-	FRAME_BUTTONS[0].button->setSelected(false);
-	FRAME_BUTTONS[1].button->setSelected(true);
-	audioQuality = AUDIOQUALITY_ACCURATE;
-}
-
-extern MenuContext *pMenuContext;
-
-void Func_ReturnFromAdvancedAudioFrame()
-{
-	pMenuContext->setActiveFrame(MenuContext::FRAME_SETTINGS, SettingsFrame::SUBMENU_AUDIO);
+    (void)submenu;
+    refresh();
 }

@@ -24,6 +24,27 @@
 #include <stdint.h>
 
 #include "arithmetics.h"
+#include "audio.h"
+
+int16_t audio_mix_hifi(int16_t dst, int16_t src, int64_t gain, unsigned int shift)
+{
+    int64_t value = (int64_t)dst * (INT64_C(1) << shift) + (int64_t)src * gain;
+    int64_t half = INT64_C(1) << (shift - 1);
+    value = value < 0 ? -((-value + half) >> shift) : (value + half) >> shift;
+    return value > 32767 ? 32767 : value < -32768 ? -32768 : (int16_t)value;
+}
+
+int16_t audio_cubic(const int16_t samples[4], uint32_t phase)
+{
+    int64_t t = phase & 65535, t2 = t * t >> 16, t3 = t2 * t >> 16;
+    int64_t w0 = (-t + 2*t2 - t3) / 2;
+    int64_t w2 = (t + 4*t2 - 3*t3) / 2;
+    int64_t w3 = (-t2 + t3) / 2;
+    int64_t w1 = 65536 - w0 - w2 - w3;
+    int64_t value = samples[0]*w0 + samples[1]*w1 + samples[2]*w2 + samples[3]*w3;
+    value = value < 0 ? -((-value + 32768) >> 16) : (value + 32768) >> 16;
+    return value > 32767 ? 32767 : value < -32768 ? -32768 : (int16_t)value;
+}
 
 const int16_t RESAMPLE_LUT[64 * 4] = {
     (int16_t)0x0c39, (int16_t)0x66ad, (int16_t)0x0d46, (int16_t)0xffdf,

@@ -76,8 +76,8 @@ void Func_SaveButtonsSD();
 void Func_SaveButtonsUSB();
 void Func_ToggleButtonLoad();
 
-void Func_DisableAudioYes();
-void Func_DisableAudioNo();
+void Func_AudioOn();
+void Func_AudioOff();
 void Func_AdvancedAudioSettings();
 
 void Func_AutoSaveNativeYes();
@@ -136,7 +136,7 @@ static char FRAME_STRINGS[41][23] =
 	  "Auto Load Slot:",
 	  "Default",
 	//Strings for Audio tab [30]
-	  "Disable Audio",
+	  "Audio",
 	  "Yes",
 	  "No",
 	//Strings for Saves tab [33]
@@ -210,8 +210,8 @@ struct ButtonInfo
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	310.0,	 70.0,	50.0,	31,	34,	32,	32,	Func_SaveButtonsUSB,	Func_ReturnFromSettingsFrame }, // Save Button Configs to USB
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	330.0,	380.0,	160.0,	50.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
 	//Buttons for Audio Tab (starts at button[35])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 3,	41,	36,	36,	Func_DisableAudioYes,	Func_ReturnFromSettingsFrame }, // Disable Audio: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 3,	41,	35,	35,	Func_DisableAudioNo,	Func_ReturnFromSettingsFrame }, // Disable Audio: No
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 3,	41,	36,	36,	Func_AudioOn,	Func_ReturnFromSettingsFrame }, // Audio: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 3,	41,	35,	35,	Func_AudioOff,	Func_ReturnFromSettingsFrame }, // Audio: Off
 	//Buttons for Saves Tab (starts at button[37])
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
@@ -248,7 +248,7 @@ struct TextBoxInfo
 	{	NULL,	FRAME_STRINGS[27],	180.0,	335.0,	 1.0,	true }, // Save Button Configs
 	{	NULL,	FRAME_STRINGS[28],	180.0,	405.0,	 1.0,	true }, // Auto Load Slot
 	//TextBoxes for Audio Tab (starts at textBox[13])
-	{	NULL,	FRAME_STRINGS[30],	180.0,	125.0,	 1.0,	true }, // Disable Audio: Yes/No
+	{	NULL,	FRAME_STRINGS[30],	180.0,	125.0,	 1.0,	true }, // Audio: On/Off
 	//TextBoxes for Saves Tab (starts at textBox[14])
 	{	NULL,	FRAME_STRINGS[33],	180.0,	125.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
 
@@ -408,7 +408,7 @@ void SettingsFrame::activateSubmenu(int submenu)
 			for (int i = 13; i < 14; i++)
 				FRAME_TEXTBOXES[i].textBox->setVisible(true);
 			FRAME_BUTTONS[3].button->setSelected(true);
-			if (audioEnabled == AUDIO_DISABLE)	FRAME_BUTTONS[35].button->setSelected(true);
+			if (audioEnabled == AUDIO_ENABLE)	FRAME_BUTTONS[35].button->setSelected(true);
 			else								FRAME_BUTTONS[36].button->setSelected(true);
 			for (int i = 35; i < 37; i++)
 			{
@@ -970,20 +970,20 @@ void Func_ToggleButtonLoad()
 	FRAME_BUTTONS[34].button->setText((char**)&LoadButtonLabels[(int)loadButtonSlot]);
 }
 
-void Func_DisableAudioYes()
+void Func_AudioOn()
 {
 	for (int i = 35; i <= 36; i++)
 		FRAME_BUTTONS[i].button->setSelected(false);
 	FRAME_BUTTONS[35].button->setSelected(true);
-	audioEnabled = AUDIO_DISABLE;
+	audioEnabled = AUDIO_ENABLE;
 }
 
-void Func_DisableAudioNo()
+void Func_AudioOff()
 {
 	for (int i = 35; i <= 36; i++)
 		FRAME_BUTTONS[i].button->setSelected(false);
 	FRAME_BUTTONS[36].button->setSelected(true);
-	audioEnabled = AUDIO_ENABLE;
+	audioEnabled = AUDIO_DISABLE;
 }
 
 void Func_AutoSaveNativeYes()

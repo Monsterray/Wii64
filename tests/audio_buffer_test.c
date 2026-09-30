@@ -1,4 +1,4 @@
-/* Build: cc -DPERF_PROF -Itests/audio_stubs -fsanitize=address,undefined tests/audio_buffer_test.c -o /tmp/audio_buffer_test */
+/* Run through .dev/test_rsp_audio.sh, with the real output processor linked. */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +9,8 @@ struct aesndpb_t { int unused; };
 static struct aesndpb_t pb;
 static const void *last_buffer;
 static uint32_t last_length;
+static float last_ratio;
+static int last_loop;
 float VILimit = 60.0f;
 timers Timers;
 static unsigned int overruns, underruns;
@@ -28,11 +30,11 @@ void AESND_SetVoiceBuffer(AESNDPB *v, const void *data, uint32_t length)
 	last_length = length;
 }
 void AESND_SetVoiceFrequency(AESNDPB *v, unsigned int f) { (void)v; (void)f; }
-void AESND_SetVoiceFrequencyRatio(AESNDPB *v, float r) { (void)v; (void)r; }
+void AESND_SetVoiceFrequencyRatio(AESNDPB *v, float r) { (void)v; last_ratio = r; }
 void AESND_SetVoiceFormat(AESNDPB *v, uint32_t f) { (void)v; (void)f; }
 void AESND_SetVoiceStream(AESNDPB *v, int s) { (void)v; (void)s; }
 void AESND_SetVoiceStop(AESNDPB *v, int s) { (void)v; (void)s; }
-void AESND_SetVoiceLoop(AESNDPB *v, int l) { (void)v; (void)l; }
+void AESND_SetVoiceLoop(AESNDPB *v, int l) { (void)v; last_loop = l; }
 void AESND_SetVoiceMute(AESNDPB *v, int m) { (void)v; (void)m; }
 
 int main(void)
@@ -49,6 +51,11 @@ int main(void)
 	AiDacrateChanged(SYSTEM_NTSC);
 	audioEnabled = 1;
 	RomOpen();
+	assert(last_loop);
+	pauseAudio();
+	assert(!last_loop);
+	resumeAudio();
+	assert(last_loop); /* Native keeps the legacy streaming policy after menu exit. */
 	AiLenChanged();
 	assert(buffered == 0);
 	assert(streamStarted == 0);
@@ -65,6 +72,8 @@ int main(void)
 	assert(buffered == BUFFER_SIZE - 4);
 	assert(streamStarted == 1);
 	assert(memcmp(buffer, rdram, BUFFER_SIZE - 4) == 0);
+	AiDacrateChanged(SYSTEM_NTSC);
+	assert(buffered == BUFFER_SIZE - 4); /* unchanged DAC writes keep the queue/history */
 	length = 4;
 	AiLenChanged();
 	assert(buffered == BUFFER_SIZE - 4);
@@ -90,6 +99,56 @@ int main(void)
 	AiLenChanged();
 	assert(buffered == BUFFER_SIZE - 4);
 	assert(overruns == 3);
+
+	/* Bounded profiles trim only unread chunks, not the DSP hand-off copy. */
+	RomOpen();
+	address = 0;
+	length = 8 * DSP_STREAMBUFFER_SIZE;
+	audioLatency = AUDIOLATENCY_LOW;
+	AiLenChanged();
+	assert((unsigned int)buffered <= queue_limit());
+	assert(audioQueuedMilliseconds() <= 40);
+	assert(buffered >= DSP_STREAMBUFFER_SIZE * 2);
+	aesnd_callback(voice, VOICE_STATE_STREAM);
+	unsigned char handed[DSP_STREAMBUFFER_SIZE];
+	memcpy(handed, last_buffer, sizeof(handed));
+	for (int i = 0; i < 100; i++) AiLenChanged();
+	assert(!memcmp(handed, last_buffer, sizeof(handed)));
+	assert((unsigned int)buffered <= queue_limit());
+	audioLatency = AUDIOLATENCY_BALANCED;
+	RomOpen();
+	AiLenChanged();
+	assert(audioQueuedMilliseconds() <= 80);
+	assert(buffered > DSP_STREAMBUFFER_SIZE * 2);
+
+	audioSync = AUDIOSYNC_FOLLOW;
+	resumeAudio();
+	assert(!last_loop);
+	Timers.vis = 90;
+	AiLenChanged();
+	assert(fabsf(last_ratio - playbackRate * 1.5f / DSP_DEFAULT_FREQ) < 0.00001f);
+	Timers.vis = 60;
+	AiLenChanged();
+	assert(fabsf(last_ratio - playbackRate / DSP_DEFAULT_FREQ) < 0.00001f);
+	audioSync = AUDIOSYNC_PRESERVE;
+	audioOutputResampler = AUDIOOUTPUT_HIFI;
+	AiLenChanged();
+	assert(playbackRate == 48000 && last_ratio == 1);
+	assert(output.preserve && output.hifi);
+	audioSync = AUDIOSYNC_NATIVE;
+	audioOutputResampler = AUDIOOUTPUT_DSP;
+	AiLenChanged();
+	assert(!output.preserve && !output.hifi);
+	unsigned int before = overruns;
+	address = 0x800000;
+	AiLenChanged();
+	assert(overruns == before + 1);
+	address = 1;
+	AiLenChanged();
+	assert(overruns == before + 2);
+	dacrate = UINT32_MAX;
+	AiDacrateChanged(SYSTEM_NTSC);
+	assert(freq == 1000);
 	CloseDLL();
 	puts("audio buffer boundaries: ok");
 	return 0;
