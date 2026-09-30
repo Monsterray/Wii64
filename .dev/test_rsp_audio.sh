@@ -27,3 +27,8 @@ done
     gc_audio/output.c -lm -o "$task_audio_tmp/buffer"
 "$task_audio_tmp/buffer"
 python3 tests/audio_settings_test.py
+python3 tests/audio_report_test.py
+python3 tests/audio_capture_report_test.py
+python3 tests/audio_capture_compare_test.py
+python3 tests/dolphin_log_test.py
+python3 scripts/test_chain_compare.py

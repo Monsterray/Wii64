@@ -59,6 +59,13 @@ if [ "$(uname -s)" != Darwin ]; then
 fi
 
 mkdir -p "$PROFILE_POSIX"
+dolphin_log="$PROFILE_POSIX/Logs/dolphin.log"
+max_log_mib="${WII64_DOLPHIN_MAX_LOG_MIB:-64}"
+[[ "$max_log_mib" =~ ^[1-9][0-9]*$ ]] || { echo "WII64_DOLPHIN_MAX_LOG_MIB must be positive." >&2; exit 2; }
+if ! python3 scripts/dolphin_log.py "$dolphin_log" --max-mib "$max_log_mib"; then
+	echo "Close this profile's Dolphin, then gzip its old log before another run." >&2
+	exit 1
+fi
 dump_frames="${WII64_DOLPHIN_DUMP_FRAMES:-False}"
 dump_audio="${WII64_DOLPHIN_DUMP_AUDIO:-False}"
 default_mute=True
@@ -166,6 +173,7 @@ fi
 
 echo "Booting $DOL in Dolphin, waiting ${WAIT}s..."
 elapsed=0
+test_status=0
 chain_count=0
 if [ -f "$LOCAL_WII64/diag.cfg" ]; then chain_count="$(grep -c '^chain=' "$LOCAL_WII64/diag.cfg" || true)"; fi
 raw_ready=1
@@ -178,6 +186,11 @@ while [ "$elapsed" -lt "$WAIT" ]; do
 		[ -n "$(mac_dolphin_pids)" ] || break
 	else
 		kill -0 "${tracked_pids[0]}" 2>/dev/null || break
+	fi
+	if [ $((elapsed % 5)) -eq 0 ] && ! python3 scripts/dolphin_log.py "$dolphin_log" --max-mib "$max_log_mib"; then
+		echo "Stopping this test profile to prevent a runaway warning log. Diagnostics are retained." >&2
+		test_status=1
+		break
 	fi
 	if [ "$chain_count" -gt 0 ]; then
 		game_count=0
@@ -238,8 +251,7 @@ if [ "$dump_audio" = True ]; then
 fi
 if [ -f "$PROFILE_POSIX/Logs/dolphin.log" ]; then
 	# Dolphin appends boots to this log; report only the run just launched.
-	awk '/Starting core = Wii mode/ { delete lines; n = 0 } { lines[++n] = $0 } END { for (i = 1; i <= n; i++) print lines[i] }' \
-		"$PROFILE_POSIX/Logs/dolphin.log" | tail -20
+	python3 scripts/dolphin_log.py "$dolphin_log"
 else
 	tail -20 "$PROFILE_POSIX/dolphin-test.log" 2>/dev/null || true
 fi
@@ -261,3 +273,4 @@ fi
 if [ -f "$LOCAL_WII64/perf.log" ] && grep -q '^game:' "$LOCAL_WII64/perf.log"; then
 	python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/chain_table.py" "$LOCAL_WII64"
 fi
+exit "$test_status"
