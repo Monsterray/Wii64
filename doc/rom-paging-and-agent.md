@@ -20,8 +20,11 @@ cache also requires changes to the VM's 12-bit physical-page index; changing
 one size constant is not sufficient. Measure texture and JIT high-water marks
 before taking capacity from another region.
 
-HBC-Reborn keeps its log target at `0x91800000` and its crash record at
-`0x91800020`. Agent builds reserve a 4 KiB gap there, before the texture cache.
+HBC-Reborn keeps its log target at `0x91800000`, its crash record at
+`0x91800020`, and (SDK 1.9) the app's last output at `0x91800100`, 4140 bytes.
+Agent builds reserve an 8 KiB gap there, before the texture cache; it was 4 KiB,
+which the last-output block overran by 300 bytes into the texture heap's header.
+`main/dev_agent.c` checks both blocks fit at compile time.
 The 32 KiB NAND buffer occupies previously unclaimed MEM2 and is IPC-aligned.
 Run `bash .dev/test_rom_vm.sh` to check both layouts and the loader/cache.
 

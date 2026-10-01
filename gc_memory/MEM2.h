@@ -51,8 +51,9 @@
 
 // We want 15MB for a Texture Cache
 #ifdef WII64_HBC_AGENT
-// HBC's log target and crash record survive IOS reload at 0x91800000.
-#define HBC_KEEP_SIZE (4*KB)
+// HBC's log target, crash record and last-output block (4140 bytes at 0x91800100,
+// SDK 1.9) survive IOS reload at 0x91800000; dev_agent.c checks they fit.
+#define HBC_KEEP_SIZE (8*KB)
 #else
 #define HBC_KEEP_SIZE 0
 #endif

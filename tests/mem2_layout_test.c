@@ -7,8 +7,9 @@ int main(void) {
     assert(used == MEM2_USED_SIZE);
     assert((uintptr_t)UNCLAIMED_LO <= (uintptr_t)MEM2_HI);
 #ifdef WII64_HBC_AGENT
-    /* HBC keeps its log target and crash report here across IOS reload. */
-    assert((uintptr_t)TEXCACHE_LO >= 0x91800100);
+    /* HBC keeps its log target, crash report and last-output block (SDK 1.9:
+       4140 bytes at 0x91800100) here across IOS reload. */
+    assert((uintptr_t)TEXCACHE_LO >= 0x91800100 + 4140);
     assert((uintptr_t)TLBLUT_HI <= 0x91800000);
 #endif
     assert(!((uintptr_t)UNCLAIMED_LO & 31));

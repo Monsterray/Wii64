@@ -9,6 +9,10 @@
 _Static_assert(HBC_CRASH_ADDR >= (unsigned long)TLBLUT_HI &&
                HBC_CRASH_ADDR + sizeof(hbc_crash_block) <= (unsigned long)TEXCACHE_LO,
                "HBC crash record must fit the reserved MEM2 gap");
+#ifdef HBC_LASTLOG_ADDR
+_Static_assert(HBC_LASTLOG_ADDR + sizeof(hbc_lastlog_block) <= (unsigned long)TEXCACHE_LO,
+               "HBC last-output block must fit the reserved MEM2 gap");
+#endif
 
 void devAgent_init(void)
 {
