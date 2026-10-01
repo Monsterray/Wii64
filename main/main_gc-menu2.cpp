@@ -817,11 +817,11 @@ extern "C" void ScanPADSandReset(u32 _) {
 	// Host retraces keep coming when a guest hangs; guest VIs may not.
 	if(++diag_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
 		g_chainTimedOut = true;
-		perfProf_mark("stop reason: chain host-retrace timeout");
+		perfProf_markLater("stop reason: chain host-retrace timeout"); // VI interrupt: no SD here
 		stop_it();
 	}
 	if(!((*(u32*)0xCC003000)>>16)) {
-		perfProf_mark("stop reason: Wii power-status register");
+		perfProf_markLater("stop reason: Wii power-status register");
 		stop_it();
 	}
 }
@@ -1252,13 +1252,13 @@ static void rsp_info_init(void){
 }
 
 void stop_it() {
-	perfProf_mark("stop_it requested");
+	perfProf_markLater("stop_it requested"); // also reached from interrupts
 	r4300.stop = 1;
 }
 
 #ifdef HW_RVL
 void ShutdownWii() {
-  perfProf_mark("ShutdownWii: called");
+  perfProf_markLater("ShutdownWii: called"); // power callback (interrupt)
   shutdown = 1;
   stop_it();
 }

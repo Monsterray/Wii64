@@ -12,6 +12,7 @@
 #endif
 #include <ogc/system.h>
 #include <ogc/machine/processor.h>
+#include <ogc/irq.h>
 #ifdef HW_RVL
 #include "../vm/pagefile.h"
 #endif
@@ -144,8 +145,39 @@ static volatile unsigned int g_underruns, g_overruns;
 static struct { unsigned int samples, command_busy, fifo_busy, over_high, under_low; } gpu;
 #endif
 
+/* Interrupt context (the VI retrace and power callbacks) must not touch the SD card:
+   libfat and IOS sleep, and the interrupted thread may hold the FAT lock. So
+   perfProf_markLater only records the label, a string literal, and the next flush
+   from thread context writes it. Up to MARK_LATER_MAX between flushes; more are
+   dropped. Callers in either context take the list with interrupts off. */
+#define MARK_LATER_MAX 8
+static const char* g_markLater[MARK_LATER_MAX];
+static unsigned int g_markLaterN;
+static void buf_printf(const char* fmt, ...);
+
+void perfProf_markLater(const char* label)
+{
+	u32 level = IRQ_Disable();
+	if (g_markLaterN < MARK_LATER_MAX)
+		g_markLater[g_markLaterN++] = label;
+	IRQ_Restore(level);
+}
+
+static void mark_later_drain(void)
+{
+	const char* labels[MARK_LATER_MAX];
+	u32 level = IRQ_Disable();
+	unsigned int n = g_markLaterN;
+	memcpy(labels, g_markLater, n * sizeof(labels[0]));
+	g_markLaterN = 0;
+	IRQ_Restore(level);
+	for (unsigned int i = 0; i < n; i++)
+		buf_printf("mark: %s\n", labels[i]);
+}
+
 static void buf_flush(void)
 {
+	mark_later_drain();
 	if (!g_bufLen) return;
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_PROBE_IO);
 	u64 t0 = gettime();
@@ -428,8 +460,9 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		"resample", "zoh", "adpcm", "envmix_exp", "envmix_ge", "envmix_lin",
 		"envmix_nead", "mix", "musyx_voice", "musyx_fx", "output"
 	};
-	struct mallinfo mi = mallinfo();
 	unsigned long long wallUs = ticks_to_microsecs(gettime() - g.start);
+	mark_later_drain(); // this game's stop reasons go before its game: line
+	struct mallinfo mi = mallinfo();
 	pmc_accumulate();
 	unsigned int streamRequests, streamFed, inputHz, queuePeakMs, playbackHz;
 	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *);

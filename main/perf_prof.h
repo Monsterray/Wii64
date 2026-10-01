@@ -14,7 +14,9 @@
      flush, once per PERF_FLUSH_SAMPLES samples, and that flush times itself
      (flush_us on the game: line) so its cost is visible, not hidden;
    - marks (perfProf_mark) still write immediately: they exist for hangs, where
-     a buffered line would be lost with the hang.
+     a buffered line would be lost with the hang. Never from an interrupt (VI
+     retrace, power callback): there use perfProf_markLater, which only records
+     the label for the next flush from thread context.
 
    Per game (loadROM -> perfProf_gameBegin, chain end -> perfProf_gameEnd) the
    totals below restart from zero, so a chain of games gives one comparable
@@ -39,6 +41,7 @@ void perfProf_tileLoaded(int index, int wasReal, unsigned int initUs, unsigned i
 void perfProf_pageEnd(unsigned int invalidateUs, unsigned int totalUs);
 void perfProf_selfTest(void);
 void perfProf_mark(const char* label);
+void perfProf_markLater(const char* label); // interrupt-safe; label must be a literal
 void perfProf_visSample(float vis);
 void perfProf_fpsSample(float fps);
 void perfProf_exceptionOccurred(void);
@@ -74,6 +77,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 #define perfProf_pageEnd(invalidateUs, totalUs) ((void)0)
 #define perfProf_selfTest() ((void)0)
 #define perfProf_mark(label) ((void)0)
+#define perfProf_markLater(label) ((void)0)
 #define perfProf_visSample(vis) ((void)0)
 #define perfProf_fpsSample(fps) ((void)0)
 #define perfProf_exceptionOccurred() ((void)0)
