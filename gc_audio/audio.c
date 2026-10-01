@@ -287,6 +287,13 @@ EXPORT void CALL AiLenChanged(void)
 			(audioSync == AUDIOSYNC_FOLLOW ? speed : 1) + 0.5f);
 		AESND_SetVoiceFrequencyRatio(voice, playbackRate / (float)DSP_DEFAULT_FREQ *
 			(audioSync == AUDIOSYNC_FOLLOW ? speed : 1));
+#ifdef RVL_LIBWIIDRC
+		/* Wii U VC: its ring is half the size, so pace the emulator on the audio
+		   queue as before 1.6.0 rather than drop AI buffers. Bounded (100 ms) so a
+		   stopped voice cannot hang the emulator. */
+		for (int wait = 0; buffered > DSP_STREAMBUFFER_SIZE * 24 && wait < 1000; wait++)
+			usleep(100);
+#endif
 		unsigned long long timer = perfProf_audioStage(PERF_AUDIO_OUTPUT, length / 4);
 		audio_output_push(&output, (const int16_t *)(AudioInfo.RDRAM + address), length / 4,
 			speed, enqueue_pcm, NULL);

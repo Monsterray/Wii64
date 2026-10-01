@@ -48,6 +48,8 @@ const DISC_INTERFACE* carda = &__io_gcsda;
 const DISC_INTERFACE* cardb = &__io_gcsdb;
 
 #else
+#include <ogc/dvd.h>
+const DISC_INTERFACE* gcloader = &__io_gcode; // GC Loader's SD slot, tried first (as upstream)
 const DISC_INTERFACE* carda = &__io_gcsda;
 const DISC_INTERFACE* cardb = &__io_gcsdb;
 const DISC_INTERFACE* sd2sp2 = &__io_gcsd2;
@@ -240,6 +242,11 @@ int fileBrowser_libfat_init(fileBrowser_file* f){
 #else
 	// GC has only SD
 	if(mounted[2]) return 1;
+	res = fatMountSimple ("sd", gcloader);
+	if(res) {
+		mounted[2] = 1;
+		return res;
+	}
 	res = fatMountSimple ("sd", get_io_gcsd2());
 	if(res) {
 		mounted[2] = 1;

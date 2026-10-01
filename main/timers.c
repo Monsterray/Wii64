@@ -78,15 +78,22 @@ void dlist_incomplete(void) {
 	Dlist_Incomplete = 1;
 }
 
+/* Microseconds from the 64-bit time base. gettick() is its low 32 bits and wraps
+   every 70.7 s, which restarted the rate windows and left a VI unpaced each time. */
+static u64 now_us(void)
+{
+	return ticks_to_microsecs(gettime());
+}
+
 void new_frame(void) {
-	DWORD CurrentFPSTime;
-	static DWORD CounterTime;
+	u64 CurrentFPSTime;
+	static u64 CounterTime;
 	static int Fps_Counter=0;
 	const int dlistCompleted = !Dlist_Incomplete;
 	Dlist_Incomplete = 0;
 
 	if (r4300.stop) {
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		Fps_Counter = 0;
 		return;
 	}
@@ -96,16 +103,16 @@ void new_frame(void) {
 		Fps_Counter++;
 	Timers.frameDrawn = 1;
 	
-	CurrentFPSTime = ticks_to_microsecs(gettick());
+	CurrentFPSTime = now_us();
 	
 	if (CounterTime > CurrentFPSTime) {
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		Fps_Counter = 0;
 	}
 	else if (CurrentFPSTime - CounterTime >= 500000.0 ) {
 		Timers.fps = (float) (Fps_Counter * 1000000.0 / (CurrentFPSTime - CounterTime));
 		perfProf_fpsSample(Timers.fps);
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		Fps_Counter = 0;
 	}
 	// Apply game specific hacks until we resolve actual issues in the core!
@@ -117,17 +124,17 @@ void new_frame(void) {
 
 void new_vi(void) {
 	if (devAgent_exitRequested()) r4300.stop = 1;
-	DWORD Dif;
-	DWORD CurrentFPSTime;
-	static DWORD LastFPSTime = 0;
-	static DWORD CounterTime = 0;
-	static DWORD CalculatedTime;
+	u64 Dif;
+	u64 CurrentFPSTime;
+	static u64 LastFPSTime = 0;
+	static u64 CounterTime = 0;
+	static u64 CalculatedTime;
 	static int VI_Counter = 0;
 	static int VI_WaitCounter = 0;
 	long time;
 	
 	if (r4300.stop) {
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		VI_Counter = 0;
 		return;
 	}
@@ -145,7 +152,7 @@ void new_vi(void) {
 		stop_it();
 	}
 
-	CurrentFPSTime = ticks_to_microsecs(gettick());
+	CurrentFPSTime = now_us();
 
 	Dif = CurrentFPSTime - LastFPSTime;
 	if (Timers.limitVIs) {
@@ -156,7 +163,7 @@ void new_vi(void) {
 			if (Dif <  (double) VILimitMicroseconds * (VI_WaitCounter + 1) )
 			{
 				CalculatedTime = CounterTime + (double)VILimitMicroseconds * (double)VI_Counter;
-				time = (int)(CalculatedTime - CurrentFPSTime);
+				time = (long)((s64)CalculatedTime - (s64)CurrentFPSTime);
 				if (time>0&&time<1000000) {
 					unsigned long long sleepTimer = perfProf_subsystemBegin(PERF_SUB_LIMITER);
 					usleep(time);
@@ -172,7 +179,7 @@ void new_vi(void) {
 
 //	DWORD diff_millisecs = ticks_to_millisecs(diff_ticks(CounterTime,CurrentFPSTime));
 	if (CounterTime > CurrentFPSTime) {
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		VI_Counter = 0 ;
 	}
 	else if (CurrentFPSTime - CounterTime >= 500000.0 ) {
@@ -181,7 +188,7 @@ void new_vi(void) {
 		perfProf_cpuSample();
 //		sprintf(txtbuffer,"Timer.VIs: Current = %dus; Last = %dus; diff_ms = %d; FPS_count = %d", CurrentFPSTime, CounterTime, diff_millisecs, VI_Counter);
 //		DEBUG_print(txtbuffer,0);
-		CounterTime = ticks_to_microsecs(gettick());
+		CounterTime = now_us();
 		VI_Counter = 0 ;
 	}
 
