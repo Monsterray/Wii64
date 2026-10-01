@@ -98,7 +98,8 @@ The candidate has two opt-in build flags:
   unchanged.
 
 Both flags remain off until hardware checks justify the defaults. Preflush
-changes when writeback happens; it does not eliminate that startup cost.
+writes all remaining dirty mapped pages, including pages that a short scene
+might never evict. It can add startup NAND traffic, not just move writeback.
 
 ```bash
 bash .dev/profile_rom_paging.sh
@@ -118,6 +119,9 @@ accepted VM faults. `vm_io` records reads, cache hits, transferred bytes, writes
 and errors. They reset at the first guest VI, so gameplay measurements exclude
 loading and preflush. Zero I/O errors and complete VI targets are prerequisites
 for a performance result. Inclusive timers overlap; do not sum them.
+Profiling builds also emit `ROMCache_load: elapsed_us=...` outside the gameplay
+clock. Preflush emits its own duration and, with subsystem probes, write count
+and byte count. This adds two clock reads per measured load/flush, not per VI.
 
 For raw-SD Dolphin runs, stage the config with folder sync first, then use raw
 mode without diagnostic arguments. The launcher rejects ignored arguments and
@@ -144,7 +148,7 @@ Artifact hashes and source differences are recorded in
 agent network startup, so repeat with the frozen survey before attributing
 all wall-time changes to one flag.
 Keep Dolphin and Wii numbers separate. Hardware results and crash recovery
-must be filed before enabling the experimental defaults.
+plus longer tests must be filed before enabling the experimental defaults.
 
 ## Read-ahead-only Wii comparison
 
@@ -163,9 +167,32 @@ there were zero cache hits and eight times as many bytes read. That is not
 the final paging configuration. Results are filed in
 `baselines/2026-09-30_wii_paging_{reference_a,readahead,reference_b}`.
 
+## First combined Wii run
+
+Job `20260930-173721-0d8b3e` completed all three 900-VI scenes and returned to
+HBC. There were zero I/O errors, zero overruns, and zero gameplay NAND writes.
+Relative to the mean of the earlier references:
+
+| Scene | Reference speed | Combined speed | Speed gain | ROM-copy stall |
+|---|---:|---:|---:|---:|
+| Mario Party 3 PAL | 0.873x | 0.990x | 13.4% | 2,589 ms to 185 ms |
+| TWINE | 0.830x | 0.988x | 19.1% | 3,274 ms to 314 ms |
+| DK64 | 0.847x | 0.988x | 16.7% | 2,954 ms to 252 ms |
+
+NAND reads fell to 41/77/58, with 251/294/277 cache hits. Underruns were
+1/1/3, versus reference counts of 1/17/11. The whole job took 175 seconds,
+versus about 134 seconds for the references. That includes loading, uploads,
+and HBC return, so it is not an isolated preflush timing. The frozen build
+predates the explicit load/preflush duration and byte-count marks.
+
+The data is filed in `baselines/2026-09-30_wii_paging_preflush`. The source
+differences in the artifact manifest still apply; the matched survey and
+longer gameplay checks remain necessary before a default change.
+
 ## Next checks
 
-1. Complete the queued combined preflush/read-ahead run; fatal DSI passed.
+1. Collect the matched survey; combined paging and fatal DSI each passed
+   their first hardware checks.
 2. Run the matched survey from one source tree, then test longer gameplay and
    ROM switching. Include a small fully cached ROM and a 64 MiB paged ROM.
 3. Measure startup writeback separately from gameplay stalls. Retain ordinary

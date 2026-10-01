@@ -40,6 +40,12 @@
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
 #include "../vm/wii_vm.h"
+#ifdef PERF_PROF
+#include <ogc/lwp_watchdog.h>
+#endif
+#ifdef PERF_SUBSYSTEM_ENABLED
+#include "../vm/pagefile.h"
+#endif
 static char* ROMBase = ROMCACHE_LO;
 static int ROMVMActive;
 #else
@@ -210,6 +216,9 @@ int ROMCache_load(fileBrowser_file* file){
 	int bytes_read;
 	if (ROMSize < 64 || (ROMSize & 3))
 		return ROM_CACHE_INVALID_ROM;
+#ifdef PERF_PROF
+	unsigned long long load_start = gettime();
+#endif
 	if (ROMTooBig) {
 		void* VMBase = VM_Init(ROMSize, ROMCACHE_SIZE);
 		if (VMBase == NULL)
@@ -254,8 +263,32 @@ int ROMCache_load(fileBrowser_file* file){
 	}
 	perfProf_mark("ROMCache_load: loop exited normally");
 #if defined(VM_ROM_PREFLUSH) && VM_ROM_PREFLUSH
-	if (ROMVMActive && !VM_Flush()) return ROM_CACHE_ERROR_READ;
-	perfProf_mark("ROMCache_load: VM writeback complete");
+	if (ROMVMActive) {
+#ifdef PERF_PROF
+		unsigned long long flush_start = gettime();
+#endif
+#ifdef PERF_SUBSYSTEM_ENABLED
+		struct pagefile_stats before = pagefile_stats_read();
+#endif
+		if (!VM_Flush()) return ROM_CACHE_ERROR_READ;
+#ifdef PERF_PROF
+#ifdef PERF_SUBSYSTEM_ENABLED
+		struct pagefile_stats after = pagefile_stats_read();
+		snprintf(txt, sizeof(txt), "ROMCache_load: preflush_us=%llu writes=%u bytes=%u",
+			(unsigned long long)ticks_to_microsecs(gettime() - flush_start),
+			after.writes - before.writes, after.write_bytes - before.write_bytes);
+#else
+		snprintf(txt, sizeof(txt), "ROMCache_load: preflush_us=%llu",
+			(unsigned long long)ticks_to_microsecs(gettime() - flush_start));
+#endif
+		perfProf_mark(txt);
+#endif
+	}
+#endif
+#ifdef PERF_PROF
+	snprintf(txt, sizeof(txt), "ROMCache_load: elapsed_us=%llu bytes=%u vm=%d",
+		(unsigned long long)ticks_to_microsecs(gettime() - load_start), ROMSize, ROMVMActive);
+	perfProf_mark(txt);
 #endif
 	//romFile_deinit(file);
 	return 0;

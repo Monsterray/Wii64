@@ -35,9 +35,10 @@
   "wii_runs": {
     "reference_a": "2026-09-30_wii_paging_reference_a",
     "read_ahead": "2026-09-30_wii_paging_readahead",
-    "reference_b": "2026-09-30_wii_paging_reference_b"
+    "reference_b": "2026-09-30_wii_paging_reference_b",
+    "preflush": "2026-09-30_wii_paging_preflush"
   },
-  "queued_checks": {
+  "completed_checks": {
     "fatal_dsi": "20260930-173721-7f52a0",
     "preflush": "20260930-173721-0d8b3e"
   },
