@@ -124,6 +124,7 @@ void new_frame(void) {
 
 void new_vi(void) {
 	if (devAgent_exitRequested()) r4300.stop = 1;
+	devAgent_alive(); // a guest VI is progress (the HBC agent's hang watchdog)
 	u64 Dif;
 	u64 CurrentFPSTime;
 	static u64 LastFPSTime = 0;

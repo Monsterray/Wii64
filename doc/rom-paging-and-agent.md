@@ -41,14 +41,23 @@ bash .dev/build.sh glN64_wii HBC_AGENT=1
 
 For another location, also pass `HBC_AGENT_ROOT=/path/to/hbc-reborn` to the Wii64
 build. Quote paths with spaces. These steps use the same compiler and libogc2
-as Wii64 on macOS and in Windows' devkitPro MSYS2 shell. This Intel Mac uses
-devkitPPC r50-1 and libogc2 r2464. The SDK helper probes the installed headers
-for renamed exception-frame fields and the removed `MQ_ERROR_SUCCESSFUL`
-constant. It keeps the SDK's frame-offset assertions active and rebuilds its
-small archive when flags change. HBC-Reborn source is not copied or changed.
+as Wii64 on macOS and in Windows' devkitPro MSYS2 shell. `build_agent.sh` writes the
+library to Wii64's own `.dev/hbc_agent/`, which `Makefile.wii` links first. It does
+not write into the HBC-Reborn checkout: WiiStation builds the agent there with its
+r41-2 toolchain, and the copy Wii64 linked from there was that build (agent 1.9.0,
+GCC 12, old libogc2). The helper probes the installed headers for libogc2 r1's
+renamed exception-frame fields and removed `MQ_ERROR_SUCCESSFUL`, for HBC-Reborn
+checkouts that do not handle them yet. It keeps the SDK's frame-offset assertions
+active and rebuilds its small archive when flags change.
 
 The agent is off in ordinary builds. Development builds provide status,
 mounted-device file requests, cooperative exit, and fatal-exception records.
+With SDK 1.9 they also arm the agent's hang watchdog: each guest VI and each menu
+frame calls `devAgent_alive()` (from thread context, never the VI interrupt), and
+`loadROM` and the result upload hold it, so 60 s without progress outside those is
+reported as a hang (`hbc.py crash`). The link wraps `c_default_exceptionhandler`
+(WiiStation's fix): an exception taken with MSR[RI] clear skips the agent's table
+hook, and the wrap still records it before libogc's crash screen.
 ROM staging completes before agent initialization. The agent starts networking
 asynchronously when needed; result uploads wait for that startup to finish.
 VM saves and restores the prior DSI entry and delegates faults outside its

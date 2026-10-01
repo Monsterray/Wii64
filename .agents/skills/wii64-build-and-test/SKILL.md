@@ -44,7 +44,13 @@ For chain tests, Dolphin can render the game correctly while `xfb_NN.bin` is a s
 For MEM2 layout, ROM paging, HBC agent integration, or automated crash capture,
 read [paging and agent constraints](../../../doc/rom-paging-and-agent.md).
 Use `bash .dev/test_rom_vm.sh` for loader, layout and cache regressions. Preserve
-the record at `0x91800000` in agent builds and the prior VM DSI handler. A
+the 8 KiB record gap at `0x91800000` in agent builds (crash record and SDK 1.9's
+4140-byte last-output block) and the prior VM DSI handler. Build the agent library
+with `.dev/build_agent.sh`: it goes to `.dev/hbc_agent/`, never into the shared
+HBC-Reborn checkout, whose copy is whatever toolchain built it last (WiiStation's
+r41-2). Agent builds call `devAgent_alive()` per guest VI and menu frame, hold the
+watchdog in `loadROM` and the upload, and wrap `c_default_exceptionhandler`. Never
+call the agent or `perfProf_mark` from the VI interrupt; use `perfProf_markLater`. A
 running agent also answers port 4299; use the HBC client's version check before
 calling that state "Homebrew Channel ready". Raw-SD Dolphin runs use the config
 already in the image; stage new arguments with folder sync first.

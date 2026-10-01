@@ -504,7 +504,15 @@ static bool uploadFile(const char* name, bool required) {
 	return ok;
 }
 
+static void uploadResults_unheld(void);
+
 static void uploadResults(void) {
+	devAgent_hold(1); // network start-up and transfers are long, expected waits
+	uploadResults_unheld();
+	devAgent_hold(0);
+}
+
+static void uploadResults_unheld(void) {
 	if (!g_resultHost[0]) return;
 	if (!devAgent_netReady() || net_init() < 0) { perfProf_mark("hardware upload: network unavailable"); return; }
 	bool ok = uploadFile("perf.log", true);
@@ -993,7 +1001,7 @@ int main(int argc, const char* argv[]) {
 		perfProf_mark("test_saveload: done");
 		nativeSaveDevice = savedDevice;
 	}
-	while (!devAgent_exitRequested() && menu->isRunning()) {}
+	while (!devAgent_exitRequested() && menu->isRunning()) devAgent_alive(); // a menu frame is progress
 
 	delete menu;
 
@@ -1044,7 +1052,18 @@ extern bool flashramWritten;
 BOOL hasLoadedROM = FALSE;
 int autoSaveLoaded = NATIVESAVEDEVICE_NONE;
 
+static int loadROM_unheld(fileBrowser_file* rom);
+
+/* A 32 MB ROM takes 30-40 s to read and page in on a Wii: hold the HBC agent's hang
+   watchdog (60 s) for the load, the one long wait the menu and chains expect. */
 int loadROM(fileBrowser_file* rom){
+	devAgent_hold(1);
+	int ret = loadROM_unheld(rom);
+	devAgent_hold(0);
+	return ret;
+}
+
+static int loadROM_unheld(fileBrowser_file* rom){
   int ret = 0;
 	perfProf_mark("loadROM: enter");
 	// First, if there's already a loaded ROM

@@ -35,7 +35,13 @@ ifeq ($(HBC_AGENT),1)
 HBC_AGENT_ROOT ?= ../hbc-reborn
 FEATURES += -DWII64_HBC_AGENT
 INCLUDE += -I"$(HBC_AGENT_ROOT)/sdk"
-LIBPATHS += -L"$(HBC_AGENT_ROOT)/sdk/hbc_agent/libogc2"
+# The agent library must be built against the same libogc2 as Wii64: .dev/build_agent.sh
+# builds one into .dev/hbc_agent. Else HBC-Reborn's own copy, whichever toolchain made it.
+HBC_AGENT_LIB ?= $(firstword $(wildcard .dev/hbc_agent/libhbcagent.a) $(HBC_AGENT_ROOT)/sdk/hbc_agent/libogc2)
+HBC_AGENT_LIB := $(patsubst %/libhbcagent.a,%,$(HBC_AGENT_LIB))
+LIBPATHS += -L"$(HBC_AGENT_LIB)"
 LIB := -lhbcagent $(LIB)
 OBJ += main/dev_agent.o
+# Crashes that skip the agent's hook still reach a report (main/dev_agent.c).
+LDFLAGS += -Wl,--wrap,c_default_exceptionhandler
 endif
