@@ -62,9 +62,9 @@ void LoadingBar::showBar(float percent, const char* string)
 	Cursor::getInstance().setCurrentFrame(NULL);
 	currentFocusFrame = Focus::getInstance().getCurrentFrame();
 	Focus::getInstance().setCurrentFrame(NULL);
-	percentComplete = percent;
-	memset(loadingBarText, 0, LOADINGBAR_TEXT_WIDTH);
-	strncpy(loadingBarText, string, LOADINGBAR_TEXT_WIDTH-1);
+	percentComplete = percent >= 0.0f ? (percent <= 1.0f ? percent : 1.0f) : 0.0f;
+	snprintf(loadingBarText, sizeof(loadingBarText), "%.*s (%u%%)",
+		LOADINGBAR_TEXT_WIDTH - 9, string, (unsigned)(percentComplete * 100 + 0.5f));
 
 	menu::Gui::getInstance().draw();
 

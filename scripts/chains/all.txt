@@ -2,8 +2,8 @@
 # settings. The baseline chain: run it with a PERF_PROF build on each plugin, in
 # Dolphin and on a Wii, and file the results with scripts/baseline_add.py --chain.
 # ROM paths must match the card: copy the ROMs to sd:/wii64/roms/ under these names.
-# Majora's Mask (CIC-6105) hangs at boot on this build -- kept in on purpose; its row
-# records the hang (how=timeout or a near-zero fps) instead of losing the other games.
+# Zelda failed in the September baseline. Current boot/menu checks pass; use
+# zelda_check.py to reject stalled graphics, not just incomplete VI targets.
 chain=3600 sd:/wii64/roms/Super Mario 64.v64
 chain=3600 sd:/wii64/roms/Banjo-Kazooie.V64
 chain=3600 sd:/wii64/roms/Zelda Ocarina of Time Master Quest.v64

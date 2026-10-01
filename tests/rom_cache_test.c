@@ -39,7 +39,14 @@ int (*romFile_seekFile)(fileBrowser_file *, unsigned int, unsigned int) = seek_f
 int (*romFile_deinit)(fileBrowser_file *) = close_file;
 void *VM_Init(size_t v, size_t m) { (void)v; (void)m; return fail_vm ? NULL : backing; }
 void VM_Deinit(void) { vm_closes++; }
-int VM_Flush(void) { flush_calls++; return !fail_flush; }
+int VM_Flush(void (*progress)(float)) {
+    flush_calls++;
+    assert(progress);
+    progress(0);
+    if (fail_flush) return 0;
+    progress(0.5f); progress(1);
+    return 1;
+}
 void LoadingBar_showBar(float p, const char *s) { (void)s; assert(p >= 0 && p <= 1); }
 static int load(unsigned int size, int bytes) {
     fileBrowser_file f = {0}; f.size = size; rom_length = size; available = bytes;

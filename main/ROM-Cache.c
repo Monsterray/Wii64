@@ -79,6 +79,11 @@ extern void pauseAudio(void);
 extern void resumeAudio(void);
 extern BOOL hasLoadedROM;
 
+#if defined(HW_RVL) && VM_ROM_PREFLUSH
+static void show_prepare_progress(float percent) {
+	LoadingBar_showBar(percent, "Preparing ROM for gameplay");
+}
+#endif
 
 void ROMCache_init(fileBrowser_file* f){
 	readBefore = 0; //de-init byteswapping
@@ -267,14 +272,13 @@ int ROMCache_load(fileBrowser_file* file){
 	perfProf_mark("ROMCache_load: loop exited normally");
 #if VM_ROM_PREFLUSH
 	if (ROMVMActive) {
-		LoadingBar_showBar(1.0f, "Preparing ROM for gameplay");
 #ifdef PERF_PROF
 		unsigned long long flush_start = gettime();
 #endif
 #ifdef PERF_SUBSYSTEM_ENABLED
 		struct pagefile_stats before = pagefile_stats_read();
 #endif
-		if (!VM_Flush()) return ROM_CACHE_ERROR_READ;
+		if (!VM_Flush(show_prepare_progress)) return ROM_CACHE_ERROR_READ;
 #ifdef PERF_PROF
 #ifdef PERF_SUBSYSTEM_ENABLED
 		struct pagefile_stats after = pagefile_stats_read();

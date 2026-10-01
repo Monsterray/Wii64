@@ -1,0 +1,11 @@
+# Repeat the larger gap/cadence candidates with the same audio settings.
+# Use a frozen PERF_PROF-only build to measure without subsystem timers.
+dynacore=dynarec
+audio_quality=accurate
+audio_output=dsp
+audio_mixer=accurate
+audio_latency=stable
+audio_sync=native
+chain=5400,input=kart_race sd:/wii64/roms/Mario Kart 64.v64
+chain=1800,input=neutral sd:/wii64/roms/GoldenEye 007 (USA).z64
+chain=1800,input=neutral sd:/wii64/roms/007 - The World Is Not Enough (USA).z64

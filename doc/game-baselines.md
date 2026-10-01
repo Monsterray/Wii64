@@ -1,5 +1,10 @@
 # Game compatibility baselines
 
+This is the historical September boot investigation, not the current status.
+On 2026-10-01, 1.6.6 completed both Zelda boot/menu checks in Dolphin and on
+the Wii. See [current Zelda checks](zelda-results-2026-10-01.md). Do not infer
+a CIC fault from the total exception count: it includes normal interrupts.
+
 Autoboot smoke-test results for the 5 ROMs in the shared test set, using
 `.dev/wii64_diag.sh` / `.dev/wii64_soak.sh` (`autoboot_rom=` + optionally
 `dynarec_trace=1` in `sd:/wii64/diag.cfg`). CPU core under test: **Dynarec**

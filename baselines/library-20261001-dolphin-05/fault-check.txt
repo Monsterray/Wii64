@@ -1,0 +1,1 @@
+Dolphin current boot: no invalid-access/DSP/SD-sync warnings

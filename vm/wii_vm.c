@@ -357,9 +357,13 @@ init_fail:
 }
 
 /* Finish load-time writeback before gameplay. Keep every current mapping. */
-int VM_Flush(void)
+int VM_Flush(void (*progress)(float))
 {
 	if (!vm_initialized) return 0;
+	unsigned int step = pmap_max / 20;
+	if (!step) step = 1;
+	unsigned int next_progress = step;
+	if (progress) progress(0.0f);
 	LWP_MutexLock(vm_mutex);
 	for (u16 index = 0; index < pmap_max; )
 	{
@@ -390,8 +394,17 @@ int VM_Flush(void)
 			HTABORG[phys_map[index+i].pte_index].C = 0;
 		}
 		index += count;
+		if (progress && index >= next_progress && index < pmap_max)
+		{
+			// GUI draws can fault: never invoke them with vm_mutex held.
+			LWP_MutexUnlock(vm_mutex);
+			progress((float)index / pmap_max);
+			LWP_MutexLock(vm_mutex);
+			next_progress = index + step;
+		}
 	}
 	LWP_MutexUnlock(vm_mutex);
+	if (progress) progress(1.0f);
 	return 1;
 }
 

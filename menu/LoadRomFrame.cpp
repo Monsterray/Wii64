@@ -124,9 +124,13 @@ int autobootROM(const char* path)
 	}
 	Func_SetPlayGame();
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
-	LoadingBar_showBar(1.0f, "Loading ...");
-	sleep(3);
+	for (int step = 0; step < 3; ++step)
+	{
+		LoadingBar_showBar((float)step / 3, "Waiting for controllers");
+		sleep(1);
+	}
 	control_info_init(); // by now a Wii remote should've re-sync'd.
+	LoadingBar_showBar(1.0f, "Controllers ready");
 	Func_PlayGame();
 	return 0;
 }

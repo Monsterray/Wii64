@@ -9,7 +9,8 @@ extern "C" {
 
 void* VM_Init(size_t VMSize, size_t MEMSize);
 void VM_Deinit(void);
-int VM_Flush(void);
+// Startup only: emulation must be stopped; callback must not access ROM VM.
+int VM_Flush(void (*progress)(float));
 
 // clears entire VM range to zero, unlocks any locked pages
 void VM_InvalidateAll(void);

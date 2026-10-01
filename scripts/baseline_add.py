@@ -84,7 +84,7 @@ def file_chain(args, dest):
     media = BASELINES / "media" / args.id
     media.mkdir(parents=True, exist_ok=True)
     for name in ["perf.log", "diag.cfg", "run.log", "artifacts.json", "fault-check.txt",
-                 "hbc-before.json", "hbc-after.json", "agent-status.json"] + sorted(p.name for p in src.glob("padtrace_*.csv")):
+                 "hbc-before.json", "hbc-after.json", "agent-status.json", "dolphin-settings.json"] + sorted(p.name for p in src.glob("padtrace_*.csv")):
         if (src / name).exists():
             shutil.copy(src / name, dest / name)
     for b in sorted(src.glob("xfb_*.bin")):

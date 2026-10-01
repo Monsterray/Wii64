@@ -1,0 +1,3 @@
+# Zelda boot regression: fixed neutral input, guest audio enabled, no saves.
+chain=900,input=neutral sd:/wii64/roms/Zelda Ocarina of Time Master Quest.v64
+chain=900,input=neutral sd:/wii64/roms/Legend of Zelda, The - Majora's Mask (E) (M4) [!].z64

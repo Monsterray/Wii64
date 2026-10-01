@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-baseline-") as directory:
         "avg_fps=30 exceptions=0 recompiles=0 treeDepthMax=0 underruns=0 "
         "rom=sd:/wii64/roms/Test.z64\n")
     names = ("diag.cfg", "artifacts.json", "fault-check.txt", "hbc-before.json",
-             "hbc-after.json", "agent-status.json", "padtrace_01.csv")
+             "hbc-after.json", "agent-status.json", "dolphin-settings.json", "padtrace_01.csv")
     for name in names:
         (source / name).write_text("fixture\n")
     (source / "private.z64").write_bytes(b"not a ROM")

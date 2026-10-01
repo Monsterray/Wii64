@@ -4,6 +4,15 @@
 *.dol
 *.map
 
+# Owned ROMs and local test drops are not source files.
+*.[zZ]64
+*.[vV]64
+*.[nN]64
+*.[rR][oO][mM]
+/roms/
+/temp-roms/
+/perf.log
+
 # Local macOS metadata
 .DS_Store
 

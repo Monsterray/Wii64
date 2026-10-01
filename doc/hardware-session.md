@@ -130,7 +130,9 @@ Boot Wii64 from the Homebrew Channel and leave it. No controller is needed: each
 for a fixed number of its own VIs, the stick check drives port 1 itself, and the run
 returns to Homebrew Channel at the end. The full
 `hardware.txt` chain has nine entries and can take more than 10 minutes if a game
-needs the watchdog. The Zelda games are excluded because they currently fail.
+needs the watchdog. That chain retains its original Zelda exclusion. Current
+Zelda tests use `zelda_boot`, `zelda_menus`, and `zelda_new_game`; see
+[Zelda results](zelda-results-2026-10-01.md).
 
 If a game hangs, a watchdog on the host retrace cuts it off at 3x its length plus
 60 s and marks it `how=timeout`; the chain goes

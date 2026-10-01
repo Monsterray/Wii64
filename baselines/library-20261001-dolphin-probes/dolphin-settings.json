@@ -1,0 +1,8 @@
+{
+  "xfb_to_texture": false,
+  "dsp_hle": false,
+  "host_muted": true,
+  "dump_audio": true,
+  "mmu": true,
+  "cpu_thread": true
+}

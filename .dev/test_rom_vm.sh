@@ -18,6 +18,7 @@ for agent in 0 1; do
     "$task_rom_tmp/layout"
 done
 python3 tests/hbc_watch_test.py
+python3 tests/vm_flush_test.py
 for ahead in default 0 1; do
     flags=(-UVM_PAGE_READAHEAD)
     if [ "$ahead" != default ]; then flags=(-DVM_PAGE_READAHEAD="$ahead"); fi

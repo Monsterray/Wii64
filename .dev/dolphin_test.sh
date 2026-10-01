@@ -13,7 +13,10 @@ DOL="${1:?usage: .dev/dolphin_test.sh <path-to.dol> [seconds-to-wait]}"
 WAIT="${2:-25}"
 PROFILE_POSIX="${WII64_DOLPHIN_PROFILE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dolphin_profile}"
 folder_sync="${WII64_DOLPHIN_FOLDER_SYNC:-True}"
-dsp_hle="${WII64_DOLPHIN_DSP_HLE:-True}"
+# AESND homebrew microcode is tested with DSP LLE, not Dolphin's game HLE.
+dsp_hle="${WII64_DOLPHIN_DSP_HLE:-False}"
+xfb_texture="${WII64_DOLPHIN_XFB_TEXTURE:-True}"
+case "$xfb_texture" in True|False) ;; *) echo 'WII64_DOLPHIN_XFB_TEXTURE must be True or False.' >&2; exit 2 ;; esac
 
 case "$(uname -s)" in
 	Darwin)
@@ -142,6 +145,7 @@ if [ "$(uname -s)" = Darwin ] && [ "$WAIT" = interactive ]; then
 	open -n -a /Applications/Dolphin.app --args -e "$DOL_ARG" -u "$PROFILE_ARG" \
 		-C Dolphin.Core.MMU=True \
 		-C Dolphin.Core.DSPHLE="$dsp_hle" \
+		-C Graphics.Hacks.XFBToTextureEnable="$xfb_texture" \
 		-C Dolphin.DSP.DumpAudio="$dump_audio" \
 		-C Dolphin.DSP.Muted="$mute_audio" \
 		-C Dolphin.General.DumpPath="$audio_dump_root" \
@@ -167,6 +171,7 @@ args=(-b -e "$DOL_ARG" -u "$PROFILE_ARG" \
 	-C Graphics.Settings.DumpFramesAsImages="$dump_frames" \
 	-C Graphics.Settings.PNGCompressionLevel=1 \
 	-C Graphics.Hacks.ImmediateXFBEnable=True \
+	-C Graphics.Hacks.XFBToTextureEnable="$xfb_texture" \
 	-C Dolphin.Core.CPUThread=True \
 	-C Dolphin.Core.MMU=True \
 	-C Dolphin.Core.DSPHLE="$dsp_hle" \
@@ -313,6 +318,14 @@ dol, out = map(pathlib.Path, sys.argv[1:])
 manifest = {str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (dol, dol.with_suffix('.elf')) if p.is_file()}
 (out / 'artifacts.json').write_text(json.dumps(manifest, indent=2) + '\n')
+PY
+	python3 - "$out" "$xfb_texture" "$dsp_hle" "$mute_audio" "$dump_audio" <<'PY'
+import json, pathlib, sys
+out = pathlib.Path(sys.argv[1])
+settings = dict(zip(('xfb_to_texture', 'dsp_hle', 'host_muted', 'dump_audio'),
+                    (v == 'True' for v in sys.argv[2:])))
+settings.update(mmu=True, cpu_thread=True)
+(out / 'dolphin-settings.json').write_text(json.dumps(settings, indent=2) + '\n')
 PY
 	python3 scripts/check_hardware_run.py "$out" --dolphin || test_status=1
 	python3 scripts/subsystem_report.py "$out" > "$out/subsystems.txt"
