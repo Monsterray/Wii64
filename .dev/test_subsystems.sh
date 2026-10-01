@@ -25,4 +25,6 @@ python3 tests/wii_input_staging_test.py
 python3 tests/invalidation_range_test.py
 python3 tests/chain_validation_test.py
 python3 tests/baseline_provenance_test.py
+python3 tests/mario_kart_check_test.py
+python3 tests/graphics_reset_test.py
 bash .dev/test_texture_hash.sh

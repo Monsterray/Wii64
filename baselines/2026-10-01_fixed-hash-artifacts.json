@@ -1,0 +1,73 @@
+{
+  "release_version": "1.6.6",
+  "tested_artifact_version": "1.6.5",
+  "source_note": "Frozen development worktree artifacts based on f115e06; gDP reset and fixed hash wrapper, not a clean-commit comparison. Full source hashes remain in the ignored survey source.json files.",
+  "short": {
+    "directory": ".dev/runs/subsystem-survey-20261001-043716-Nz8T",
+    "source_manifest_sha256": "25b73531c0e4aaab5b9b4fe38c2aa6934e665d626e12ce6628ee7c474b9206a7",
+    "source_head": "f115e0664445f5a764abaa77e9025e4992def87f",
+    "make_args": [
+      "HBC_AGENT=1"
+    ],
+    "hbc_sdk": {
+      "head": "3b1e9a4e04fbb1afb98f516a2446ef9789877f8f",
+      "status": "?? channel/banner/tools/png2tpl\n",
+      "archive_sha256": "94f669d788c9d46687e6638c1d200a350c0c95ca01ad12c36ac09f47f8b11e8d"
+    },
+    "artifacts": {
+      "chain.txt": "32e4dc9f9a286a9d9389923a99938d5596e787d7aba024f3280db5748f278956",
+      "full.dol": "a3272a528377f07b6b863f38f28360b155081ce628a837fd48fb6cd2e90533a8",
+      "full.elf": "53c1fed24fed6a81ff82a33b80cd2b3a4f2feb5f2572f80cb61db18403989616",
+      "control.dol": "df2e7f31cdd499398a9c975abbd8eab7f3309170a785084229418fb585f7cfc7",
+      "control.elf": "70ae648bd8545fa6ea3fc85de3f079e7ccfa9fc3b01e845ea605affbd5f045e6"
+    },
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FIXED_HASH_LENGTHS=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FIXED_HASH_LENGTHS=0"
+    },
+    "jobs": [
+      "20261001-043829-a00390",
+      "20261001-043829-75779c",
+      "20261001-043829-5153a8"
+    ],
+    "runs": [
+      ".dev/runs/hardware-glN64_wii-20261001-043925-t0Cp",
+      ".dev/runs/hardware-glN64_wii-20261001-044101-zRAC",
+      ".dev/runs/hardware-glN64_wii-20261001-044226-tE16"
+    ]
+  },
+  "long": {
+    "directory": ".dev/runs/subsystem-survey-20261001-044641-s8Ve",
+    "source_manifest_sha256": "0968f6bd20fb545ed184e8f9cc8c327cd7082938500734768029df5929a1f8d7",
+    "source_head": "f115e0664445f5a764abaa77e9025e4992def87f",
+    "make_args": [
+      "HBC_AGENT=1"
+    ],
+    "hbc_sdk": {
+      "head": "3b1e9a4e04fbb1afb98f516a2446ef9789877f8f",
+      "status": "?? channel/banner/tools/png2tpl\n",
+      "archive_sha256": "94f669d788c9d46687e6638c1d200a350c0c95ca01ad12c36ac09f47f8b11e8d"
+    },
+    "artifacts": {
+      "chain.txt": "d1a0b1dd6b2f6fad2d0850ebaa5e9fcbb12a500cb9be6c2d0515646b9324c359",
+      "full.dol": "a3272a528377f07b6b863f38f28360b155081ce628a837fd48fb6cd2e90533a8",
+      "full.elf": "53c1fed24fed6a81ff82a33b80cd2b3a4f2feb5f2572f80cb61db18403989616",
+      "control.dol": "df2e7f31cdd499398a9c975abbd8eab7f3309170a785084229418fb585f7cfc7",
+      "control.elf": "70ae648bd8545fa6ea3fc85de3f079e7ccfa9fc3b01e845ea605affbd5f045e6"
+    },
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FIXED_HASH_LENGTHS=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FIXED_HASH_LENGTHS=0"
+    },
+    "jobs": [
+      "20261001-044641-c9fcc0",
+      "20261001-044641-c573d7",
+      "20261001-044642-0aac4e"
+    ],
+    "runs": [
+      ".dev/runs/hardware-glN64_wii-20261001-044713-r29u",
+      ".dev/runs/hardware-glN64_wii-20261001-045059-onTN",
+      ".dev/runs/hardware-glN64_wii-20261001-045444-p1x5"
+    ]
+  }
+}

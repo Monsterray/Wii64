@@ -64,7 +64,14 @@ case "$target" in
 	*) echo "Use glN64_wii or Rice_wii." >&2; exit 2 ;;
 esac
 if [ "${WII64_SKIP_BUILD:-0}" != 1 ]; then
-	.dev/build_profiling.sh "$target"
+	case "$chain" in
+	mario_kart_warm|mario_kart_race|mario_titles_warm)
+		.dev/build_profiling.sh "$target" 'DEBUG_FLAGS=-DPERF_PROF -DPERF_SUBSYSTEM_PROBES'
+		;;
+	*)
+		.dev/build_profiling.sh "$target"
+		;;
+	esac
 fi
 dol="${WII64_DOL:-$dol}"
 [[ -f "$dol" ]] || { echo "Missing $dol; build it or unset WII64_SKIP_BUILD=1." >&2; exit 1; }
@@ -159,4 +166,7 @@ else:
 fi
 python3 scripts/check_hardware_run.py "$out"
 if [ "$chain" = smoke ]; then python3 scripts/hardware_smoke_check.py "$out"; fi
+case "$chain" in
+mario_kart_warm|mario_kart_race|mario_titles_warm) python3 scripts/mario_kart_check.py "$out" ;;
+esac
 echo "Hardware run complete: $out"

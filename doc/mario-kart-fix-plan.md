@@ -1,5 +1,47 @@
 # Mario Kart 64 fix plan
 
+## Warm-load fix: 1.6.6
+
+The current reproducible failure is a ROM-switch bug in glN64. Mario Kart boots
+alone, but stalls after 600 neutral Mario 64 VIs in the same boot. The same
+sequence fails with interrupt randomization disabled. A 60-VI warm-up passes.
+
+`RSP_Init()` reset all of `gSP` but only four fields of `gDP`. The remaining
+tile, image, load and half-command state survived the ROM switch. Reset all of
+the per-ROM `gDP` state, then restore its tile links and initialize the caches.
+Do not change CPU cores or interrupt timing to hide this failure.
+
+Matched Wii builds confirm the change over 3,600 Mario Kart VIs: the reference
+has 3 graphics tasks, no audio tasks and 1.13 DL/s; the reset build has 1,569
+graphics tasks, 3,539 audio tasks and 28.06 DL/s. Both return to HBC. The fixed
+Dolphin run reaches 27.9 DL/s. These activity checks fix the stall, but a neutral
+final Nintendo-logo capture does not prove controller-driven race coverage.
+
+Fast regression, with an instrumented DOL:
+
+```bash
+bash .dev/build_profiling.sh glN64_wii 'DEBUG_FLAGS=-DPERF_PROF -DPERF_SUBSYSTEM_PROBES'
+bash .dev/mario_kart_check.sh wii64-glN64.dol 3600 \
+  'chain=600,input=neutral sd:/wii64/roms/Super Mario 64.v64'
+```
+
+Real-Wii regression, through the shared queue:
+
+```bash
+bash .dev/hardware_run.sh glN64_wii mario_kart_warm
+bash .dev/hardware_run.sh glN64_wii mario_kart_race
+```
+
+This chain builds the required probes and fails if VI completion hides stalled
+graphics or audio. Keep the matching DOL/ELF pair for each comparison. The host
+reset test compiles the actual initialization and RDP layout in both bitfield
+layouts; it fails with the previous partial reset.
+
+The revised controller replay was verified on the Wii with the 1.6.6 build:
+5,400 Mario Kart VIs, 28.3 average DL/s, 21 pad trace records, and a final capture
+of an active race with a running timer. The Wii returned to HBC. Keep this
+race check separate from the matched neutral timing comparison above.
+
 ## Baseline
 
 The 2026-09-25 Wii run completed 3,600 VIs for Mario Kart 64 at 59.53 average VI/s, but rendered only 0.86 average frames/s (64 batches, 4,140 vertices). A recent isolated Dolphin run reached the Nintendo logo, then showed `Dynarec got stuck in a loop -- stopped and returned to menu`. It did not produce `perf.log`; the five-game chain therefore did not provide a valid input comparison. These results confirm a rendering/execution failure, not its cause.

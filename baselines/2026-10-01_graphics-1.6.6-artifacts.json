@@ -1,0 +1,28 @@
+{
+  "version": "1.6.6",
+  "source_head": "f115e06",
+  "note": "Precommit development artifacts with full per-ROM gDP reset and default fixed-length hash dispatch. Ordinary releases exclude agent and subsystem probes. No instrumented/release performance comparison is claimed.",
+  "release": {
+    "wii64-glN64": {
+      "dol": "ddbe746f802a86705c5704b2786e996b3d8dbe68902202f1596a9853d6e8cc45",
+      "elf": "74c5ed7f091a4d2c70e06b111e8c1b419bc9ddc4d3d72885098e8c9019c24eff"
+    },
+    "wii64-Rice": {
+      "dol": "6c433d237c4c4dbad666358186ac038b2fe5648763ecc56d68b9cea6b0001212",
+      "elf": "e15cb9010ce0f35b1a4eece4f95d18cc8d8670f0ede33f51e258a4cef5afab17"
+    }
+  },
+  "instrumented": {
+    "dol": "5d894ee55af95b1d77ed8a757c014cde0c8466cb8cc3f61f4dfcfbe4e921885e",
+    "elf": "81a0e67007fda7db2893348ec7d5efe13a8a6b89a7dcfa26d4d0491e8f9a96de",
+    "flags": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES HBC_AGENT=1; GLN64_FIXED_HASH_LENGTHS default 1"
+  },
+  "replays": {
+    "kart_race": "0dff1afcb4cd9eded1533d066e8c54b1510555452e2ccdb62cfb929f66f07386",
+    "neutral": "b19a80f204bfff8a23c1b747f61f96cfbc240daea0e7ec497dcd46f6b98d31a3",
+    "press_a_periodically": "5a952389e4e4700fe4818593c2c7a09cdca3de2f35f7c2dd3e07c3e22a1f4e3c"
+  },
+  "hardware_race_job": "20261001-050521-40139c",
+  "hardware_race_directory": ".dev/runs/hardware-glN64_wii-20261001-050542-u6Wh",
+  "dolphin_race_directory": ".dev/runs/dolphin-chain-20261001-051034-Fays"
+}

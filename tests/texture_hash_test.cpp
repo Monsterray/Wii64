@@ -36,6 +36,12 @@ int main()
         random = random * 1664525 + 1013904223;
         reinterpret_cast<unsigned char *>(tmem)[i] = random >> 24;
     }
+    // Constant-length dispatch must equal the original hash for every size,
+    // including its fallback, palette lengths and zero-byte rows.
+    for (unsigned count = 0; count <= sizeof(tmem); ++count) {
+        random = random * 1664525 + 1013904223;
+        assert(RawHash_Calculate(random, tmem, count) == XXH32(tmem, count, random));
+    }
     TextureHashMemo memo[2] = {};
     // Exercise row wrapping, all texel sizes, CI/TLUT ranges, zero-height,
     // both texture units, key changes without writes, and writes with reset.

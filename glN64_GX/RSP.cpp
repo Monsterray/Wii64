@@ -410,10 +410,8 @@ void RSP_Init()
 	RSP.infloop = FALSE;
 	
 	memset( &gSP, 0, sizeof( gSPInfo ) );
-	gDP.otherMode._u64 = 0;
-	gDP.m_subscreen = false;
-	gDP.m_fbCopyPending = 0;
-	gDP.m_fbCopySource = 0;
+	// Tile, image and half-command state belongs to one ROM, like gSP.
+	memset( &gDP, 0, sizeof( gDPInfo ) );
 
 	_RSP_SetGameHacks();
 
