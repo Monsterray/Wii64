@@ -31,6 +31,7 @@ extern "C" {
 #include "OpenGL.h"
 #include "CRC.h"
 #include "FrameBuffer.h"
+#include "../main/perf_subsystem.h"
 #include "DepthBuffer.h"
 #include "VI.h"
 #ifdef __GX__
@@ -1293,7 +1294,7 @@ static BOOL _gDPArtifactDepthCopy( f32 ulx, f32 uly, f32 lry, f32 s )
 
 	if (!gDPArtifactSynced)
 	{
-		GX_DrawDone();
+		{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 		gDPArtifactSynced = TRUE;
 
 	}
@@ -1324,7 +1325,7 @@ static void _gDPResolveArtifactDepths()
 	if (gDPArtifactSampleCount == 0)
 		return;
 
-	GX_DrawDone();
+	{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 
 	for (u32 i = 0; i < gDPArtifactSampleCount; i++)
 	{

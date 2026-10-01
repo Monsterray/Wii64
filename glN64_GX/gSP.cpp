@@ -35,6 +35,7 @@
 #include "Config.h"
 extern "C" {
 #include "../main/gamehacks.h"
+#include "../main/perf_subsystem.h"
 }
 #include <stdlib.h>
 #ifndef min
@@ -157,6 +158,7 @@ void gSPCombineMatrices( u32 mode )
 
 void gSPProcessVertex( u32 v )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_VERTEX);
 	f32 intensity;
 	f32 r, g, b;
 

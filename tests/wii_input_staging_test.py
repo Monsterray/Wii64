@@ -11,6 +11,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-replay-") as directory:
     for name in (".dev", "scripts/chains", "scripts/inputs", "SDK with spaces/tools", "queue"):
         (root / name).mkdir(parents=True)
     shutil.copy(source / ".dev/stage_wii_inputs.sh", root / ".dev")
+    shutil.copy(source / ".dev/bench_session.sh", root / ".dev")
     (root / "scripts/chains/test.txt").write_text(
         "# input=ignore\nchain=900,input=neutral Foo.z64\n"
         "chain=900,input=press_a_periodically Foo.z64\nchain=900,input=neutral Foo.z64\n")

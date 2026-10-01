@@ -29,6 +29,7 @@
 
 #include <gctypes.h>
 #include <stdio.h>
+#include "../main/perf_subsystem.h"
 #include <stdlib.h>
 #include <math.h>
 #include "r4300.h"
@@ -3291,14 +3292,30 @@ void prefetch()
 
 void pure_interpreter()
 {
+#ifdef PERF_SUBSYSTEM_ENABLED
+   unsigned int remaining = 0;
+   unsigned long long timer = 0;
+#endif
    r4300.stop=0;
    r4300.last_pc = r4300.pc;
    while (!r4300.stop)
      {
+#ifdef PERF_SUBSYSTEM_ENABLED
+        if (!remaining) {
+            timer = perfProf_subsystemBegin(PERF_SUB_INTERPRETER);
+            remaining = 256;
+        }
+#endif
 	prefetch();
 	interp_ops[((op >> 26) & 0x3F)]();
 #ifdef DBG
 	if (debugger_mode) update_debugger();
 #endif
+#ifdef PERF_SUBSYSTEM_ENABLED
+        if (!--remaining) perfProf_subsystemEnd(PERF_SUB_INTERPRETER, timer);
+#endif
      }
+#ifdef PERF_SUBSYSTEM_ENABLED
+   if (remaining) perfProf_subsystemEnd(PERF_SUB_INTERPRETER, timer);
+#endif
 }

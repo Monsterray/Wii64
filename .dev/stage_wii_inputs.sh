@@ -3,8 +3,10 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 chain="${1:?usage: stage_wii_inputs.sh <chain name>}"
-[[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "scripts/chains/$chain.txt" ]] || { echo "Unknown chain: $chain" >&2; exit 2; }
-names="$(sed -n 's/^chain=.*[, ]input=\([A-Za-z0-9_-]*\).*/\1/p' "scripts/chains/$chain.txt" | sort -u)"
+chain_file="${WII64_CHAIN_FILE:-scripts/chains/$chain.txt}"
+[[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "$chain_file" ]] || { echo "Unknown chain: $chain" >&2; exit 2; }
+chain_file="$(cd "$(dirname "$chain_file")" && pwd)/$(basename "$chain_file")"
+names="$(sed -n 's/^chain=.*[, ]input=\([A-Za-z0-9_-]*\).*/\1/p' "$chain_file" | sort -u)"
 [[ -n "$names" ]] || { echo "No replays requested by $chain."; exit 0; }
 while IFS= read -r name; do
     [[ -s "scripts/inputs/$name.txt" ]] || { echo "Missing replay: $name" >&2; exit 2; }
@@ -18,8 +20,9 @@ if [[ -z "${WII_BENCH_JOB:-}" ]]; then
     bench_client="${WII_BENCH_CLIENT:-$bench_state/wiibench.py}"
     bench_server="${WII_BENCH_SERVER-$(sed -n '1p' "$bench_state/server" 2>/dev/null || true)}"
     [[ -f "$bench_client" && -n "${bench_server//[[:space:]]/}" ]] || { echo "Configure the central Wii queue first." >&2; exit 2; }
-    job="$(python3 "$bench_client" add --name "Wii64 stage $chain replays" --cwd "$PWD" -- \
-        env "WII64_HBC_ROOT=$hbc_root" bash "$PWD/.dev/stage_wii_inputs.sh" "$chain")"
+    source .dev/bench_session.sh "$chain"
+    job="$(python3 "$bench_client" add --name "Wii64 stage $chain replays" --agent "$WII_BENCH_AGENT" --timeout "$WII64_JOB_TIMEOUT" --cwd "$PWD" -- \
+        env "WII64_HBC_ROOT=$hbc_root" "WII64_CHAIN_FILE=$chain_file" bash "$PWD/.dev/stage_wii_inputs.sh" "$chain")"
     echo "Queued replay staging: $job."
     exec python3 "$bench_client" wait "$job"
 fi

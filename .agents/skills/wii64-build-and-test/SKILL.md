@@ -64,6 +64,11 @@ full/control/full Wii builds and reports. New timers require both `PERF_PROF`
 and `PERF_SUBSYSTEM_PROBES`; ordinary profiling builds have no new timer cost.
 Interpret inclusive spans separately. Hot-operation estimates can alias, and
 requested limiter sleep is not a measurement of available CPU capacity.
+The driver supports Rice, verified artifact reuse, frozen chain configs, and
+deferred collection; consult the survey document for those branches. Use the
+same probe boundaries for an A/B/A comparison. Failed loads can retain old
+counters, and completed VIs can come from a non-rendering scene. Check replay
+loads and captures. Keep live Bash launchers unchanged until their jobs end.
 Wii paging now defaults to read-ahead plus startup preflush. Explicitly disable
 both flags for the old reference path; keep startup time separate from gameplay.
 For texture changes, run `bash .dev/test_texture_hash.sh` and use the matched

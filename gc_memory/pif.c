@@ -437,6 +437,7 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 
 void update_pif_write()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_PIF);
 	int i=0, channel=0;
 	char challenge[30], response[30];
 #ifdef DEBUG_PIF
@@ -512,6 +513,7 @@ void pif_reset_state()
 
 void update_pif_read()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_PIF);
 	int i=0, channel=0;
 	// Gate on PIF_RAMb[0x3F]'s CURRENT value, matching update_pif_write()'s
 	// own condition for entering its challenge/status branch -- not a

@@ -1,0 +1,5 @@
+Super Mario 64.v64: cycles -0.88%, wall -0.04%; non-sleep -0.95%; speed 0.988/0.987/0.988; underruns [8, 8, 8]; overruns [0, 0, 0]
+Banjo-Kazooie.V64: cycles -0.84%, wall +0.04%; non-sleep -0.80%; speed 0.988/0.989/0.989; underruns [3, 3, 2]; overruns [0, 0, 0]
+Pokemon Snap.rom: cycles +0.08%, wall +0.06%; non-sleep +0.15%; speed 0.984/0.984/0.984; underruns [0, 0, 0]; overruns [0, 0, 0]
+Candidate mean versus reference, all probes enabled; this is not probe-cost calibration.
+Non-sleep wall time = wall minus requested limiter sleep; it includes other waits and interruptions, not CPU self time.

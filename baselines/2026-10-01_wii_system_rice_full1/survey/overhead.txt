@@ -1,0 +1,10 @@
+Super Mario 64.v64: cycles +9.68%, wall +0.01%; non-sleep +9.64%; speed 0.995/0.995/0.995; underruns [14, 11, 13]; overruns [0, 0, 0]
+Mario Kart 64.v64: cycles +8.75%, wall -0.02%; non-sleep +8.73%; speed 0.995/0.995/0.995; underruns [4, 6, 5]; overruns [0, 0, 0]
+Banjo-Kazooie.V64: cycles +11.40%, wall +0.67%; non-sleep +11.03%; speed 0.983/0.989/0.982; underruns [3, 3, 3]; overruns [0, 0, 0]
+Mario Party.v64: cycles +14.96%, wall -0.01%; non-sleep +12.06%; speed 0.987/0.987/0.987; underruns [7, 7, 7]; overruns [0, 0, 0]
+Mario Party 2 (E) (M5) [!].z64: cycles +10.92%, wall -0.02%; non-sleep +9.70%; speed 0.990/0.990/0.991; underruns [4, 4, 4]; overruns [0, 0, 0]
+Mario Party 3 (E) (M4) [!].z64: cycles +8.98%, wall -0.09%; non-sleep +7.94%; speed 0.992/0.990/0.991; underruns [1, 1, 1]; overruns [0, 0, 0]
+Pokemon Snap.rom: cycles +9.95%, wall -0.02%; non-sleep +9.47%; speed 0.986/0.986/0.986; underruns [0, 0, 0]; overruns [0, 0, 0]
+Super Smash Bros. (U) [!].z64: cycles +9.97%, wall +0.09%; non-sleep +9.92%; speed 0.987/0.988/0.987; underruns [0, 0, 0]; overruns [0, 0, 0]
+Full mean versus disabled control; one A/B/A triple does not calibrate probe cost.
+Non-sleep wall time = wall minus requested limiter sleep; it includes other waits and interruptions, not CPU self time.

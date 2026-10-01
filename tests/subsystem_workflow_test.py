@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-survey-") as directory:
     root = Path(directory) / "repo with spaces"
     for name in (".dev", "scripts/chains", "toolchain/bin", "queue"):
         (root / name).mkdir(parents=True)
-    for name in (".dev/profile_subsystems.sh", "scripts/subsystem_report.py",
+    for name in (".dev/profile_subsystems.sh", ".dev/bench_session.sh", "scripts/subsystem_report.py",
                  "scripts/subsystem_compare.py", "scripts/chain_table.py",
                  "scripts/chains/subsystem_survey.txt"):
         shutil.copy(source / name, root / name)
@@ -23,7 +23,8 @@ with tempfile.TemporaryDirectory(prefix="wii64-survey-") as directory:
     scripts = {
         "toolchain/bin/powerpc-eabi-gcc": "#!/bin/bash\necho fixture compiler\n",
         ".dev/build_profiling.sh": "#!/bin/bash\nset -eu\n"
-            "printf '%s\\n' \"$@\" > wii64-glN64.dol\ncp wii64-glN64.dol wii64-glN64.elf\n",
+            'name=wii64-glN64; [[ "$1" != Rice_wii ]] || name=wii64-Rice\n'
+            "printf '%s\\n' \"$@\" > \"$name.dol\"\ncp \"$name.dol\" \"$name.elf\"\n",
         ".dev/hardware_run.sh": "#!/bin/bash\nset -eu\n"
             '[[ "$WII64_QUEUE_ONLY" = 1 && "$WII64_SKIP_BUILD" = 1 ]]\n'
             "python3 queue/fake.py add\n",
@@ -36,11 +37,19 @@ queue = pathlib.Path('queue')
 if os.environ.get('FIXTURE_QUEUE_FAIL'):
     sys.exit(9)
 if sys.argv[1] == 'add':
+    agent = os.environ['WII_BENCH_AGENT']
+    assert agent.startswith('wii64-')
+    identity = queue / 'agent'
+    if identity.exists() and len(list(queue.glob('*.job'))) % 3:
+        assert identity.read_text() == agent
+    else:
+        identity.write_text(agent)
     count = len(list(queue.glob('*.job')))
     dol = pathlib.Path(os.environ['WII64_DOL'])
     full = count % 3 != 1 or os.environ.get('WII64_SURVEY_SAME_PROBES') == '1'
     assert ('PERF_SUBSYSTEM_PROBES' in dol.read_text()) == full
     assert dol.with_suffix('.elf').is_file()
+    assert pathlib.Path(os.environ['WII64_CHAIN_FILE']).is_file()
     job = f'fixture-{count}'
     (queue / (job + '.job')).write_text(str(dol))
     run = queue / job
@@ -62,7 +71,7 @@ else:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Survey complete:" in result.stdout and "cycles +0.00%" in result.stdout
     out, = (root / ".dev/runs").iterdir()
-    assert len(json.loads((out / "artifacts.json").read_text())) == 4
+    assert len(json.loads((out / "artifacts.json").read_text())) == 5
     for label, number in (("full1", 0), ("control", 1), ("full2", 2)):
         assert (out / (label + ".job")).read_text().strip() == f"fixture-{number}"
         assert (out / (label + ".report.txt")).is_file()
@@ -82,6 +91,7 @@ else:
     assert result.returncode == 0 and 'not probe-cost calibration' in result.stdout, result.stdout + result.stderr
     custom, = [p for p in (root / '.dev/runs').iterdir() if p != out]
     metadata = json.loads((custom / 'source.json').read_text())
+    assert metadata['bench_agent'].startswith('wii64-') and metadata['job_timeout'] > metadata['receiver_timeout']
     assert len(metadata['hbc_sdk']['archive_sha256']) == 64 and metadata['make_args'][0] == 'HBC_AGENT=1'
     for mode, ahead in [('full', 1), ('control', 0)]:
         build = (custom / (mode + '.dol')).read_text()
@@ -97,9 +107,21 @@ else:
     result = subprocess.run(['bash', '.dev/profile_subsystems.sh', '--collect', str(custom)],
                             cwd=root, env=env, text=True, capture_output=True)
     assert result.returncode != 0 and 'Survey complete:' not in result.stdout
+    # Reuse verified artifacts without rebuilding; freeze the current chain too.
+    result = subprocess.run(['bash', '.dev/profile_subsystems.sh', '--reuse', str(out), 'subsystem_survey'],
+                            cwd=root, env=env, text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'Clean build:' not in result.stdout and len(list((root / 'queue').glob('*.job'))) == 9
+    env['WII64_SURVEY_TARGET'] = 'Rice_wii'
+    result = subprocess.run(['bash', '.dev/profile_subsystems.sh'], cwd=root, env=env, text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    rice = next(p for p in (root / '.dev/runs').iterdir()
+                if (p / 'source.json').exists() and json.loads((p / 'source.json').read_text())['target'] == 'Rice_wii')
+    assert 'Rice_wii' in (rice / 'full.dol').read_text()
+    assert len(list((root / 'queue').glob('*.job'))) == 12
     env["FIXTURE_QUEUE_FAIL"] = "1"
     result = subprocess.run(["bash", ".dev/profile_subsystems.sh"], cwd=root,
                             env=env, text=True, capture_output=True)
     assert result.returncode == 9 and "Survey complete:" not in result.stdout
-    assert len(list((root / "queue").glob("*.job"))) == 6
+    assert len(list((root / "queue").glob("*.job"))) == 12
 print("survey driver: frozen builds, spaced paths, queued A/B/A and reports: ok")

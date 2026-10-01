@@ -30,6 +30,7 @@
 #include "3DMath.h"
 #include "VI.h"
 #include "../main/timers.h"
+#include "../main/perf_subsystem.h"
 #include "Combiner.h"
 //#include "textures.h"
 #include "Config.h"
@@ -169,6 +170,7 @@ void _ProcessDListFactor5()
 
 void RSP_ProcessDList()
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_GFX_LIST);
 	if (RSP.infloop)
 	{
 		// Resuming a display list that ended by branching to itself (e.g. Gauntlet Legends)
@@ -313,7 +315,10 @@ void RSP_ProcessDList()
 				RSP.nextCmd = 0;
 		}
 
-		GBI.cmd[RSP.cmd]( w0, w1 );
+		{
+			PERF_SUBSYSTEM_SCOPE(PERF_SUB_GFX_COMMAND);
+			GBI.cmd[RSP.cmd]( w0, w1 );
+		}
 
 		if (RSP.count != 0xFFFFFFFF)
 		{

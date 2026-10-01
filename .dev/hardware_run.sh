@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build, launch through Homebrew Channel, and collect one Wii hardware run.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 
 # Every workstation must hold the central lease before it contacts the Wii.
 if [ -z "${WII_BENCH_JOB:-}" ]; then
@@ -12,12 +12,16 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	[[ -f "$bench_client" ]] || { echo "Set up the workstation's wiibench.py client first; see doc/hardware-session.md." >&2; exit 2; }
 	bench_server="${WII_BENCH_SERVER-$(sed -n '1p' "$bench_state/server" 2>/dev/null || true)}"
 	[[ -n "${bench_server//[[:space:]]/}" ]] || { echo "Configure the central lease server with wiibench.py setup --server URL before testing." >&2; exit 2; }
+	queue_chain="${2:-$(sed -n 's/^WII64_CHAIN=//p' .dev/hardware.env | tail -n 1)}"
+	source .dev/bench_session.sh "$queue_chain"
 	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}" "WII64_STAGE_INPUTS=${WII64_STAGE_INPUTS:-1}")
+	job_env+=("WII64_RECEIVER_TIMEOUT=$WII64_RECEIVER_TIMEOUT" "WII64_JOB_TIMEOUT=$WII64_JOB_TIMEOUT")
 	if [ -n "${WII64_DOL:-}" ]; then job_env+=("WII64_DOL=$WII64_DOL"); fi
+	if [ -n "${WII64_CHAIN_FILE:-}" ]; then job_env+=("WII64_CHAIN_FILE=$WII64_CHAIN_FILE"); fi
 	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
 	if [ -n "${WII64_HBC_ROOT:-}" ]; then job_env+=("WII64_HBC_ROOT=$WII64_HBC_ROOT"); fi
-	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --cwd "$PWD" -- \
-		env "${job_env[@]}" bash "$PWD/.dev/hardware_run.sh" "$@")"
+	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --agent "$WII_BENCH_AGENT" --timeout "$WII64_JOB_TIMEOUT" --cwd "$PWD" -- \
+		env "${job_env[@]}" bash -c "$(< "$PWD/.dev/hardware_run.sh")" "$PWD/.dev/hardware_run.sh" "$@")"
 	if [ "${WII64_QUEUE_ONLY:-0}" = 1 ]; then
 		echo "Queued Wii64 hardware run: $job." >&2
 		printf '%s\n' "$job"
@@ -46,7 +50,8 @@ for attempt in 1 2 3 4 5; do
 	sleep 2
 done
 chain="${2:-$(value WII64_CHAIN)}"
-[[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "scripts/chains/$chain.txt" ]] || {
+chain_file="${WII64_CHAIN_FILE:-scripts/chains/$chain.txt}"
+[[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "$chain_file" ]] || {
 	echo "Unknown chain '$chain'; choose a file in scripts/chains/ without its .txt suffix." >&2
 	exit 2
 }
@@ -65,16 +70,23 @@ dol="${WII64_DOL:-$dol}"
 [[ -f "$dol" ]] || { echo "Missing $dol; build it or unset WII64_SKIP_BUILD=1." >&2; exit 1; }
 mkdir -p .dev/runs
 out="$(mktemp -d ".dev/runs/hardware-${target}-$(date +%Y%m%d-%H%M%S)-XXXX")"
-cp "scripts/chains/$chain.txt" "$out/diag.cfg"
+cp "$chain_file" "$out/diag.cfg"
 printf 'result_host=%s\n' "$mac_ip" >> "$out/diag.cfg"
 if [ -n "${WII64_ROM_DIR:-}" ]; then
 	[ -d "$WII64_ROM_DIR" ] || { echo "ROM folder does not exist: $WII64_ROM_DIR" >&2; exit 1; }
 	printf 'rom_fetch=1\n' >> "$out/diag.cfg"
 fi
+python3 - "$out" "$dol" <<'PY'
+import hashlib, json, pathlib, sys
+out, dol = map(pathlib.Path, sys.argv[1:])
+paths = [dol, dol.with_suffix('.elf'), out / 'diag.cfg']
+hashes = {str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file()}
+(out / 'artifacts.json').write_text(json.dumps(hashes, indent=2) + '\n')
+PY
 receiver_python=python3
 if [ "$(uname -s)" = Darwin ] && [ -x /usr/bin/python3 ]; then receiver_python=/usr/bin/python3; fi
-receiver_timeout=1200
-if [ "$chain" = hardware ]; then receiver_timeout=2400; fi
+source .dev/bench_session.sh "$chain"
+receiver_timeout="$WII64_RECEIVER_TIMEOUT"
 receiver_cmd=("$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac_ip" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
 if [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
 hbc_root="${WII64_HBC_ROOT:-$PWD/../hbc-reborn}"

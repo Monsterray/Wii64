@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stdafx.h"
 #include "float.h"
+#include "../main/perf_subsystem.h"
 #include "VertexShaderConstantDef.h"
 
 extern FiddledVtx * g_pVtxBase;
@@ -718,6 +719,7 @@ inline void ReplaceAlphaWithFogFactor(int i)
 
 void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 {
+    PERF_SUBSYSTEM_SCOPE(PERF_SUB_VERTEX);
 
     UpdateCombinedMatrix();
 

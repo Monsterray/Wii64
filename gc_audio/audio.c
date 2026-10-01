@@ -92,6 +92,7 @@ static unsigned int queuePeakMs;
 
 static void aesnd_callback(AESNDPB *pb, uint32_t state)
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_AUDIO_CALLBACK);
 	if (state == VOICE_STATE_STREAM) {
 #ifdef PERF_PROF
 		streamRequests++;
@@ -254,6 +255,7 @@ EXPORT void CALL AiDacrateChanged(int SystemType)
 
 EXPORT void CALL AiLenChanged(void)
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_AUDIO_SUBMIT);
 	if (audioEnabled) {
 		size_t length = *AudioInfo.AI_LEN_REG;
 		if (length == 0)

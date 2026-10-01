@@ -23,6 +23,11 @@
 #ifndef WRAPPERS_H
 #define WRAPPERS_H
 
+/* Opt-in until matched Wii runs establish the gameplay benefit. */
+#ifndef DYNAREC_INVALIDATE_PAGE_SKIP
+#define DYNAREC_INVALIDATE_PAGE_SKIP 0
+#endif
+
 #include "Recompile.h"
 #include "../r4300.h"
 
@@ -87,4 +92,3 @@ unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
 #define ErrorEPC r4300.reg_cop0[30]
 
 #endif
-

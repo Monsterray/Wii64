@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <dirent.h>
 #include <stdarg.h>
+#include "../main/perf_subsystem.h"
 #ifndef __GX__
 #include <limits.h> // PATH_MAX
 
@@ -783,6 +784,7 @@ void UpdateScreenStep2 (void)
 
 EXPORT void CALL UpdateScreen(void)
 {
+    PERF_SUBSYSTEM_SCOPE(PERF_SUB_PRESENT);
 #ifdef DEBUGON
 //	_break();
 #endif
@@ -936,6 +938,7 @@ EXPORT void CALL CloseDLL(void)
 
 void ProcessDListStep2(void)
 {
+    PERF_SUBSYSTEM_SCOPE(PERF_SUB_GFX_LIST);
     g_CritialSection.Lock();
     if( status.toShowCFB )
     {

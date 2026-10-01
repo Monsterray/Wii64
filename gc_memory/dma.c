@@ -117,6 +117,7 @@ int deleteSram(fileBrowser_file* savepath){
 
 void dma_pi_read()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_PI);
 	unsigned long dma_length;
 	unsigned long req_length;
 	int i;
@@ -187,6 +188,10 @@ void dma_pi_read()
 	
 	if(!interpcore)
 	{
+#if DYNAREC_INVALIDATE_PAGE_SKIP
+		invalidate_func_range(pi_register.pi_cart_addr_reg + 0x80000000, dma_length);
+		invalidate_func_range(pi_register.pi_cart_addr_reg + 0xa0000000, dma_length);
+#else
 		for (i=0; i<dma_length; i+=4)
 		{
 			unsigned long rom_address1 = pi_register.pi_cart_addr_reg+i+0x80000000;
@@ -195,6 +200,7 @@ void dma_pi_read()
 			invalidate_func(rom_address1);
 			invalidate_func(rom_address2);
 		}
+#endif
 	}
 
 	pi_register.read_pi_status_reg |= 3;
@@ -204,6 +210,7 @@ void dma_pi_read()
 
 void dma_pi_write()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_PI);
 	unsigned long dma_length;
 	unsigned long req_length;
 	int i;
@@ -280,6 +287,10 @@ void dma_pi_write()
 	// Dynarec, invalidate any code we wrote over.
 	if(!interpcore)
 	{
+#if DYNAREC_INVALIDATE_PAGE_SKIP
+		invalidate_func_range(pi_register.pi_dram_addr_reg + 0x80000000, dma_length);
+		invalidate_func_range(pi_register.pi_dram_addr_reg + 0xa0000000, dma_length);
+#else
 		for (i=0; i<dma_length; i+=4)
 		{
 			unsigned long rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
@@ -287,6 +298,7 @@ void dma_pi_write()
 			invalidate_func(rdram_address1);
 			invalidate_func(rdram_address2);
 		}
+#endif
 	}
 
     // Set the RDRAM memory size when copying main ROM code
@@ -310,6 +322,7 @@ void dma_pi_write()
 
 void dma_sp_write()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_SP);
 	unsigned char *spMemType = (unsigned char*)SP_DMEM;
 	unsigned long length, count, skip, memaddr, dramaddr, i, memoff, chunk;
 
@@ -350,6 +363,7 @@ void dma_sp_write()
 
 void dma_sp_read()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_SP);
 	unsigned char *spMemType = (unsigned char*)SP_DMEM;
 	unsigned long length, count, skip, memaddr, dramaddr, i, memoff, chunk;
 
@@ -422,6 +436,7 @@ void si_end_of_dma(void)
 
 void dma_si_write()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_SI);
 	if (si_register.si_status & 0x1)
 	{
 		si_register.si_status |= 0x8;
@@ -444,6 +459,7 @@ void dma_si_write()
 
 void dma_si_read()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_SI);
 	if (si_register.si_status & 0x1)
 	{
 		si_register.si_status |= 0x8;

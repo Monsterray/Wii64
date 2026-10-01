@@ -1,0 +1,28 @@
+{
+  "agent": true,
+  "version": "1.8.6",
+  "proto": 3,
+  "app": "Wii64",
+  "app_version": "1.6.5",
+  "uptime_ms": 339945,
+  "ios": 58,
+  "ios_revision": 6175,
+  "ahbprot": true,
+  "mem1_free": 339968,
+  "mem2_free": 577472,
+  "heap_free": 74280,
+  "heap_arena": 10546472,
+  "agent_stack_used": 4440,
+  "agent_stack_size": 12288,
+  "ip": "192.168.8.213",
+  "exit_requested": false,
+  "inserted": [
+    "sd"
+  ],
+  "device": "sd",
+  "log": null,
+  "agent_idle_wakes": 1556,
+  "agent_idle_us": 360997,
+  "agent_request_ms": 5206,
+  "tcp_last_failure": ""
+}

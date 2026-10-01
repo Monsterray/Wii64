@@ -1,5 +1,8 @@
 # Subsystem survey: 2026-09-30
 
+See [the 2026-10-01 whole-system results](subsystem-results-2026-10-01.md) for
+the expanded coverage, renderer surveys, probe cost and invalidation experiment.
+
 ## Run the survey
 
 Configure the central Wii lease client and SD ROMs as described in
@@ -16,8 +19,22 @@ freezes DOL/ELF pairs before queuing full/control/full runs, saves source hashes
 compiler identity, flags, artifact hashes, job IDs, and result paths under one
 ignored `.dev/runs/` directory. Each run releases the lease after returning to
 Homebrew Channel. Other workstations retain their turns.
+New builds also retain the tracked working-tree diff. Source hashes detect
+changes; they are not a substitute for retaining new untracked source files.
 
 Use a chain name as the first argument to select another file in `scripts/chains/`.
+`system_survey` covers eight ROMs; `system_audio_survey` adds five ROMs and
+repeats Mario Party 3 PAL. These are separate chains to stay within Wiiload's
+argument-size limit. Both use existing recorded inputs; other entries are
+neutral title/intro scenes. Neither is full gameplay coverage.
+
+Set `WII64_SURVEY_TARGET=Rice_wii` for the Rice target. To queue without waiting,
+set `WII64_SURVEY_QUEUE_ONLY=1`. Collect with
+`bash .dev/profile_subsystems.sh --collect <survey-directory>`.
+To test another chain with verified binaries and no rebuild, use
+`bash .dev/profile_subsystems.sh --reuse <survey-directory> <chain>`.
+The new survey records its parent and freezes the new chain. Keep the same
+settings and probe boundaries when comparing emulator changes.
 ROMs must already be on the Wii SD card, or use the existing LAN ROM transfer
 option. With the external HBC-Reborn client, the runner stages the selected
 chain's replay files before launch. Run one build workflow at a time: targets
@@ -39,6 +56,17 @@ SD image until shutdown, when the launcher extracts it. Hardware validation
 also checks wiiload arguments and is not a Dolphin-result validator.
 Menu-only Dolphin boots retain earlier logs but do not print their stale chain
 tables as new results.
+Completed Dolphin chains retain logs, config, replay traces, diagnostic frames,
+and DOL/ELF hashes in ignored `.dev/runs/dolphin-chain-*` directories. Their
+validator checks VI targets, ROMs, replay loads, CPU core and audio modes; it
+does not require the hardware-only Wiiload marker. A completed VI count does
+not prove rendering or gameplay is correct.
+The launcher checks the whole latest Dolphin boot for invalid accesses, unknown
+DSP ucode and SD-sync failures, not only its last 20 log lines. A leftover
+`Load/WiiSDSync.xxx` backup stops folder-sync launches. Preserve that folder
+outside `Load/` before retrying and recover missing files while Dolphin is
+stopped. COMMON logging records the sync failure cause. New chain ROMs must
+exist in the staged profile before boot.
 
 ## Probe boundaries
 
@@ -63,9 +91,45 @@ that reset is discarded. One summary per game adds no per-frame file writes.
 | `tex_activate` | Texture activation, GX setup and LRU promotion | All |
 | `draw_triangles` | glN64 triangle batch submission and its state setup | All |
 | `draw_rect` | Filled/textured rectangles, including state and texture setup | All |
+| `gfx_list` | Display-list parser, both renderers; overlaps `rsp_gfx` | All |
+| `gfx_command` | glN64 GBI command handler | 1 in 127 |
+| `vertex` | glN64 per-vertex processing; Rice vertex batch processing | 1 in 127 |
+| `gfx_state` | glN64 `OGL_UpdateStates`, including nested texture work | 1 in 127 |
+| `gx_wait` | Existing glN64 `GX_DrawDone` calls; adds no new waits | All |
+| `dma_pi`, `dma_sp`, `dma_si` | Guest DMA handlers, including copies/invalidation/PIF work | All |
+| `tlb_translate` | `virtual_to_physical_address` | 1 in 127 |
+| `memory_slow` | Dynarec `dyna_mem` slow path, including mapped-device handlers and RSP work | 1 in 127 |
+| `jit_invalidate` | Eligible-page tree search/free; already-invalid pages remain in DMA/memory spans | 1 in 127 |
+| `pif`, `input` | PIF read/write and guest `GetKeys` input | All |
+| `guest_interrupt` | Guest interrupt handler, including VI limiter and presentation | All |
+| `interpreter_inclusive` | Pure interpreter, blocks of 256 opcodes plus final partial block | All blocks |
+| `audio_submit`, `audio_callback` | Audio-length submission and AESND callback, separate IDs | All |
+
+Audio synthesis substage timings are reported as sampled time only; they are
+not extrapolated. Snapshot/reset masks host IRQs; hot timers do not. Callback
+timing has one writer and its own stage. GPU execution, host scheduler/other
+IRQs and inline guest loads/stores remain unmeasured directly. Rice has coarse
+display-list, vertex and presentation timers, not glN64's texture/state detail.
+Inactive counters are distinct from absent instrumentation and unsampled calls.
+
+Failed loads and non-VI stops are excluded from the report ranking: a load
+failure can retain the previous game's counters. Very low graphics-task counts
+raise a scene warning. Inspect captures before using such rows as a gameplay
+baseline. The comparison also reports non-sleep wall time (wall minus requested
+limiter sleep); this includes other waits and interruptions, not CPU self time.
+
+The first 1.6.5 instrumented artifacts timed every invalidation call, including
+already-invalid pages. Their `jit_invalidate` boundary differs from the reduced
+probe boundary above. Compare only binaries with the same definition. The
+range-skip experiment is opt-in with `DYNAREC_INVALIDATE_PAGE_SKIP=1`; value 0
+retains the original walker. It skips already-invalid pages but visits eligible
+addresses at the original four-byte stride, including unaligned and wrapped
+ranges. Run `python3 tests/invalidation_range_test.py` for differential checks.
 
 These are inclusive wall-clock spans, not CPU partitions. Dispatch overlaps
 lookup and compilation. Execution can include RSP work, sleep, and exceptions.
+The memory slow path includes mapped-device handlers and RSP execution; its
+estimate is not memory access self time.
 Presentation from other graphics paths remains inside the graphics span.
 The rectangle span can contain texture spans. Mip-chain assembly and
 framebuffer texture paths are not included in `tex_load`. These CPU-side

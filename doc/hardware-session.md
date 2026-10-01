@@ -44,9 +44,25 @@ use the installed Windows path in the devkitPro MSYS2 shell. To enqueue without
 waiting, set `WII64_QUEUE_ONLY=1`. The command prints the job ID. To test a frozen
 build, also set `WII64_SKIP_BUILD=1 WII64_DOL=/absolute/path/to/build.dol`.
 Keep that file unchanged until its job finishes, and retain the matching ELF.
+The subsystem driver also freezes the chain config. `WII64_CHAIN_FILE` selects
+that frozen file for launch and replay staging. Use an absolute path when
+queuing it; keep it unchanged until the job finishes.
 The job preserves these settings and `WII64_ROM_DIR` even if the dispatcher was
 already running. Only the dispatcher supplies `WII_BENCH_JOB`; normal callers
 use the queued entry point.
+
+Queue entry points assign a session ID through `WII_BENCH_AGENT` and pass an
+explicit job timeout. A survey shares its ID across its jobs so the dispatcher
+can apply HBC-Reborn's same-agent chaining and fairness rules. The receiver
+bound includes each ROM's PAL-rate watchdog, startup allowance and transfer
+margin. `WII64_RECEIVER_TIMEOUT` and `WII64_JOB_TIMEOUT` override these bounds;
+the job must allow at least 180 seconds beyond the receiver for cleanup.
+These bounds are safety limits, not estimated run times.
+
+The hardware entry point snapshots its Bash source in the queue command.
+Keep sourced helpers unchanged: Bash can read later commands after a
+long-running child returns. Editing a live helper can corrupt that job even
+when the revised file passes `bash -n`. Change helpers between jobs.
 
 For development-agent builds and crash capture, see
 [ROM paging and HBC agent](rom-paging-and-agent.md). Set `WII64_HBC_ROOT` for an

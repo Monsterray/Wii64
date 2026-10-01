@@ -22,8 +22,24 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
     (state / "server").write_text("http://fixture.invalid:4310\n")
     client.write_text("import sys\n"
                       "if sys.argv[1] == 'add':\n"
+                      " assert sys.argv[sys.argv.index('--agent') + 1].startswith('wii64-')\n"
+                      " assert int(sys.argv[sys.argv.index('--timeout') + 1]) > 180\n"
+                      " assert any(x.startswith('WII64_RECEIVER_TIMEOUT=') for x in sys.argv)\n"
                       " assert 'WII64_DOL=/tmp/frozen build.dol' in sys.argv\n"
                       " assert 'WII64_SKIP_BUILD=1' in sys.argv\n"
+                      " i = sys.argv.index('bash')\n"
+                      " assert sys.argv[i + 1] == '-c'\n"
+                      " source = sys.argv[i + 2]\n"
+                      " from pathlib import Path\n"
+                      " assert source == Path(sys.argv[i + 3]).read_text().rstrip('\\n')\n"
+                      " import subprocess\n"
+                      " subprocess.run(['bash', '-n', '-c', source], check=True)\n"
+                      " import os\n"
+                      " probe = source.replace('source .dev/env.sh', 'pwd; exit 0')\n"
+                      " result = subprocess.check_output(['bash', '-c', probe, sys.argv[i + 3]],\n"
+                      "   cwd=Path(__file__).parent, env=dict(os.environ, WII_BENCH_JOB='fixture'), text=True)\n"
+                      " assert result.strip() == str(Path(sys.argv[i + 3]).parents[1])\n"
+                      " assert sys.argv[i + 4:] == ['glN64_wii', 'audio_reference']\n"
                       " print('fixture-job')\n"
                       "else:\n"
                       " assert sys.argv[1:] == ['wait', 'fixture-job']\n"
@@ -37,6 +53,10 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
     result = subprocess.run(command, env=env, capture_output=True, text=True)
     assert result.returncode == 2
     env["WII_BENCH_SERVER"] = "http://fixture.invalid:4310"
+    for receiver, timeout in [('bad', '2400'), ('0', '2400'), ('1200', '1201')]:
+        invalid = dict(env, WII64_RECEIVER_TIMEOUT=receiver, WII64_JOB_TIMEOUT=timeout)
+        result = subprocess.run(command, env=invalid, capture_output=True, text=True)
+        assert result.returncode != 0 and not result.stdout.strip()
     client.write_text("import sys\nsys.exit(9)\n")
     result = subprocess.run(command, env=env, capture_output=True, text=True)
     assert result.returncode == 9 and not result.stdout.strip()

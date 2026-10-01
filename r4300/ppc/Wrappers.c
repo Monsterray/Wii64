@@ -331,6 +331,8 @@ unsigned int dyna_check_cop1_unusable(unsigned int pc, int isDelaySlot){
 
 void invalidate_func(unsigned int addr){
 	if(!invalid_code_get(addr>>12)){
+		/* Coarse DMA/memory timers cover the cheap already-invalid path. */
+		PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_INVALIDATE);
 		PowerPC_func* func = find_func(&blocks[addr>>12]->funcs, addr);
 		if(func)
 			RecompCache_Free(func->start_addr);
@@ -338,13 +340,30 @@ void invalidate_func(unsigned int addr){
 }
 
 void invalidate_func_range(unsigned int addr, unsigned int bytes){
+#if DYNAREC_INVALIDATE_PAGE_SKIP
+	/* Keep the original four-byte stride, including unaligned/wrapped ranges. */
+	unsigned int words = bytes / 4 + (bytes % 4 != 0);
+	while(words){
+		unsigned int step = 1;
+		if(invalid_code_get(addr >> 12)){
+			step = (0x1000 - (addr & 0xfff) + 3) / 4;
+			if(step > words) step = words;
+		} else {
+			invalidate_func(addr);
+		}
+		addr += step * 4;
+		words -= step;
+	}
+#else
 	unsigned int i;
 	for(i = 0; i < bytes; i += 4) invalidate_func(addr + i);
+#endif
 }
 
 unsigned int dyna_mem(unsigned int addr, unsigned int value, int count,
                       memType type, unsigned int pc, int isDelaySlot,
                       int reverse){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_MEMORY_SLOW);
 	int i;
 	const int istart = reverse ? count - 1 : 0;
 	const int iend   = reverse ? -1        : count;

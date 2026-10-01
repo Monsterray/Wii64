@@ -33,6 +33,7 @@
 #include "../r4300/exception.h"
 #include "../r4300/macros.h"
 #include "TLB-Cache.h"
+#include "../main/perf_subsystem.h"
 #ifdef USE_EXPANSION
 	#define MEMMASK 0x7FFFFF
 	#define TOPOFMEM 0x80800000
@@ -59,6 +60,7 @@ void tlb_mem2_init()
 
 unsigned long virtual_to_physical_address(unsigned long vaddr, int w)
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_TLB);
 #ifdef USE_TLB_CACHE
 	unsigned long e = (w == 1) ? TLBCache_get_w(vaddr >> 12)
                      : TLBCache_get_r(vaddr >> 12);

@@ -292,6 +292,7 @@ void OGL_UpdateDepthUpdate()
 
 void OGL_UpdateStates()
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_GFX_STATE);
 #ifdef __GX__
 	if (OGL.GXclearColorBuffer || OGL.GXclearDepthBuffer)
 		OGL_GXclearEFB();

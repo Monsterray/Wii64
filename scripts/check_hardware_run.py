@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate the Wii chain, pad replays, and requested audio mode."""
+import argparse
 import pathlib
 import re
 import sys
@@ -7,11 +8,11 @@ import sys
 from chain_table import games
 
 
-def main(run_dir):
+def main(run_dir, require_wiiload=True):
     root = pathlib.Path(run_dir)
     config = (root / "diag.cfg").read_text(errors="replace").splitlines()
     log_path = root / "perf.log"
-    log = log_path.read_text(errors="replace")
+    log = log_path.read_text(errors="replace").replace("\0", "")
     expected = []
     for line in config:
         if not line.startswith("chain="):
@@ -21,7 +22,7 @@ def main(run_dir):
 
     errors = []
     rows = games(log_path)
-    if "mark: diag config: wiiload arguments" not in log:
+    if require_wiiload and "mark: diag config: wiiload arguments" not in log:
         errors.append("run did not confirm it used the selected wiiload configuration")
     quality = next((line.split("=", 1)[1] for line in config if line.startswith("audio_quality=")), None)
     audio_modes = {
@@ -57,7 +58,7 @@ def main(run_dir):
         row = rows[i]
         if row.get("how") != "vis" or row.get("vis", 0) < vis:
             errors.append(f"game {i + 1} did not reach {vis} VIs")
-        if pathlib.PurePosixPath(rom).name.lower() not in str(row.get("rom", "")).lower():
+        if pathlib.PurePosixPath(rom).name.casefold() != pathlib.PurePosixPath(str(row.get("rom", ""))).name.casefold():
             errors.append(f"game {i + 1} ROM does not match the requested chain")
 
     replay_counts = [int(n) for n in re.findall(r"^mark: pad replay records: (\d+)\s*$", log, re.M)]
@@ -76,4 +77,8 @@ def main(run_dir):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "."))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("run", nargs="?", default=".")
+    parser.add_argument("--dolphin", action="store_true", help="SD-file config, not wiiload arguments")
+    args = parser.parse_args()
+    sys.exit(main(args.run, require_wiiload=not args.dolphin))

@@ -35,6 +35,7 @@
 #include "macros.h"
 #include "interupt.h"
 #include "../gc_memory/dma.h"
+#include "../main/perf_subsystem.h"
 
 //Non-zero while an RSP task is locked
 unsigned int interrupt_unsafe_state = 0;
@@ -332,6 +333,7 @@ int chk_status(int chk) {
 
 void gen_interupt()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_INTERRUPT);
   if(!interrupt_unsafe_state && savestates_queued_load()) {
 	return;
   }

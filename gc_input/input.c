@@ -31,6 +31,7 @@
 #include "PakIO.h"
 #include "controller.h"
 #include "../main/wii64config.h"
+#include "../main/perf_subsystem.h"
 
 #ifdef USE_GUI
 
@@ -194,6 +195,7 @@ EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 *******************************************************************/
 EXPORT void CALL GetKeys(int Control, BUTTONS * Keys )
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_INPUT);
 #if defined(WII) && !defined(NO_BT)
 	//Need to switch between Classic and WiimoteNunchuck if user swapped extensions
 	if (padType[virtualControllers[Control].number] == PADTYPE_WII)

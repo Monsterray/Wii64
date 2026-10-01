@@ -11,7 +11,8 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
     client="${WII_BENCH_CLIENT:-$state/wiibench.py}"
     server="${WII_BENCH_SERVER-$(sed -n '1p' "$state/server" 2>/dev/null || true)}"
     [[ -f "$client" && -n "${server//[[:space:]]/}" ]] || { echo "Configure the central Wii queue first." >&2; exit 2; }
-    job="$(python3 "$client" add --name 'Wii64 agent fatal-DSI recovery' --cwd "$PWD" -- \
+    source .dev/bench_session.sh agent_crash
+    job="$(python3 "$client" add --name 'Wii64 agent fatal-DSI recovery' --agent "$WII_BENCH_AGENT" --timeout "$WII64_JOB_TIMEOUT" --cwd "$PWD" -- \
         env "WII64_HBC_ROOT=${WII64_HBC_ROOT:-$PWD/../hbc-reborn}" bash "$PWD/.dev/test_agent_wii.sh" "$dol")"
     if [ "${WII64_QUEUE_ONLY:-0}" = 1 ]; then printf '%s\n' "$job"; exit 0; fi
     exec python3 "$client" wait "$job"

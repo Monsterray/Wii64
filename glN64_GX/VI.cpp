@@ -12,6 +12,7 @@
 #ifdef __GX__
 #include <stdio.h>
 #include <gccore.h>
+#include "../main/perf_subsystem.h"
 #include <malloc.h>
 #include <ogc/lwp_heap.h>
 #include "../libgui/IPLFont.h"
@@ -236,7 +237,7 @@ void VI_GX_clearEFB(){
 	GX_SetZMode(GX_ENABLE,GX_ALWAYS,GX_TRUE);
 	GX_SetCopyClear ((GXColor){0,0,0,255}, 0xFFFFFF);
 	GX_CopyDisp (VI.xfb[VI.which_fb]+GX_xfb_offset, GX_TRUE);	//clear the EFB before executing new Dlist
-	GX_DrawDone(); //Wait until EFB->XFB copy is complete
+	{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); } // Existing EFB->XFB wait
 }
 
 extern timers Timers;

@@ -5,10 +5,18 @@
 static unsigned long long tick;
 unsigned long long gettime(void) { return tick += 100; }
 
+static void early_return(void)
+{
+    PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_DMA_PI);
+    return;
+}
+
 int main(void)
 {
     perfProf_subsystemReset();
+    early_return();
 #ifdef PERF_SUBSYSTEM_ENABLED
+    assert(perfProf_subsystemRead(PERF_SUB_DMA_PI).ticks == 100);
     assert(perfProf_subsystemPeriod(PERF_SUB_GFX) == 1);
     unsigned int period = perfProf_subsystemPeriod(PERF_SUB_LOOKUP);
     unsigned long long before = tick;

@@ -5,15 +5,23 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 [[ -z "${WII_BENCH_JOB:-}" ]] || { echo "Start this survey outside a Wii lease." >&2; exit 2; }
 chain="${1:-subsystem_survey}"
 resume=""
+reuse=""
 if [ "$chain" = --collect ]; then
     resume="${2:?usage: .dev/profile_subsystems.sh --collect <survey-directory>}"
     shift 2
     [[ "$#" = 0 ]] || { echo "--collect takes only the survey directory." >&2; exit 2; }
     chain=subsystem_survey
+elif [ "$chain" = --reuse ]; then
+    reuse="${2:?usage: --reuse <survey-directory> <chain>}"
+    chain="${3:?chain required}"
+    shift 3
+    [[ "$#" = 0 ]] || { echo "--reuse uses the original build flags." >&2; exit 2; }
 elif [ "$#" -gt 0 ]; then
     shift
 fi
 [[ "$chain" =~ ^[A-Za-z0-9_-]+$ && -f "scripts/chains/$chain.txt" ]] || { echo "Unknown chain: $chain" >&2; exit 2; }
+target="${WII64_SURVEY_TARGET:-glN64_wii}"
+case "$target" in glN64_wii) build_name=wii64-glN64 ;; Rice_wii) build_name=wii64-Rice ;; *) echo 'Use glN64_wii or Rice_wii.' >&2; exit 2 ;; esac
 bench_default="$HOME/.wii-bench"
 case "$(uname -s)" in Darwin|Linux) ;; *) bench_default=/c/tools/wii-bench ;; esac
 bench_state="${WII_BENCH_HOME:-$bench_default}"
@@ -33,9 +41,28 @@ for label in ('full1', 'control', 'full2'):
 PY
 else
 out="$(mktemp -d "$PWD/.dev/runs/subsystem-survey-$(date +%Y%m%d-%H%M%S)-XXXX")"
+if [ -n "$reuse" ]; then
+    python3 - "$reuse" "$out" <<'PY'
+import hashlib, json, pathlib, shutil, sys
+src, dst = map(pathlib.Path, sys.argv[1:])
+for name, digest in json.loads((src / 'artifacts.json').read_text()).items():
+    assert hashlib.sha256((src / name).read_bytes()).hexdigest() == digest, name
+for name in ('full.dol', 'full.elf', 'control.dol', 'control.elf', 'full.flags', 'control.flags',
+             'source.json', 'source.status', 'compiler.txt'):
+    shutil.copyfile(src / name, dst / name)
+if (src / 'source.diff').exists():
+    shutil.copyfile(src / 'source.diff', dst / 'source.diff')
+PY
+    target="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("target", "glN64_wii"))' "$out/source.json")"
+    export WII_BENCH_AGENT="${WII_BENCH_AGENT:-$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bench_agent"])' "$out/source.json")}"
+fi
+source .dev/bench_session.sh "$chain"
+cp "scripts/chains/$chain.txt" "$out/chain.txt"
 echo "Survey artifacts and logs: $out"
+if [ -z "$reuse" ]; then
 source .dev/env.sh
 git status --short > "$out/source.status"
+git diff --binary HEAD > "$out/source.diff"
 "$DEVKITPPC/bin/powerpc-eabi-gcc" --version > "$out/compiler.txt"
 python3 - "$out" "$@" <<'PY'
 import hashlib, json, os, pathlib, subprocess, sys
@@ -45,6 +72,10 @@ hashes = {name: hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()
 metadata = {
     'head': subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip(),
     'make_args': sys.argv[2:], 'files_sha256': hashes,
+    'target': os.environ.get('WII64_SURVEY_TARGET', 'glN64_wii'),
+    'bench_agent': os.environ['WII_BENCH_AGENT'],
+    'receiver_timeout': int(os.environ['WII64_RECEIVER_TIMEOUT']),
+    'job_timeout': int(os.environ['WII64_JOB_TIMEOUT']),
     'same_probes': os.environ.get('WII64_SURVEY_SAME_PROBES') == '1'}
 if 'HBC_AGENT=1' in sys.argv[2:]:
     sdk = pathlib.Path(next((arg.split('=', 1)[1] for arg in sys.argv[2:]
@@ -62,25 +93,35 @@ for mode in full control; do
     else flags="${WII64_SURVEY_CONTROL_FLAGS:-$flags}"; fi
     printf '%s\n' "$flags" > "$out/$mode.flags"
     echo "Clean build: $mode (see $out/$mode.build.log)"
-    if ! .dev/build_profiling.sh glN64_wii "DEBUG_FLAGS=$flags" "$@" > "$out/$mode.build.log" 2>&1; then
+    if ! .dev/build_profiling.sh "$target" "DEBUG_FLAGS=$flags" "$@" > "$out/$mode.build.log" 2>&1; then
         tail -n 30 "$out/$mode.build.log" >&2
         exit 1
     fi
-    cp wii64-glN64.dol "$out/$mode.dol"
-    cp wii64-glN64.elf "$out/$mode.elf"
+    cp "$build_name.dol" "$out/$mode.dol"
+    cp "$build_name.elf" "$out/$mode.elf"
 done
+fi
+python3 - "$out" "$chain" "$reuse" <<'PY'
+import json, os, pathlib, sys
+path = pathlib.Path(sys.argv[1]) / 'source.json'
+metadata = json.loads(path.read_text())
+metadata.update(chain=sys.argv[2], parent_survey=sys.argv[3], bench_agent=os.environ['WII_BENCH_AGENT'],
+                receiver_timeout=int(os.environ['WII64_RECEIVER_TIMEOUT']),
+                job_timeout=int(os.environ['WII64_JOB_TIMEOUT']))
+path.write_text(json.dumps(metadata, indent=2) + '\n')
+PY
 python3 - "$out" <<'PY'
 import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-         for p in root.iterdir() if p.suffix in ('.dol', '.elf')}
+         for p in root.iterdir() if p.suffix in ('.dol', '.elf') or p.name == 'chain.txt'}
 (root / 'artifacts.json').write_text(json.dumps(files, indent=2) + '\n')
 PY
 for run in full1 control full2; do
     mode=full
     if [ "$run" = control ]; then mode=control; fi
-    job="$(WII64_QUEUE_ONLY=1 WII64_SKIP_BUILD=1 WII64_DOL="$out/$mode.dol" \
-        bash .dev/hardware_run.sh glN64_wii "$chain")"
+    job="$(WII64_QUEUE_ONLY=1 WII64_SKIP_BUILD=1 WII64_DOL="$out/$mode.dol" WII64_CHAIN_FILE="$out/chain.txt" \
+        bash .dev/hardware_run.sh "$target" "$chain")"
     printf '%s\n' "$job" > "$out/$run.job"
 done
 if [ "${WII64_SURVEY_QUEUE_ONLY:-0}" = 1 ]; then

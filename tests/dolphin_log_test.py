@@ -8,7 +8,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "scripts"))
-from dolphin_log import latest_tail, within_budget
+from dolphin_log import latest_tail, latest_issues, within_budget
 
 with tempfile.TemporaryDirectory(prefix="wii64-log-") as directory:
     path = Path(directory) / "Logs" / "dolphin.log"
@@ -33,9 +33,26 @@ with tempfile.TemporaryDirectory(prefix="wii64-log-") as directory:
     with gzip.open(archive, "wb") as log:
         log.write(path.read_bytes())
     assert latest_tail(archive, 3) == latest_tail(path, 3)
+    path.write_text("Starting core = Wii mode\nInvalid read from 0x0\n" * 100 +
+                    "Starting core = Wii mode\nclean\n")
+    assert latest_issues(path) == (0, [])
+    path.write_text("Starting core = Wii mode\n" + "Invalid write to 0x0\n" * 100 + "Unknown ucode\n")
+    count, examples = latest_issues(path)
+    assert count == 101 and len(examples) == 10
+    result = subprocess.run([sys.executable, str(root / 'scripts/dolphin_log.py'), str(path), '--check-faults'],
+                            capture_output=True, text=True)
+    assert result.returncode != 0 and '101' in result.stderr
+    path.write_text('Starting core = Wii mode\nFailed to sync SD card with folder\n')
+    assert latest_issues(path)[0] == 1
     env["WII64_DOLPHIN_MAX_LOG_MIB"] = "64"
+    backup = Path(directory) / 'Load/WiiSDSync.xxx'
+    backup.mkdir(parents=True)
+    result = subprocess.run(["bash", str(root / ".dev/dolphin_test.sh"), "missing.dol", "1"],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 1 and 'SD sync backup' in result.stderr
+    backup.rmdir()
     env["WII64_DOLPHIN_FOLDER_SYNC"] = "False"
-    (Path(directory) / "Load").mkdir()
+    (Path(directory) / "Load").mkdir(exist_ok=True)
     (Path(directory) / "Load/WiiSD.raw").touch()
     result = subprocess.run(["bash", str(root / ".dev/dolphin_test.sh"), "missing.dol", "1", "chain=60 Test.z64"],
                             env=env, capture_output=True, text=True)

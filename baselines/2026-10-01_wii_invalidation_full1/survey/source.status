@@ -1,0 +1,39 @@
+ M .dev/dolphin_test.sh
+ M .dev/hardware_run.sh
+ M .dev/profile_subsystems.sh
+ M .dev/stage_wii_inputs.sh
+ M .dev/test_agent_wii.sh
+ M .dev/test_subsystems.sh
+ M Rice_GX/RenderBase.cpp
+ M Rice_GX/Video.cpp
+ M gc_audio/audio.c
+ M gc_input/input.c
+ M gc_memory/dma.c
+ M gc_memory/pif.c
+ M gc_memory/tlb.c
+ M glN64_GX/OpenGL.cpp
+ M glN64_GX/RSP.cpp
+ M glN64_GX/VI.cpp
+ M glN64_GX/gDP.cpp
+ M glN64_GX/gSP.cpp
+ M main/perf_prof.c
+ M main/perf_subsystem.c
+ M main/perf_subsystem.h
+ M main/version.h
+ M r4300/interupt.c
+ M r4300/ppc/Wrappers.c
+ M r4300/ppc/Wrappers.h
+ M r4300/pure_interp.c
+ M scripts/check_hardware_run.py
+ M scripts/subsystem_compare.py
+ M scripts/subsystem_report.py
+ M tests/hardware_queue_test.py
+ M tests/perf_subsystem_test.c
+ M tests/subsystem_report_test.py
+ M tests/subsystem_workflow_test.py
+ M tests/wii_input_staging_test.py
+?? .dev/bench_session.sh
+?? scripts/chains/system_audio_survey.txt
+?? scripts/chains/system_survey.txt
+?? tests/invalidation_range_test.py
+?? tests/perf_stubs/ogc/irq.h

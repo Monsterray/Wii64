@@ -449,7 +449,11 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		"rsp_gfx", "rsp_audio", "rsp_other", "lookup", "compile", "dispatch",
 		"execute_inclusive", "rom_copy", "present", "limiter",
 		"vm_fault", "vm_victim", "vm_read", "vm_write",
-		"tex_hash", "tex_lookup", "tex_load", "tex_activate", "draw_triangles", "draw_rect"
+        "tex_hash", "tex_lookup", "tex_load", "tex_activate", "draw_triangles", "draw_rect",
+        "gfx_list", "gfx_command", "vertex", "gfx_state", "gx_wait",
+        "dma_pi", "dma_sp", "dma_si", "tlb_translate", "pif", "input",
+        "guest_interrupt", "interpreter_inclusive", "audio_submit", "audio_callback",
+        "memory_slow", "jit_invalidate"
 	};
 	for (unsigned int i = 0; i < PERF_SUB_COUNT; i++) {
 		struct perf_subsystem_stats s = perfProf_subsystemRead(i);

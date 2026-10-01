@@ -94,10 +94,28 @@ LOCAL_WII64="$PROFILE_POSIX/Load/WiiSDSync/wii64"
 raw="$PROFILE_POSIX/Load/WiiSD.raw"
 mkdir -p "$LOCAL_WII64"
 if [ "$folder_sync" = True ]; then
+	[ ! -e "$PROFILE_POSIX/Load/WiiSDSync.xxx" ] || {
+		echo "Dolphin left an SD sync backup: $PROFILE_POSIX/Load/WiiSDSync.xxx" >&2
+		echo "With this profile stopped, preserve that backup under .dev/runs/ and recover missing files before retrying." >&2
+		exit 1
+	}
 	# ROMs and boxart.bin from the one drop folder (see stage_roms.sh).
 	"$(dirname "${BASH_SOURCE[0]}")/stage_roms.sh" "$PROFILE_POSIX"
 	if [ "$#" -gt 2 ]; then
 		printf '%s\n' "${@:3}" > "$LOCAL_WII64/diag.cfg"
+		python3 - "$LOCAL_WII64" "${@:3}" <<'PY'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+missing = []
+for line in sys.argv[2:]:
+    if not line.startswith('chain='):
+        continue
+    rom = line.split(' ', 1)[1]
+    if not rom.startswith('sd:/wii64/') or not (root / rom[len('sd:/wii64/'):]).is_file():
+        missing.append(rom)
+if missing:
+    sys.exit('Missing test ROMs (stage them before boot):\n' + '\n'.join(missing))
+PY
 		rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv
 	else
 		rm -f "$LOCAL_WII64/diag.cfg"
@@ -161,6 +179,7 @@ args=(-b -e "$DOL_ARG" -u "$PROFILE_ARG" \
 	-C Logger.Options.WriteToFile=True \
 	-C Logger.Options.Verbosity=4 \
 	-C Logger.Logs.MASTER=True \
+	-C Logger.Logs.COMMON=True \
 	-C Logger.Logs.BOOT=True)
 if [ "$(uname -s)" = Darwin ]; then
 	open -n -a "$DOLPHIN_APP" --args "${args[@]}" >"$PROFILE_POSIX/dolphin-test.log" 2>&1
@@ -259,6 +278,7 @@ fi
 if [ -f "$PROFILE_POSIX/Logs/dolphin.log" ]; then
 	# Dolphin appends boots to this log; report only the run just launched.
 	python3 scripts/dolphin_log.py "$dolphin_log"
+	python3 scripts/dolphin_log.py "$dolphin_log" --check-faults || test_status=1
 else
 	tail -20 "$PROFILE_POSIX/dolphin-test.log" 2>/dev/null || true
 fi
@@ -280,5 +300,25 @@ fi
 # A menu-only boot can leave the previous chain's log in the reused profile.
 if [ "$chain_count" -gt 0 ] && [ -f "$LOCAL_WII64/perf.log" ] && grep -q '^game:' "$LOCAL_WII64/perf.log"; then
 	python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/chain_table.py" "$LOCAL_WII64"
+	# The profile is reused. Retain this chain before the next launch overwrites it.
+	mkdir -p .dev/runs
+	out="$(mktemp -d "$PWD/.dev/runs/dolphin-chain-$(date +%Y%m%d-%H%M%S)-XXXX")"
+	for name in diag.cfg perf.log; do cp "$LOCAL_WII64/$name" "$out/$name"; done
+	for file in "$LOCAL_WII64"/padtrace_*.csv "$LOCAL_WII64"/xfb_*.bin; do
+		[ ! -f "$file" ] || cp "$file" "$out/"
+	done
+	python3 - "$DOL" "$out" <<'PY'
+import hashlib, json, pathlib, sys
+dol, out = map(pathlib.Path, sys.argv[1:])
+manifest = {str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in (dol, dol.with_suffix('.elf')) if p.is_file()}
+(out / 'artifacts.json').write_text(json.dumps(manifest, indent=2) + '\n')
+PY
+	python3 scripts/check_hardware_run.py "$out" --dolphin || test_status=1
+	python3 scripts/subsystem_report.py "$out" > "$out/subsystems.txt"
+	if [ -f "$dolphin_log" ]; then
+		python3 scripts/dolphin_log.py "$dolphin_log" --check-faults > "$out/fault-check.txt" || test_status=1
+	fi
+	echo "Dolphin chain results: $out"
 fi
 exit "$test_status"
