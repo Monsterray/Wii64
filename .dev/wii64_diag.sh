@@ -59,7 +59,7 @@ PS_HELPER="$(dirname "${BASH_SOURCE[0]}")/wii64_diag_helper.ps1"
 
 dolphin_pids() {
 	powershell.exe -NoProfile -Command \
-		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*Wii64*dolphin_profile*' } | Select-Object -ExpandProperty ProcessId" \
+		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*-u $PROFILE_WIN -C*' } | Select-Object -ExpandProperty ProcessId" \
 		2>/dev/null | tr -d '\r' | grep -E '^[0-9]+$' || true
 }
 
@@ -172,7 +172,7 @@ CHAIN_STATE="$(dirname "${BASH_SOURCE[0]}")/.wii64_chain_state_$RUNS_NAME"
 
 runs_pids() {
 	powershell.exe -NoProfile -Command \
-		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*Wii64*$RUNS_NAME -C*' } | Select-Object -ExpandProperty ProcessId" \
+		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*-u $DEV_WIN\\$RUNS_NAME -C*' } | Select-Object -ExpandProperty ProcessId" \
 		2>/dev/null | tr -d '\r' | grep -E '^[0-9]+$' || true
 }
 
