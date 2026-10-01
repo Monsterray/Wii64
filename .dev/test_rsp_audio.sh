@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Check the real RSP audio code with sanitizers in both DMEM layouts.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 compiler="${CC:-cc}"
 link_flag=-Wl,--gc-sections

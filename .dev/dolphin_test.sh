@@ -7,6 +7,7 @@
 # Uses a throwaway profile under .dev/ -- never the user's real Dolphin
 # profile. Full-frame dumping is opt-in: it can create gigabytes of PNGs.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 DOL="${1:?usage: .dev/dolphin_test.sh <path-to.dol> [seconds-to-wait]}"
@@ -26,7 +27,7 @@ case "$(uname -s)" in
 	;;
 	*)
 	DOLPHIN="${DOLPHIN_EXE:-/c/Tools/Dolphin-x64/Dolphin.exe}"
-	PROFILE_WIN='C:\projects\Wii64\.dev\dolphin_profile'
+	PROFILE_WIN="$(cygpath -w "$PROFILE_POSIX")"
 	PROFILE_ARG="$PROFILE_WIN"
 	;;
 esac
@@ -200,6 +201,13 @@ if [ "$(uname -s)" = Darwin ]; then
 else
 	"$DOLPHIN" "${args[@]}" >"$PROFILE_POSIX/dolphin-test.log" 2>&1 &
 	tracked_pids=("$!")
+	# $! is MSYS's own PID; taskkill needs Dolphin's Windows PID.
+	win_pids=""
+	for _ in {1..20}; do
+		win_pids="$(windows_dolphin_pids | tr '\n' ' ')"
+		[ -n "$win_pids" ] && break
+		sleep 0.5
+	done
 fi
 
 echo "Booting $DOL in Dolphin, waiting ${WAIT}s..."
@@ -264,7 +272,7 @@ if [ "$(uname -s)" = Darwin ]; then
 	dolphin_status=0
 else
 	dolphin_status=0
-	for p in "${tracked_pids[@]}"; do
+	for p in $win_pids; do
 		taskkill //F //PID "$p" >/dev/null 2>&1 || true
 	done
 fi

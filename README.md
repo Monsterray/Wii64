@@ -146,7 +146,14 @@ Report and view any open issues on the [issue tracker](https://github.com/emukid
 ## BUILDING FROM SOURCE
 Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its Wii development tools. Keep [libogc2](https://github.com/extremscorner/libogc2) and [libfat](https://github.com/extremscorner/libfat) in separate checkouts and build/install them with the same devkitPPC toolchain as Wii64. Set `DEVKITPRO`, `DEVKITPPC`, and `PATH` for that installation; `PATH` must include `$(DEVKITPRO)/tools/bin` and `$(DEVKITPPC)/bin`.
 
-On Windows, install devkitPro with the Wii development tools and use the devkitPro MSYS2 shell. Set `DEVKITPRO` to the installation (commonly `/c/devkitPro`), set `DEVKITPPC` to the compiler installation used to build libogc2/libfat, and add both `tools/bin` and `devkitPPC/bin` to `PATH`. Build from that shell with the same make command shown below; Dolphin is optional for building and can be used for testing. Do not overwrite an existing toolchain to install another version. On macOS, see [the Intel Mac development notes](doc/macos-development-setup.md).
+On Windows:
+
+1. Install [devkitPro](https://github.com/devkitPro/installer/releases/latest) with "Wii Development" checked, at `C:\devkitPro`. Install Git for Windows and Python 3.
+2. Clone this repository to a path without spaces, for example `C:\projects\Wii64`.
+3. From devkitPro's MSYS2 shell or Git Bash, run `.dev/setup-devkitpro-windows.sh` once. It clones libogc2 and libfat beside this repository, builds them with devkitPro's current devkitPPC, and installs them into `C:\devkitPro\wii64-sdk`. It does not change `C:\devkitPro\libogc2`, so other projects that use that copy are not affected. Run it again after you update either checkout.
+4. Build with `.dev/build.sh glN64_wii`, or with `make -f Makefile.glN64_wii` as shown below. The makefiles use `C:\devkitPro\wii64-sdk` when it exists. When it does not exist, they stop and tell you to run the setup script.
+
+On macOS, see [the Intel Mac development notes](doc/macos-development-setup.md).
 
 Build any target with the matching makefile, for example:
 
@@ -156,7 +163,7 @@ make -f Makefile.glN64_wii
 
 Other targets: `Makefile.glN64_gc[_exp]`, `Makefile.glN64_wiivc`, `Makefile.Rice_wii`, `Makefile.Rice_gc[_exp]`, and `Makefile.Rice_wiivc`. The Wii makefile recognizes both `libogc2/include` + `libogc2/lib/wii` and `libogc2/wii/include` + `libogc2/wii/lib` layouts. Clean before switching targets or toolchains because object files are built beside their sources.
 
-For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, the same build script uses the existing devkitPro paths; Dolphin testing uses `DOLPHIN_EXE` if Dolphin is installed outside its default location.
+For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, ROMs come from `C:\tools\Dolphin-x64\User\Load\WiiSDSync\wii64\roms` (or `WII64_ROM_DIR`), and Dolphin is `C:\Tools\Dolphin-x64\Dolphin.exe` unless `DOLPHIN_EXE` says otherwise. Dolphin runs with MMU emulation on: ROMs larger than 16 MB page through address-translation faults and do not boot without it.
 
 For audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supports AddressSanitizer and UndefinedBehaviorSanitizer. It checks synthesis, output streaming, queue boundaries, settings, and diagnostics. See [the optimization handoff](doc/optimization-handoff.md) for current audio status and test-profile storage limits.
 

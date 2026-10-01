@@ -49,7 +49,8 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-PROFILE_WIN='C:\projects\Wii64\.dev\dolphin_profile'
+DEV_WIN="$(cygpath -w "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")"   # this .dev/, wherever the repo is cloned
+PROFILE_WIN="$DEV_WIN\dolphin_profile"
 PROFILE_POSIX="$(dirname "${BASH_SOURCE[0]}")/dolphin_profile"
 LOCAL_WII64="$PROFILE_POSIX/Load/WiiSDSync/wii64"
 DOLPHIN="${DOLPHIN_EXE:-/c/Tools/Dolphin-x64/Dolphin.exe}"
@@ -87,7 +88,7 @@ cmd_start() {
 	# short (8.3-style), space-free path, which worked.
 	mkdir -p "$(dirname "${BASH_SOURCE[0]}")/run_dol"
 	cp "$dol" "$(dirname "${BASH_SOURCE[0]}")/run_dol/current.dol"
-	local dol_win="C:\\projects\\Wii64\\.dev\\run_dol\\current.dol"
+	local dol_win="$DEV_WIN\\run_dol\\current.dol"
 
 	powershell.exe -NoProfile -File "$PS_HELPER" -Action start -DolphinExe "$DOLPHIN" -Dol "$dol_win" -Profile "$PROFILE_WIN" -State "$(cd "$(dirname "$STATE")" && pwd -W | tr '/' '\\')\\$(basename "$STATE")"
 }
@@ -165,7 +166,7 @@ cmd_perf() {
 #   dolphin_runs itself is open in an interactive window.
 RUNS_NAME="${WII64_RUNS:-dolphin_runs}"
 RUNS_POSIX="$(dirname "${BASH_SOURCE[0]}")/$RUNS_NAME"
-RUNS_WIN="C:\\projects\\Wii64\\.dev\\$RUNS_NAME"
+RUNS_WIN="$DEV_WIN\\$RUNS_NAME"
 RUNS_WII64="$RUNS_POSIX/Load/WiiSDSync/wii64"
 CHAIN_STATE="$(dirname "${BASH_SOURCE[0]}")/.wii64_chain_state_$RUNS_NAME"
 
@@ -207,7 +208,7 @@ cmd_chain() {
 	cp "$dol" "$(dirname "${BASH_SOURCE[0]}")/run_dol/chain_$RUNS_NAME.dol"
 	local state_win; state_win="$(cd "$(dirname "$CHAIN_STATE")" && pwd -W | tr '/' '\\')\\$(basename "$CHAIN_STATE")"
 	powershell.exe -NoProfile -File "$PS_HELPER" -Action start -Batch -DolphinExe "$DOLPHIN" \
-		-Dol "C:\\projects\\Wii64\\.dev\\run_dol\\chain_$RUNS_NAME.dol" -Profile "$RUNS_WIN" -State "$state_win"
+		-Dol "$DEV_WIN\\run_dol\\chain_$RUNS_NAME.dol" -Profile "$RUNS_WIN" -State "$state_win"
 	local pid; pid="$(grep '^PID=' "$CHAIN_STATE" | cut -d= -f2 | tr -d '\r')"
 	local t0=$SECONDS how="powered off"
 	while tasklist //FI "PID eq $pid" 2>/dev/null | grep -q "$pid"; do
@@ -253,7 +254,7 @@ cmd_record() {
 	cp "$dol" "$(dirname "${BASH_SOURCE[0]}")/run_dol/record.dol"
 	local state_win; state_win="$(cd "$(dirname "$CHAIN_STATE")" && pwd -W | tr '/' '\\')\\$(basename "$CHAIN_STATE")"
 	powershell.exe -NoProfile -File "$PS_HELPER" -Action start -Record -DolphinExe "$DOLPHIN" \
-		-Dol 'C:\projects\Wii64\.dev\run_dol\record.dol' -Profile "C:\\projects\\Wii64\\.dev\\$RUNS_NAME" -State "$state_win"
+		-Dol "$DEV_WIN\\run_dol\\record.dol" -Profile "$DEV_WIN\\$RUNS_NAME" -State "$state_win"
 	echo "Now: Movie > Start Recording Input (boots Wii64 into $rom), play, Movie > Stop Recording, close Dolphin."
 }
 

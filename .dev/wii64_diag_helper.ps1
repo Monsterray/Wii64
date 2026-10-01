@@ -76,6 +76,9 @@ switch ($Action) {
             '-C', 'Dolphin.Interface.UsePanicHandlers=False',
             '-C', 'Dolphin.Interface.ConfirmStop=False',
             '-C', 'Dolphin.Core.CPUThread=True',
+            # ROMs over the 16 MB cache page through DSI faults (vm/wii_vm.c), which
+            # Dolphin only raises with MMU emulation on: without it they never boot.
+            '-C', 'Dolphin.Core.MMU=True',
             '-C', 'Dolphin.Core.WiiSDCard=True',
             '-C', 'Dolphin.Core.WiiSDCardAllowWrites=True',
             '-C', 'Dolphin.Core.WiiSDCardEnableFolderSync=True'

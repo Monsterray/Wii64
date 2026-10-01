@@ -4,19 +4,24 @@ CXXFLAGS	+= -DHW_DOL -DUSE_TLB_CACHE -DTINY_TLBCACHE -D__gamecube__
 
 LDFLAGS		+= -mogc
 
+# libogc2 root: the side-by-side SDK that .dev/setup-devkitpro-windows.sh installs, when
+# it exists, else devkitPro's own. Either install layout is accepted below.
+LIBOGC2 ?= $(firstword $(wildcard $(DEVKITPRO)/wii64-sdk/libogc2) $(DEVKITPRO)/libogc2)
+
 # See the note in Makefile.wii: accept either libogc2 layout. Upstream's install
 # calls the GameCube directory "gamecube" where the prebuilt bundle calls it "cube".
 #
-# NOTE: this target does not currently link. Makefile.base asks for -lfat, and no
-# libogc2 distribution ships libfat.a for GameCube -- neither the prebuilt bundle
-# nor a from-source build, which produces only 8 cube libraries. Pre-existing, and
-# unrelated to the toolchain: it fails identically on devkitPPC r41-2.
-ifneq ($(wildcard $(DEVKITPRO)/libogc2/lib/cube),)
-LIBPATHS	+= -L$(DEVKITPRO)/libogc2/lib/cube
-INCLUDE 	+= -I$(DEVKITPRO)/libogc2/include
+# Makefile.base asks for -lfat. The prebuilt bundle has no GameCube libfat.a; libfat's
+# own build (make ogc-release, as .dev/setup-devkitpro-windows.sh runs it) makes one.
+ifneq ($(wildcard $(LIBOGC2)/lib/cube),)
+LIBPATHS	+= -L$(LIBOGC2)/lib/cube
+INCLUDE 	+= -I$(LIBOGC2)/include
 else
-LIBPATHS	+= -L$(DEVKITPRO)/libogc2/gamecube/lib
-INCLUDE 	+= -I$(DEVKITPRO)/libogc2/gamecube/include
+LIBPATHS	+= -L$(LIBOGC2)/gamecube/lib
+INCLUDE 	+= -I$(LIBOGC2)/gamecube/include
+endif
+ifeq ($(wildcard $(LIBOGC2)/include/fat.h $(LIBOGC2)/gamecube/include/fat.h)$(filter clean,$(MAKECMDGOALS)),)
+$(error libogc2 with libfat not found under $(LIBOGC2). On Windows run .dev/setup-devkitpro-windows.sh; see README.md "BUILDING FROM SOURCE")
 endif
 
 OBJ		+= \

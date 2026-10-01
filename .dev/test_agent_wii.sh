@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Expected fatal DSI with a >16 MiB ROM mapped, then automatic HBC return.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 dol="${1:?usage: .dev/test_agent_wii.sh <frozen agent-profiling.dol>}"
 [[ -f "$dol" && -f "${dol%.dol}.elf" ]] || { echo "Keep the DOL and matching ELF together." >&2; exit 2; }

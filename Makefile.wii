@@ -4,8 +4,15 @@ CXXFLAGS	+= -DWII -DHW_RVL -DUSE_EXPANSION -D__wii__
 
 LDFLAGS		+= -mrvl
 
-LIBOGC2_INCLUDE 	?= $(firstword $(wildcard $(DEVKITPRO)/libogc2/include) $(wildcard $(DEVKITPRO)/libogc2/wii/include))
-LIBOGC2_WII_LIB 	?= $(firstword $(wildcard $(DEVKITPRO)/libogc2/lib/wii) $(wildcard $(DEVKITPRO)/libogc2/wii/lib))
+# libogc2 root: the side-by-side SDK that .dev/setup-devkitpro-windows.sh installs, when
+# it exists, else devkitPro's own. Either install layout is accepted below.
+LIBOGC2 ?= $(firstword $(wildcard $(DEVKITPRO)/wii64-sdk/libogc2) $(DEVKITPRO)/libogc2)
+LIBOGC2_INCLUDE 	?= $(firstword $(wildcard $(LIBOGC2)/include) $(wildcard $(LIBOGC2)/wii/include))
+LIBOGC2_WII_LIB 	?= $(firstword $(wildcard $(LIBOGC2)/lib/wii) $(wildcard $(LIBOGC2)/wii/lib))
+
+ifeq ($(wildcard $(LIBOGC2_INCLUDE)/fat.h)$(filter clean,$(MAKECMDGOALS)),)
+$(error libogc2 with libfat not found under $(LIBOGC2). On Windows run .dev/setup-devkitpro-windows.sh; see README.md "BUILDING FROM SOURCE")
+endif
 
 LIBPATHS 	+= -L$(LIBOGC2_WII_LIB)
 INCLUDE 	+= -I$(LIBOGC2_INCLUDE)

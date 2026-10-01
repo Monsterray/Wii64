@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run the full Wii chain and file a hardware baseline when every game reports.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 id="${1:-$(date +%F)_hw_glN64_full}"

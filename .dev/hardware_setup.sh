@@ -7,6 +7,7 @@
 # it. Author the per-step stages below the marker.
 
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 
 # ──────────────────────────────────────────────────────────────────────────
 # Wizard library: delightful, consistent UX, identical across every wizard.

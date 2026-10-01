@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 task_sub_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-subsystems.XXXXXX")"
 trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o"; rmdir "$task_sub_tmp"' EXIT

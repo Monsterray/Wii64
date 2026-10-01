@@ -4,10 +4,10 @@ For build, Dolphin, controller, or performance work, read [the Wii64 build-and-t
 
 - Keep libogc2 and libfat in separate source checkouts. Build them with the devkitPPC used for Wii64.
 - Use `.dev/env.sh` and `.dev/build.sh <target>`. Clean when you change targets, toolchains, or build flags because targets share object files.
-- Treat toolchain pins as host-specific: the tested Windows setup uses r41-2; this Intel Mac builds with r50-1. The Wii makefile accepts both tested libogc2 layouts.
+- Both hosts build with devkitPro's current devkitPPC (GCC 16) and source-built libogc2 and libfat. The Wii makefile accepts both tested libogc2 layouts. Do not use WiiStation's r41-2 pin or its prebuilt `C:\devkitPro\libogc2`: current Wii64 does not compile against them.
 - Test the new `.dol`, not only the link result. Use an isolated Dolphin profile. Stage ROMs before launch and keep ROMs, logs, screenshots, and profiles out of Git.
 - On macOS, `.dev/dolphin_test.sh wii64-glN64.dol interactive` prepares the profile and starts Dolphin. The script copies the Mac Wii Remote mapping, passes an absolute profile path, and enables MMU and SD folder sync.
-- On Windows, use the devkitPro MSYS2 shell and the Windows Dolphin helpers in `.dev/`. Keep native `TMP` and `TEMP` paths for the linker.
+- On Windows, run `.dev/setup-devkitpro-windows.sh` once; it installs libogc2 and libfat into `C:\devkitPro\wii64-sdk`, which the makefiles use. `.dev/env.sh` forces `DEVKITPRO=/c/devkitPro` and sets native `TMP`/`TEMP`. Use the Windows Dolphin helpers in `.dev/`; Dolphin needs MMU emulation for ROMs over 16 MB.
 - Read only the latest boot segment in Dolphin's append-only log. A null access is a guest fault to trace against the matching ELF; a successful build does not make it harmless.
 - For Wii uploads, leases, or subsystem timing, read [hardware sessions](doc/hardware-session.md) and [the subsystem survey](doc/subsystem-profile-2026-09-30.md). Use the queued entry point and matched probe/control builds.
 - Keep live launchers and queued artifacts unchanged. Freeze chain configs with binaries; validate ROM loads and scene activity before ranking timings. Compare probe cost in CPU counters and non-sleep wall time, not only limiter-bound wall time.

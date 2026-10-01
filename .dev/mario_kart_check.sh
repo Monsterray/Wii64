@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fast red/green check with an existing instrumented DOL and the reused SD profile.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 dol="${1:?usage: mario_kart_check.sh <instrumented.dol> [VIs] [diag options...]}"
 vis="${2:-900}"

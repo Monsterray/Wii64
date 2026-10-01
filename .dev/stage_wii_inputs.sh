@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Stage only the named chain's project replays, under the shared Wii lease.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 chain="${1:?usage: stage_wii_inputs.sh <chain name>}"
 chain_file="${WII64_CHAIN_FILE:-scripts/chains/$chain.txt}"

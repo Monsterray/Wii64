@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Test the installed ROM collection; freeze inputs, reuse the Dolphin SD profile.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 dol="${1:?usage: library_check.sh <instrumented.dol> [both|dolphin|hardware]}"
 mode="${2:-both}"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Reuse an instrumented DOL and SD profile; no extra ROM copies or frame dumps.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 dol="${1:?usage: zelda_check.sh <instrumented.dol> [boot|menus|new_game] [diag options...]}"
 mode="${2:-boot}"

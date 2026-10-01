@@ -13,9 +13,19 @@ case "$(uname -s)" in
 	export WII64_BUILD_TMP="$REPO_ROOT/.dev/build_tmp"
 	;;
 	*)
-	export DEVKITPRO="${DEVKITPRO:-/c/devKitPro}"
-	export DEVKITPPC="${DEVKITPPC:-$DEVKITPRO/devkitPPC-r41-2}"
-	export PATH="$DEVKITPRO/tools/bin:$PATH"
+	# Forced, not ${VAR:-}: shells here often carry DEVKITPRO=/opt/devkitpro, which
+	# only devkitPro's own MSYS2 understands, and WiiStation's r41-2 pin must not
+	# leak in. Wii64 uses pacman's current devkitPPC with the libogc2 and libfat
+	# that .dev/setup-devkitpro-windows.sh installs into C:\devkitPro\wii64-sdk.
+	export DEVKITPRO=/c/devkitPro
+	export DEVKITPPC="$DEVKITPRO/devkitPPC"
+	export PATH="$DEVKITPRO/tools/bin:$DEVKITPPC/bin:$PATH"
+	# On Windows python3 is often only the Microsoft Store placeholder; python.org's
+	# installer provides python. The scripts call python3.
+	if ! python3 -c '' >/dev/null 2>&1 && command -v python >/dev/null; then
+		python3() { python "$@"; }
+		export -f python3
+	fi
 	mkdir -p "$REPO_ROOT/.dev/build_tmp"
 	export WII64_BUILD_TMP="$(cd "$REPO_ROOT/.dev/build_tmp" && pwd -W | tr '/' '\\')"
 	;;
