@@ -24,6 +24,7 @@ struct { u32 DList, uc_start, uc_dstart, infloop; } RSP;
 u32 RDRAMSize;
 void _RSP_SetGameHacks() {}
 void DepthBuffer_Init() {}
+void DepthCopy_Reset() {}
 void GBI_Init() {}
 void OGL_Start() { gSP.changed = gDP.changed = 0xFFFFFFFF; }
 ''' + init + r'''

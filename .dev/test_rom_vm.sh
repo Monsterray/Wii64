@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 task_rom_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-rom-vm.XXXXXX")"
 trap 'rm -f "$task_rom_tmp/loader" "$task_rom_tmp/layout" "$task_rom_tmp/pagefile"; rmdir "$task_rom_tmp"' EXIT
@@ -11,11 +12,14 @@ for flush in default 0 1; do
         tests/rom_cache_test.c -o "$task_rom_tmp/loader"
     "$task_rom_tmp/loader"
 done
+# Rice and glN64 (which adds the depth-copy region), each with and without the agent.
+for plugin in "" -DGLN64_GX; do
 for agent in 0 1; do
-    flags=(-UWII64_HBC_AGENT)
-    if [ "$agent" = 1 ]; then flags=(-DWII64_HBC_AGENT); fi
+    flags=(-UWII64_HBC_AGENT $plugin)
+    if [ "$agent" = 1 ]; then flags=(-DWII64_HBC_AGENT $plugin); fi
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror "${flags[@]}" tests/mem2_layout_test.c -o "$task_rom_tmp/layout"
     "$task_rom_tmp/layout"
+done
 done
 python3 tests/hbc_watch_test.py
 python3 tests/vm_flush_test.py
