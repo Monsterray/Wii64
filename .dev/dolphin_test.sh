@@ -48,9 +48,10 @@ mac_dolphin_pids() {
 # their command line. Other Dolphin instances (e.g. a concurrent WiiStation test)
 # use a different -u profile and must be left strictly alone -- an earlier version
 # of this script killed every Dolphin.exe on the box, which would murder them.
+# The exact -u path, so a second clone's or worktree's profile is not mistaken for ours.
 windows_dolphin_pids() {
 	powershell.exe -NoProfile -Command \
-		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*Wii64*dolphin_profile*' } | Select-Object -ExpandProperty ProcessId" \
+		"Get-CimInstance Win32_Process -Filter \"Name='Dolphin.exe'\" | Where-Object { \$_.CommandLine -like '*-u $PROFILE_WIN -C*' } | Select-Object -ExpandProperty ProcessId" \
 		2>/dev/null | tr -d '\r' | grep -E '^[0-9]+$' || true
 }
 
