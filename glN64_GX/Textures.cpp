@@ -608,6 +608,13 @@ static void TextureCache_ForgetBackground( const CachedTexture *tex )
 			bgKeep[i] = NULL;
 }
 
+static void TextureCache_ForgetCurrent( const CachedTexture *tex )
+{
+	for (u32 i = 0; i < 2; i++)
+		if (cache.current[i] == tex)
+			cache.current[i] = NULL;
+}
+
 static bool TextureCache_IsInUse( const CachedTexture *tex )
 {
 	return (tex == cache.current[0]) || (tex == cache.current[1]) ||
@@ -648,16 +655,24 @@ BOOL TextureCache_FreeOneTexture()
 			return TRUE;
 	}
 
-	if (cache.bottom != NULL && cache.bottom != cache.dummy &&
-	    !TextureCache_IsInUse( cache.bottom ))
-		TextureCache_RemoveBottom();
-	else if (cache.dummy != NULL && cache.dummy->higher != NULL &&
-	         !TextureCache_IsInUse( cache.dummy->higher ))
-		TextureCache_Remove( cache.dummy->higher );
+	// Oldest first, skipping a framebuffer texture whose EFB copy may still be queued.
+	CachedTexture *victim = cache.bottom;
+	while (victim != NULL)
+	{
+		if (victim != cache.dummy && !TextureCache_IsInUse( victim ) &&
+		    !(victim->frameBufferTexture && FrameBuffer_IsTextureLive( victim )))
+		{
+			TextureCache_Remove( victim );
+			break;
+		}
+		victim = victim->higher;
+	}
 
 	return (cache.numCached < numBefore) ? TRUE : FALSE;
 }
 #endif // __GX__
+
+static void _texHeapDropRetired();
 
 void TextureCache_Init()
 {
@@ -692,7 +707,10 @@ void TextureCache_Init()
 #endif
 	}
 	else if (GXtexCacheBase != NULL)
+	{
+		_texHeapDropRetired(); // the heap is about to be re-initialised under them
 		__lwp_heap_init(GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
+	}
 #endif //__GX__
 
 #ifndef __GX__
@@ -795,9 +813,77 @@ BOOL TextureCache_Verify()
 	return TRUE;
 }
 
+// From upstream 0435c54/2f652fd, lost in the 2026-09-25 merge. A CachedTexture slot can be
+// reused while a FrameBuffer still points at its old texture memory: only free memory the
+// heap owns.
+static BOOL _texHeapOwns(const void *ptr)
+{
+	if (ptr == NULL || GXtexCache == NULL)
+		return FALSE;
+
+	return ((const char*)ptr > (const char*)GXtexCache->start &&
+	        (const char*)ptr < (const char*)GXtexCache->final) ? TRUE : FALSE;
+}
+
+// GX_CopyTex() only queues the copy, so a framebuffer texture's memory is freed once the
+// frame's draw-sync token has passed (VI_GX_DrawSyncCallback), not at once: games like
+// Vigilante 8 otherwise get an EFB copy written into memory already handed out again.
+#define TEX_RETIRE_MAX 64
+
+static void *texRetire[TEX_RETIRE_MAX];
+static u32 texRetireCount = 0;
+
+static void _texHeapDropRetired()
+{
+	texRetireCount = 0;
+}
+
+// Called from the draw-sync interrupt and from the main thread, so both touch the list
+// only with interrupts off.
+void TextureCache_ReleaseRetired()
+{
+	u32 level = IRQ_Disable();
+	while (texRetireCount > 0)
+		__lwp_heap_free( GXtexCache, texRetire[--texRetireCount] );
+	IRQ_Restore(level);
+}
+
+static void _texHeapRetire( void *ptr )
+{
+	if (texRetireCount >= TEX_RETIRE_MAX)
+	{
+		GX_DrawDone();
+		TextureCache_ReleaseRetired();
+	}
+
+	u32 level = IRQ_Disable();
+	texRetire[texRetireCount++] = ptr;
+	IRQ_Restore(level);
+}
+
+static void _texHeapFree(CachedTexture *texture)
+{
+	if (texture->GXtexture == NULL)
+		return;
+
+	if (!_texHeapOwns(texture->GXtexture))
+	{
+		texture->GXtexture = NULL;
+		return;
+	}
+
+	if (texture->frameBufferTexture)
+		_texHeapRetire( texture->GXtexture );
+	else
+		__lwp_heap_free(GXtexCache, texture->GXtexture);
+
+	texture->GXtexture = NULL;
+}
+
 void TextureCache_RemoveBottom()
 {
 	TextureCache_ForgetBackground( cache.bottom );
+	TextureCache_ForgetCurrent( cache.bottom );
 
 	CachedTexture *newBottom = cache.bottom->higher;
 
@@ -814,8 +900,7 @@ void TextureCache_RemoveBottom()
 		cache.top = NULL;
 
 #ifdef __GX__
-	if( cache.bottom->GXtexture != NULL )
-		__lwp_heap_free(GXtexCache, cache.bottom->GXtexture);
+	_texHeapFree(cache.bottom);
 
 	TextureCache_FreeSlot( cache.bottom );
 #else
@@ -832,6 +917,7 @@ void TextureCache_RemoveBottom()
 void TextureCache_Remove( CachedTexture *texture )
 {
 	TextureCache_ForgetBackground( texture );
+	TextureCache_ForgetCurrent( texture );
 
 #ifdef __GX__
 	if (texture->frameBufferTexture)
@@ -870,8 +956,7 @@ void TextureCache_Remove( CachedTexture *texture )
 
 	cache.cachedBytes -= texture->textureBytes;
 #ifdef __GX__
-	if( texture->GXtexture != NULL )
-		__lwp_heap_free(GXtexCache, texture->GXtexture);
+	_texHeapFree(texture);
 	TextureCache_FreeSlot( texture );
 #else // !__GX__
 	free( texture );
@@ -926,6 +1011,9 @@ CachedTexture *TextureCache_AddTop()
 #endif // __GX__
 	}
 	//print_gecko("Memory %d/%d, next %d/%d\r\n", cache.cachedBytes, cache.maxBytes, cache.numCached, GX_MAX_TEXTURES);
+	if (newtop == NULL)
+		return NULL; // every slot is in use or still live; callers fall back to the dummy
+
 	memset( newtop, 0x00, sizeof( CachedTexture ) );
 
 #ifndef __GX__
@@ -976,6 +1064,14 @@ void TextureCache_Destroy()
 {
 	while (cache.bottom)
 		TextureCache_RemoveBottom();
+
+	cache.cachedBytes = 0;
+	cache.numCached = 0;
+	cache.current[0] = NULL;
+	cache.current[1] = NULL;
+	cache.dummy = NULL;
+	TextureCache_ForgetAllBackgrounds();
+	TextureCache_PinTexture( NULL );
 #ifndef __GX__
 	glDeleteTextures( 32, cache.glNoiseNames );
 //	glDeleteTextures( 1, &cache.glDummyName );
@@ -1867,6 +1963,9 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
 
 void TextureCache_ActivateDummy( u32 t )
 {
+	if (cache.dummy == NULL)
+		return;
+
 #ifndef __GX__
 //TextureCache_ActivateTexture( t, cache.dummy );
 	if (OGL.ARB_multitexture)
@@ -1940,6 +2039,12 @@ void TextureCache_UpdateBackground()
 #endif // !__GX__
 
 	cache.current[0] = TextureCache_AddTop();
+
+	if (cache.current[0] == NULL)
+	{
+		TextureCache_ActivateDummy( 0 );
+		return;
+	}
 
 #ifndef __GX__
 	glBindTexture( GL_TEXTURE_2D, cache.current[0]->glName );
@@ -2371,6 +2476,12 @@ void TextureCache_Update( u32 t )
 #endif // !__GX__
 
 	cache.current[t] = TextureCache_AddTop();
+
+	if (cache.current[t] == NULL)
+	{
+		TextureCache_ActivateDummy( t );
+		return;
+	}
 
 #ifndef __GX__
 	glBindTexture( GL_TEXTURE_2D, cache.current[t]->glName );

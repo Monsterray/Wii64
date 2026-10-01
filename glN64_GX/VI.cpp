@@ -72,18 +72,7 @@ void VI_UpdateSize()
 
 	u32 width = _SHIFTR( *REG.VI_WIDTH, 0, 12 );
 	VI.width = hEnd == hStart ? width : lrint(abs((long)(hEnd - hStart)) * xScale / 2) * 2;
-#ifdef __GX__
-	if (VI.width != widthPrev)
-	{
-		if (widthPrev != 0)
-		{
-			FrameBuffer_RemoveBuffersOfWidth( widthPrev );
-			FrameBuffer_RemoveBuffersOfWidth( VI.width );
-		}
-		widthPrev = VI.width;
-	}
-#endif
-	
+
 	yScale *= width  / VI.width;
 	vEnd   += vStart % 2;
 	vStart += vEnd   % 2;
@@ -94,6 +83,18 @@ void VI_UpdateSize()
 
 	if (VI.width == 0) VI.width = 320;
 	if (VI.height == 0) VI.height = 240;
+
+	// After the clamp, as upstream does: a blank (width 0) frame must not drop every
+	// buffer of the real width.
+	if (VI.width != widthPrev)
+	{
+		if (widthPrev != 0)
+		{
+			FrameBuffer_RemoveBuffersOfWidth( widthPrev );
+			FrameBuffer_RemoveBuffersOfWidth( VI.width );
+		}
+		widthPrev = VI.width;
+	}
 }
 
 
@@ -569,6 +570,7 @@ void VI_GX_PreRetraceCallback(u32 retraceCnt)
 
 void VI_GX_DrawSyncCallback(u16 token)
 {
+	TextureCache_ReleaseRetired(); // the frame's EFB copies are done; free their old memory
 	VIDEO_SetNextFramebuffer(VI.xfb[token & 1]);
 	VIDEO_Flush();
 	VIDEO_SetPreRetraceCallback(VI_GX_PreRetraceCallback);
