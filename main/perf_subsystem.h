@@ -12,15 +12,23 @@ enum { PERF_SUB_GFX, PERF_SUB_AUDIO, PERF_SUB_RSP_OTHER, PERF_SUB_LOOKUP,
        PERF_SUB_DMA_PI, PERF_SUB_DMA_SP, PERF_SUB_DMA_SI, PERF_SUB_TLB,
        PERF_SUB_PIF, PERF_SUB_INPUT, PERF_SUB_INTERRUPT, PERF_SUB_INTERPRETER,
        PERF_SUB_AUDIO_SUBMIT, PERF_SUB_AUDIO_CALLBACK, PERF_SUB_MEMORY_SLOW,
-       PERF_SUB_INVALIDATE, PERF_SUB_COUNT };
+       PERF_SUB_INVALIDATE, PERF_SUB_CPU_HELPER, PERF_SUB_STORAGE_READ,
+       PERF_SUB_STORAGE_WRITE, PERF_SUB_SAVE_LOAD, PERF_SUB_SAVE_WRITE,
+       PERF_SUB_STATE_LOAD, PERF_SUB_STATE_SAVE, PERF_SUB_PROBE_IO,
+       PERF_SUB_AGENT_POLL, PERF_SUB_COUNT };
 
 struct perf_subsystem_stats {
     unsigned int calls, timed_calls;
     unsigned long long ticks;
+    unsigned int self_calls, self_dropped;
+    unsigned long long self_ticks;
 };
 
 #if defined(PERF_PROF) && defined(PERF_SUBSYSTEM_PROBES)
 #define PERF_SUBSYSTEM_ENABLED
+#ifndef PERF_SUBSYSTEM_SELF
+#define PERF_SUBSYSTEM_SELF 1
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,6 +37,7 @@ unsigned long long perfProf_subsystemBegin(unsigned int stage);
 void perfProf_subsystemEnd(unsigned int stage, unsigned long long start);
 struct perf_subsystem_stats perfProf_subsystemRead(unsigned int stage);
 unsigned int perfProf_subsystemPeriod(unsigned int stage);
+unsigned int perfProf_subsystemHasSelf(unsigned int stage);
 #ifdef __cplusplus
 }
 #endif

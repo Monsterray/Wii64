@@ -39,6 +39,7 @@
 #include "../fileBrowser/fileBrowser.h"
 #include "flashram.h"
 #include "Saves.h"
+#include "../main/perf_subsystem.h"
 
 #ifdef HW_RVL
 #include "MEM2.h"
@@ -62,6 +63,7 @@ bool flashramWritten = false;
 _FlashRAMInfo flashRAMInfo;
 
 int loadFlashram(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
 	int i, result = 0;
 	fileBrowser_file saveFile;
 	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
@@ -86,6 +88,7 @@ int loadFlashram(fileBrowser_file* savepath){
 }
 
 int saveFlashram(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_WRITE);
 	if(!flashramWritten) return 0;
 	fileBrowser_file saveFile;
 	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));

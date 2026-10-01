@@ -16,6 +16,12 @@ def compare(a, b, c, same_probes=False):
         raise ValueError("requires successful hardware VI runs with CPU counters")
     if any(r.get("vm_io", {}).get("errors", 0) for rows in (a, b, c) for r in rows):
         raise ValueError("I/O errors invalidate the comparison")
+    instrumented = (a, b, c) if same_probes else (a, c)
+    if any([(r.get("probe_schema", {}).get("version"),
+             r.get("probe_schema", {}).get("interval")) for r in rows] !=
+           [(r.get("probe_schema", {}).get("version"),
+             r.get("probe_schema", {}).get("interval")) for r in a] for rows in instrumented):
+        raise ValueError("probe schema/sampling interval differs; compare matching boundaries")
     if same_probes:
         if any(not r["subsystems"] for rows in (a, b, c) for r in rows):
             raise ValueError("requires enabled subsystem probes in all candidate/reference runs")

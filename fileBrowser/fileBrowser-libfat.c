@@ -34,6 +34,7 @@
 #include <sdcard/gcsd.h>
 #include "../r4300/r4300.h"
 #include "../main/ROM-Cache.h"
+#include "../main/perf_subsystem.h"
 
 extern BOOL hasLoadedROM;
 extern int stop;
@@ -187,6 +188,7 @@ int fileBrowser_libfat_seekFile(fileBrowser_file* file, unsigned int where, unsi
 }
 
 int fileBrowser_libfat_readFile(fileBrowser_file* file, void* buffer, unsigned int length){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_STORAGE_READ);
 	FILE* f = fopen( file->name, "rb" );
 	if(!f) return FILE_BROWSER_ERROR;
 	
@@ -199,6 +201,7 @@ int fileBrowser_libfat_readFile(fileBrowser_file* file, void* buffer, unsigned i
 }
 
 int fileBrowser_libfat_writeFile(fileBrowser_file* file, void* buffer, unsigned int length){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_STORAGE_WRITE);
 	FILE* f = fopen( file->name, "wb" );
 	if(!f) return FILE_BROWSER_ERROR;
 	

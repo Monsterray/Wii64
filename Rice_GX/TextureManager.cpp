@@ -783,7 +783,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
 			//So, finish drawing before the GX texture is overwritten and then invalidate the Texture memory
 			//TODO: include PalCRC in the texture lookup
 			perfProf_texStall();
-			GX_DrawDone();
+			{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 			GX_InvalidateTexAll();
 #endif
         }
@@ -1133,7 +1133,7 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
 	//	GX_DrawDone(); //Wait until EFB->XFB copy is complete
 //	COGLGraphicsContext::UpdateFrame(1);
 	GX_CopyDisp (VI.xfb[VI.which_fb], GX_TRUE);	//clear the EFB before executing new Dlist
-	GX_DrawDone(); //Wait until EFB->XFB copy is complete
+	{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); } // Existing copy wait
 	VIDEO_SetNextFramebuffer(VI.xfb[VI.which_fb]);
 	VIDEO_Flush();
 	VI.which_fb ^= 1;
@@ -2604,4 +2604,3 @@ void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha)
         }
         pEntry->pTexture->EndUpdate(&srcInfo);  }
 }
-

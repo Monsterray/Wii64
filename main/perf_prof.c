@@ -7,6 +7,9 @@
 #include <string.h>
 #include <malloc.h>
 #include <aesndlib.h>
+#ifdef PERF_SUBSYSTEM_ENABLED
+#include <ogc/gx.h>
+#endif
 #include <ogc/system.h>
 #include <ogc/machine/processor.h>
 #ifdef HW_RVL
@@ -137,10 +140,14 @@ static struct {
 	float dspPeak;
 } g;
 static volatile unsigned int g_underruns, g_overruns;
+#ifdef PERF_SUBSYSTEM_ENABLED
+static struct { unsigned int samples, command_busy, fifo_busy, over_high, under_low; } gpu;
+#endif
 
 static void buf_flush(void)
 {
 	if (!g_bufLen) return;
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_PROBE_IO);
 	u64 t0 = gettime();
 	FILE* f = fopen("sd:/wii64/perf.log", "a");
 	if (f) {
@@ -297,6 +304,17 @@ void perfProf_limiterSleep(long us)
 void perfProf_cpuSample(void)
 {
 	pmc_accumulate();
+#ifdef PERF_SUBSYSTEM_ENABLED
+    /* Passive status reads at the existing VI-service sample point. No GX
+       commands, counter resets or added waits; these are NOT utilization %. */
+    u8 high, low, read_idle, command_idle, breakpoint;
+    GX_GetGPStatus(&high, &low, &read_idle, &command_idle, &breakpoint);
+    gpu.samples++;
+    gpu.command_busy += !command_idle;
+    gpu.fifo_busy += !read_idle;
+    gpu.over_high += !!high;
+    gpu.under_low += !!low;
+#endif
 	extern unsigned int audioQueuedMilliseconds(void);
 	unsigned int queuedMs = audioQueuedMilliseconds();
 	if (queuedMs > g.queuePeakMs) g.queuePeakMs = queuedMs;
@@ -378,6 +396,9 @@ void perfProf_gameBegin(void)
 	buf_flush();
 	memset(&g, 0, sizeof(g));
 	perfProf_subsystemReset();
+#ifdef PERF_SUBSYSTEM_ENABLED
+    memset(&gpu, 0, sizeof(gpu));
+#endif
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++) g.audioTimerCountdown[i] = 127;
 	g_underruns = g_overruns = 0;
 	g_padN = 0;
@@ -440,6 +461,10 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u playback_hz=%u queue_peak_ms=%u\n",
 		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
 #ifdef PERF_SUBSYSTEM_ENABLED
+	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,
+        perfProf_subsystemPeriod(PERF_SUB_EXECUTE));
+	buf_printf("gpu_status: samples=%u command_busy=%u fifo_busy=%u over_high=%u under_low=%u\n",
+        gpu.samples, gpu.command_busy, gpu.fifo_busy, gpu.over_high, gpu.under_low);
 #ifdef HW_RVL
 	struct pagefile_stats io = pagefile_stats_read();
 	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u\n",
@@ -453,13 +478,20 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
         "gfx_list", "gfx_command", "vertex", "gfx_state", "gx_wait",
         "dma_pi", "dma_sp", "dma_si", "tlb_translate", "pif", "input",
         "guest_interrupt", "interpreter_inclusive", "audio_submit", "audio_callback",
-        "memory_slow", "jit_invalidate"
+        "memory_slow", "jit_invalidate", "cpu_helper", "storage_read", "storage_write",
+        "save_load", "save_write", "state_load", "state_save", "probe_io", "agent_poll"
 	};
+    _Static_assert(sizeof(subsystemNames) / sizeof(subsystemNames[0]) == PERF_SUB_COUNT,
+        "Every subsystem needs a log name");
 	for (unsigned int i = 0; i < PERF_SUB_COUNT; i++) {
 		struct perf_subsystem_stats s = perfProf_subsystemRead(i);
 		buf_printf("subsystem_time: stage=%s calls=%u timed_calls=%u period=%u timed_us=%llu\n",
 			subsystemNames[i], s.calls, s.timed_calls, perfProf_subsystemPeriod(i),
 			(unsigned long long)ticks_to_microsecs(s.ticks));
+        if (perfProf_subsystemHasSelf(i))
+            buf_printf("subsystem_self: stage=%s calls=%u timed_calls=%u self_us=%llu dropped=%u\n",
+                subsystemNames[i], s.calls, s.self_calls,
+                (unsigned long long)ticks_to_microsecs(s.self_ticks), s.self_dropped);
 	}
 #endif
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++)
@@ -468,7 +500,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 			(unsigned long long)ticks_to_microsecs(g.audioTimedTicks[i]));
 	buf_printf("game: n=%d/%d how=%s vis=%u vi_rate=%.0f vi0_retrace=%u wall_us=%llu sleep_us=%llu avg_vis=%.2f avg_fps=%.2f"
 		" exceptions=%u cacheResets=%u recompiles=%u batches=%u verts=%u texStalls=%u"
-		" treeDepthMax=%u underruns=%u overruns=%u queue_peak_ms=%u dsp_avg=%.2f dsp_peak=%.2f"
+		" treeDepthMax=%u underruns=%u overruns=%u queue_peak_ms=%u dsp_avg=%.2f dsp_peak=%.2f dsp_samples=%u"
 		" pmc1=%llu pmc2=%llu pmc3=%llu pmc4=%llu mmcr0=%08x mmcr1=%08x"
 		" heap_used=%d heap_free=%d arena1_free=%u arena2_free=%u"
 		" flushes=%u flush_us=%llu padtrace=%d rom=%s\n",
@@ -476,7 +508,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		g.visN ? g.visSum / g.visN : 0.0, g.fpsN ? g.fpsSum / g.fpsN : 0.0,
 		g.exceptions, g.cacheResets, g.recompiles, g.batches, g.verts, g.texStalls,
 		g.treeDepthMax, g_underruns, g_overruns, g.queuePeakMs,
-		g.dspN ? g.dspSum / g.dspN : 0.0, g.dspPeak,
+		g.dspN ? g.dspSum / g.dspN : 0.0, g.dspPeak, g.dspN,
 		g.pmc[0], g.pmc[1], g.pmc[2], g.pmc[3], (unsigned)PMC_MMCR0, (unsigned)PMC_MMCR1,
 		mi.uordblks, mi.fordblks,
 		(unsigned)((u32)SYS_GetArena1Hi() - (u32)SYS_GetArena1Lo()),

@@ -88,6 +88,7 @@ static inline unsigned char byte2bcd(int n)
 }
 
 int loadEeprom(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
 	int i, result = 0;
 	fileBrowser_file saveFile;
 	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
@@ -112,6 +113,7 @@ int loadEeprom(fileBrowser_file* savepath){
 }
 
 int saveEeprom(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_WRITE);
 	if(!eepromWritten) return 0;
 	fileBrowser_file saveFile;
 	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
@@ -249,6 +251,7 @@ unsigned char mempack_crc(unsigned char *data)
 }
 
 int loadMempak(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
 	int i, result = 0;
 	fileBrowser_file saveFile;
 
@@ -274,6 +277,7 @@ int loadMempak(fileBrowser_file* savepath){
 }
 
 int saveMempak(fileBrowser_file* savepath){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_WRITE);
 	if(!mempakWritten) return 0;
 	fileBrowser_file saveFile;
 	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));

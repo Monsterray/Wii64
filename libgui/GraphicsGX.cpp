@@ -31,6 +31,7 @@
 #endif
 
 #include "../main/rom.h"
+#include "../main/perf_subsystem.h"
 
 extern "C" void ScanPADSandReset(u32 _);
 void video_mode_init(GXRModeObj *rmode, unsigned int *fb1, unsigned int *fb2);
@@ -223,7 +224,7 @@ void Graphics::swapBuffers()
 {
 	GX_SetCopyClear((GXColor){0, 0, 0, 0xFF}, GX_MAX_Z24);
 	GX_CopyDisp(xfb[which_fb],GX_TRUE);
-	GX_DrawDone();
+	{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 
 	VIDEO_SetNextFramebuffer(xfb[which_fb]);
 	if(first_frame) {
@@ -259,7 +260,7 @@ void Graphics::copyFBTex(u8* dest, int width, int height, u8 fmt, int bpp)
 		GX_SetTexCopySrc(0, 0, 640, 480);
 		GX_SetTexCopyDst(320, 240, fmt, GX_COPY_MIPMAP);
 		GX_CopyTex(tempFB, GX_FALSE);
-		GX_DrawDone();
+		{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 	//Next draw FB to thumbnail sized region of EFB
 		//Load texture
 		GXTexObj obj;
@@ -305,7 +306,7 @@ void Graphics::copyFBTex(u8* dest, int width, int height, u8 fmt, int bpp)
 		GX_SetTexCopyDst(width, height, fmt, GX_COPY_PROGRESSIVE);
 		if (dest)
 			GX_CopyTex(dest, GX_FALSE);
-		GX_DrawDone();
+		{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 		DCFlushRange(dest, width*height*bpp);
 #ifndef HW_RVL
 		free(tempFB);
@@ -622,7 +623,7 @@ void Graphics::setInGameVMode() {
 			sprintf(buf, "Region: [%s] CRC [%08X:%08X]", countryString, ROM_HEADER.CRC1, ROM_HEADER.CRC2 );
 			IplFont::getInstance().drawString(80,310,buf, 0.5, false);
 			GX_CopyDisp(xfb[which_fb], GX_TRUE);
-			GX_DrawDone();
+			{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 			VIDEO_SetNextFramebuffer(xfb[which_fb]);
 			VIDEO_Flush();
 			VIDEO_WaitForFlush();
@@ -656,7 +657,7 @@ void Graphics::drawDebugBreadcrumb(const char* text) {
 			y += 24;
 			line = nl ? nl + 1 : NULL;
 		}
-		GX_DrawDone();
+		{ PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 		GX_CopyDisp(xfb[which_fb], GX_TRUE);
 		GX_Flush();
 		VIDEO_SetNextFramebuffer(xfb[which_fb]);

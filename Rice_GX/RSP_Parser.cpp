@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stdafx.h"
 #include "ucode.h"
+#include "../main/perf_subsystem.h"
 #include <sys/time.h>
 
 //////////////////////////////////////////////////////////
@@ -358,7 +359,7 @@ static bool _pdDepthBufferCopy( uint32 ulx, uint32 uly, uint32 lry, float s, uin
 
     if (!g_pdDepthSynced)
     {
-        GX_DrawDone();
+        { PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
         g_pdDepthSynced = true;
     }
 
@@ -388,7 +389,7 @@ static void _pdResolveDepthSamples()
     if (g_pdDepthSampleCount == 0)
         return;
 
-    GX_DrawDone();
+    { PERF_SUBSYSTEM_SCOPE(PERF_SUB_GX_WAIT); GX_DrawDone(); }
 
     for (uint32 i = 0; i < g_pdDepthSampleCount; i++)
     {
@@ -1964,4 +1965,3 @@ void LoadMatrix(uint32 addr)
         matToLoad.m[3][0], matToLoad.m[3][1], matToLoad.m[3][2], matToLoad.m[3][3]);
 #endif // _DEBUG
 }
-

@@ -106,8 +106,9 @@ that reset is discarded. One summary per game adds no per-frame file writes.
 | `audio_submit`, `audio_callback` | Audio-length submission and AESND callback, separate IDs | All |
 
 Audio synthesis substage timings are reported as sampled time only; they are
-not extrapolated. Snapshot/reset masks host IRQs; hot timers do not. Callback
-timing has one writer and its own stage. GPU execution, host scheduler/other
+not extrapolated. Snapshot/reset masks host IRQs. Self-attribution builds also
+mask IRQs during clock reads and bookkeeping, not across measured operations.
+Callback timing has one writer and its own stage. GPU execution, host scheduler/other
 IRQs and inline guest loads/stores remain unmeasured directly. Rice has coarse
 display-list, vertex and presentation timers, not glN64's texture/state detail.
 Inactive counters are distinct from absent instrumentation and unsampled calls.
@@ -139,6 +140,124 @@ Deterministic sampling can alias; an estimate can exceed wall time or be smaller
 than a fully timed child. Preserve those values and change the sampling interval
 for a confirmation run instead of clamping them into an apparent CPU budget.
 `PERF_SUBSYSTEM_INTERVAL` changes the hot-operation interval at build time.
+
+## Self attribution and remaining boundaries (1.6.8)
+
+Schema 2 retains the inclusive timers and adds `subsystem_self` records.
+Execute, slow-memory, dispatch, guest-interrupt, graphics-state and interpreter
+spans exclude named nested work **within the same timed invocation**. Nested
+exclusions count their union, not the sum of overlapping children.
+
+| Self stage | Work excluded |
+|---|---|
+| `execute_inclusive` | Instrumented C bridges, slow-memory handlers, guest interrupts, VM faults and AESND callbacks |
+| `memory_slow` | RSP tasks, DMA, ROM copying, VM faults, PIF, interrupts, audio submission/callbacks, TLB translation, invalidation and C helpers |
+| `dispatch` | Lookup, compilation, invalidation, TLB translation, VM faults and AESND callbacks |
+| `guest_interrupt` | Limiter sleep, presentation, RSP tasks, AESND callbacks, save states, buffered probe writes and agent polling |
+| `gfx_state` | Texture hashing/search/loading/activation, existing GX waits and AESND callbacks |
+| `interpreter_inclusive` | RSP tasks, DMA, interrupts, VM faults, PIF and audio submission/callbacks |
+
+A skipped child receives clock reads only while an active sampled parent
+needs to exclude it. Those forced readings do not enter the child's inclusive
+sample total. A reentrant root is rejected and counted in `dropped`; the report
+does not extrapolate a stage with dropped self samples. Reset-crossing spans
+are discarded. The original hot sampling interval still applies, so self
+estimates can alias and are not an additive CPU partition.
+
+Clock reads and attribution updates are IRQ-atomic. An audio callback between
+an end timestamp and its update previously produced dropped samples on Wii;
+an injected-IRQ regression test covers that boundary. Skipped calls with no
+active self root return before attribution work.
+
+Execute self still includes inline guest memory instructions, generated
+prologue/epilogue work, uninstrumented arithmetic helpers and other host IRQs.
+Memory self is the remaining handler work, not the cost of all guest memory
+accesses. Host scheduler time is not isolated. Do not call these hardware CPU
+self-cycle measurements.
+
+New inclusive stages cover `cpu_helper`, FAT `storage_read`/`storage_write`,
+EEPROM/SRAM/FlashRAM/mempak `save_load`/`save_write`, `state_load`/`state_save`,
+buffered `probe_io` and synchronous `agent_poll`. They do not time the agent's
+background networking. Startup remains separate; counters reset at the first
+guest VI. Automated chains do not write the user's saves to exercise these
+probes. All existing active `GX_DrawDone` calls in glN64, Rice and the UI are
+timed; no new waits are added.
+
+`gpu_status` samples command/FIFO idle and watermark bits at the existing
+approximately 500 ms VI-service sample point. This point can follow limiter
+sleep: counts are observations, **not GPU utilization or execution time**.
+The [libogc2 status implementation](https://github.com/extremscorner/libogc2/blob/master/libogc/gx.c)
+reads status registers without inserting GX commands. `dsp_samples` records
+the number of existing periodic AESND usage observations; its mean/peak describe
+the latest DSP block budget, not CPU wall time. Actual GPU execution and
+separate inline load/store cost still require other measurement methods.
+
+Run the targeted CPU/graphics/VM chain with full/control/full probes:
+
+```bash
+bash .dev/test_subsystems.sh
+bash .dev/profile_subsystems.sh subsystem_gaps HBC_AGENT=1
+```
+
+To measure just self-attribution overhead, use the same inclusive probes in
+both builds, with `-DPERF_SUBSYSTEM_SELF=1` and `=0` respectively through
+`WII64_SURVEY_FULL_FLAGS`/`WII64_SURVEY_CONTROL_FLAGS`; set
+`WII64_SURVEY_SAME_PROBES=1`. The normal disabled control measures the full
+subsystem probe cost. Match schema version and interval; do not reuse an old
+inclusive baseline as the new control or subtract a universal probe percentage.
+
+### Schema 2 hardware validation — 2026-10-01
+
+The `subsystem_gaps` chain completed full/control/full on Wii and returned to
+Homebrew Channel after each run. All eight full-probe game rows had zero dropped
+self samples; each sampled self total was bounded by its inclusive total.
+The same four-game chain passed in muted Dolphin with MMU and DSP LLE.
+Rice's 900-VI SM64 smoke test, a 300-VI pure-interpreter test and an ordinary
+release boot passed without invalid-access or DSP warnings. The release ELF
+has no subsystem timer symbols. Host C/C++ sanitizer and report/workflow tests
+passed, including injected IRQs, nested/separate exclusions and reentry recovery.
+
+Tracked results:
+[full 1](../baselines/2026-10-01_hw_subsystem_schema2_full1/perf.log),
+[control](../baselines/2026-10-01_hw_subsystem_schema2_control/perf.log),
+[full 2](../baselines/2026-10-01_hw_subsystem_schema2_full2/perf.log).
+Each baseline retains config, replay traces and artifact hashes. Frozen source,
+build flags and binaries remain in `.dev/runs/subsystem-survey-20261001-121502-83R1`.
+Full DOL SHA-256: `82411fe55c292dba0c87316a9eb598a7364102e7a9d22fa4123311904d4d289f`.
+Zero-trace games retain no trace file in these baselines: older SD files can
+remain after a run. The importer now uses each game row's trace count.
+
+Full-run mean versus disabled control; these are probe costs, not gameplay gains:
+
+| Scene | CPU cycles | Non-sleep wall | Total wall |
+|---|---:|---:|---:|
+| Super Mario 64 | +20.98% | +19.53% | +0.02% |
+| Mario Kart 64 race start | +9.28% | +9.32% | +0.51% |
+| Pokémon Snap intro | +18.12% | +17.64% | +0.54% |
+| Donkey Kong 64 intro | +18.58% | +16.70% | +0.18% |
+
+Limiter sleep hides CPU cost. Full-probe underruns were 105/91 versus 74 in
+the Kart control and 4/2 versus 0 in Snap. Keep ordinary performance comparisons
+on disabled probes; use full probes for diagnosis. One triple is not a universal
+overhead correction.
+
+New self-time estimates below use the full-run mean, except execute, which
+shows both repeats. A `wall/non-sleep` pair uses those two denominators.
+
+| Scene | Execute self, wall %, full 1 / full 2 | Memory self, wall/non-sleep % | Dispatch self, wall/non-sleep % |
+|---|---:|---:|---:|
+| Super Mario 64 | 22.80 / 34.00 | 1.91 / 5.04 | 11.56 / 30.50 |
+| Mario Kart 64 | 28.12 / 29.40 | 1.29 / 1.68 | 8.90 / 11.57 |
+| Pokémon Snap | 36.45 / 35.92 | 3.03 / 3.58 | 15.00 / 17.73 |
+| Donkey Kong 64 | 23.69 / 33.61 | 2.33 / 5.95 | 7.45 / 18.98 |
+
+SM64 and DK64 execute estimates show substantial repeat variation despite
+stable CPU totals. Confirm those spans with another sampling interval before
+ranking them. Do not sum sampled self estimates into a CPU budget. Graphics
+remains the largest fully timed non-sleep workload in Kart and Snap.
+Storage/save/state counters were inactive in gameplay; startup resets and
+disabled autosaves explain that result, not missing probes. These runs do not
+validate save writes, GPU execution time or separate inline load/store cost.
 
 ## First six-game survey
 

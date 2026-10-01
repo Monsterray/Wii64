@@ -83,8 +83,12 @@ def file_chain(args, dest):
         sys.exit(f"{src}/perf.log has no game: lines -- nothing to file")
     media = BASELINES / "media" / args.id
     media.mkdir(parents=True, exist_ok=True)
+    # A zero-trace game leaves an older SD file untouched. Do not file it as
+    # current evidence; old logs without the count retain their known slots.
+    traces = sorted({f"padtrace_{int(str(g['n']).split('/')[0]):02d}.csv"
+                     for g in rows if g.get("padtrace", 1) > 0})
     for name in ["perf.log", "diag.cfg", "run.log", "artifacts.json", "fault-check.txt",
-                 "hbc-before.json", "hbc-after.json", "agent-status.json", "dolphin-settings.json"] + sorted(p.name for p in src.glob("padtrace_*.csv")):
+                 "hbc-before.json", "hbc-after.json", "agent-status.json", "dolphin-settings.json"] + traces:
         if (src / name).exists():
             shutil.copy(src / name, dest / name)
     for b in sorted(src.glob("xfb_*.bin")):

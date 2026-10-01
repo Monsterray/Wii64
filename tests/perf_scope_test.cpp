@@ -3,6 +3,8 @@
 
 static unsigned long long tick;
 extern "C" unsigned long long gettime(void) { return tick += 100; }
+extern "C" unsigned int IRQ_Disable(void) { return 0; }
+extern "C" void IRQ_Restore(unsigned int) {}
 
 static void early_return()
 {

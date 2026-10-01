@@ -255,6 +255,7 @@ void dynarec(unsigned int address){
 
 unsigned int dyna_cop0_status(unsigned int pc, unsigned int oldStatus,
                               unsigned int newStatus, int isDelaySlot) {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 	r4300.pc = pc;
 	r4300.delay_slot = isDelaySlot;
 
@@ -280,6 +281,7 @@ unsigned int dyna_cop0_status(unsigned int pc, unsigned int oldStatus,
 
 unsigned int decodeNInterpret(MIPS_instr mips, unsigned int pc,
                               int isDelaySlot){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 	r4300.delay_slot = isDelaySlot; // Make sure we set r4300.delay_slot properly
 	r4300.pc = pc;
 #ifdef PROFILE
@@ -302,6 +304,7 @@ int dyna_update_count(unsigned int pc, int isDelaySlot){
 #else
 int dyna_update_count(unsigned int pc){
 #endif
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 	Count += ((pc - r4300.last_pc) >> 2) * count_per_op;
 	r4300.last_pc = pc;
 
@@ -316,6 +319,7 @@ int dyna_update_count(unsigned int pc){
 }
 
 unsigned int dyna_check_cop1_unusable(unsigned int pc, int isDelaySlot){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 	// Set state so it can be recovered after exception
 	r4300.delay_slot = isDelaySlot;
 	r4300.pc = pc;
@@ -340,6 +344,7 @@ void invalidate_func(unsigned int addr){
 }
 
 void invalidate_func_range(unsigned int addr, unsigned int bytes){
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 #if DYNAREC_INVALIDATE_PAGE_SKIP
 	/* Keep the original four-byte stride, including unaligned/wrapped ranges. */
 	unsigned int words = bytes / 4 + (bytes % 4 != 0);

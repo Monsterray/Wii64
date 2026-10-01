@@ -37,6 +37,7 @@
 #include <gccore.h>
 #include <sys/stat.h>
 #include "savestates.h"
+#include "perf_subsystem.h"
 #include "guifuncs.h"
 #include "rom.h"
 #include "../gc_memory/memory.h"
@@ -152,7 +153,8 @@ int savestates_queued_load() {
 
 // returns 0 on failure.
 int savestates_save(unsigned int slot, u8* fb_tex)
-{ 
+{
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_STATE_SAVE);
 	stateFile f;
 	char buf[1024];
 	int len, i;
@@ -287,6 +289,7 @@ int savestates_load_header(unsigned int slot, u8* fb_tex, char* date, char* time
 
 int savestates_load(unsigned int slot)
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_STATE_LOAD);
 	stateFile f = NULL;
 	char buf[1024];
 	int len, i;

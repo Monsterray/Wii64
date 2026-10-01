@@ -12,6 +12,7 @@ fixture = r'''
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#define PERF_SUBSYSTEM_C_SCOPE(stage) ((void)0)
 static unsigned char invalid_code[1 << 20];
 static uint32_t actual[65536], expected[65536];
 static unsigned used;

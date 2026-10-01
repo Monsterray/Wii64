@@ -26,7 +26,11 @@ void devAgent_init(void)
     perfProf_mark(result == 0 ? "HBC agent ready" : "HBC agent init failed");
 }
 
-int devAgent_exitRequested(void) { return hbc_agent_exit_requested(); }
+int devAgent_exitRequested(void)
+{
+    PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_AGENT_POLL);
+    return hbc_agent_exit_requested();
+}
 int devAgent_netReady(void) { return hbc_agent_net_wait(5000) >= 0; }
 
 #ifdef PERF_PROF

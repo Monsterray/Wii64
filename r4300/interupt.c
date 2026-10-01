@@ -282,6 +282,7 @@ void init_interupt()
 
 void check_interupt()
 {
+	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
   interupt_queue *event;
 
   if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg) {

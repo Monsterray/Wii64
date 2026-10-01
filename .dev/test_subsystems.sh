@@ -2,11 +2,12 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 task_sub_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-subsystems.XXXXXX")"
-trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o"; rmdir "$task_sub_tmp"' EXIT
-for mode in control probes interval; do
+trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o"; rmdir "$task_sub_tmp"' EXIT
+for mode in control probes interval no-self; do
     flags=(-UPERF_SUBSYSTEM_PROBES)
     if [ "$mode" != control ]; then flags=(-DPERF_PROF -DPERF_SUBSYSTEM_PROBES); fi
     if [ "$mode" = interval ]; then flags+=(-DPERF_SUBSYSTEM_INTERVAL=17); fi
+    if [ "$mode" = no-self ]; then flags+=(-DPERF_SUBSYSTEM_SELF=0); fi
     "${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
         -fno-sanitize-recover=all -Itests/perf_stubs "${flags[@]}" \
         tests/perf_subsystem_test.c main/perf_subsystem.c -o "$task_sub_tmp/$mode"
