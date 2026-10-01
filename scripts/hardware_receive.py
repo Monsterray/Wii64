@@ -7,6 +7,7 @@ import pathlib
 import re
 import time
 import urllib.parse
+from hbc_watch import RunWatch, load_client
 
 MAX_FILE = 2 * 1024 * 1024
 FILE_NAME = re.compile(r"/(perf\.log|(?:xfb_\d{2}\.bin|padtrace_\d{2}\.csv))\Z")
@@ -87,8 +88,12 @@ def main():
     parser.add_argument("--port", type=int, default=39364)
     parser.add_argument("--timeout", type=int, default=1200)
     parser.add_argument("--rom-dir", type=pathlib.Path, help="serve only ROMs named in diag.cfg")
+    parser.add_argument("--hbc-client", type=pathlib.Path, help="external hbc-reborn/tools/hbc.py")
+    parser.add_argument("--elf", type=pathlib.Path, help="ELF matching the uploaded DOL")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
+    watch = RunWatch(load_client(args.hbc_client), args.wii_ip, args.output,
+                     str(args.elf) if args.elf else None) if args.hbc_client else None
     with http.server.HTTPServer((args.bind, args.port), Receiver) as server:
         server.output = args.output
         server.wii_ip = args.wii_ip
@@ -108,6 +113,10 @@ def main():
         deadline = time.monotonic() + args.timeout
         while not server.done and time.monotonic() < deadline:
             server.handle_request()
+            if not server.done and watch:
+                failure = watch.poll()
+                if failure:
+                    raise SystemExit(failure)
         (args.output / ".ready").unlink(missing_ok=True)
         if not server.done:
             raise SystemExit("timed out waiting for Wii results; check the SD card")

@@ -1,0 +1,10 @@
+# Same 900-VI neutral scenes as the subsystem baseline, large ROMs only.
+dynacore=dynarec
+audio_quality=accurate
+audio_output=dsp
+audio_mixer=accurate
+audio_latency=stable
+audio_sync=native
+chain=900,input=neutral sd:/wii64/roms/Mario Party 3 (E) (M4) [!].z64
+chain=900,input=neutral sd:/wii64/roms/007 - The World Is Not Enough (USA).z64
+chain=900,input=neutral sd:/wii64/roms/Donkey Kong 64 (USA).z64

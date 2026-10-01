@@ -23,7 +23,7 @@
 #include <ogc/machine/asm.h>
 
 	.extern vm_dsi_handler
-	.extern default_exceptionhandler
+	.extern vm_dsi_fallback
 
 FUNC_START(dsi_handler)
 	stwu        sp,-EXCEPTION_FRAME_END(sp)
@@ -60,9 +60,15 @@ FUNC_START(dsi_handler)
 
 	bne         1f
 	
-	# jump to libogc's default handler
+	# Delegate fatal faults to the entry VM replaced (agent or debugger).
+	# The vector's frame still holds the interrupted CR/LR/CTR and r0-r5.
+	lis         r3,vm_dsi_fallback@ha
+	lwz         r3,vm_dsi_fallback@l(r3)
+	mtctr       r3
+	clrlwi      r4,sp,2
+	lwz         r3,EXCEPTION_NUMBER(sp)
 	addi        sp,sp,EXCEPTION_FRAME_END
-	b           default_exceptionhandler
+	bctr
 
 1:	
 	lwz         r3,CR_OFFSET(sp)

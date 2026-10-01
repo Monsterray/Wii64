@@ -33,4 +33,11 @@ with tempfile.TemporaryDirectory(prefix="wii64-log-") as directory:
     with gzip.open(archive, "wb") as log:
         log.write(path.read_bytes())
     assert latest_tail(archive, 3) == latest_tail(path, 3)
+    env["WII64_DOLPHIN_MAX_LOG_MIB"] = "64"
+    env["WII64_DOLPHIN_FOLDER_SYNC"] = "False"
+    (Path(directory) / "Load").mkdir()
+    (Path(directory) / "Load/WiiSD.raw").touch()
+    result = subprocess.run(["bash", str(root / ".dev/dolphin_test.sh"), "missing.dol", "1", "chain=60 Test.z64"],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 2 and "Diagnostic arguments require" in result.stderr
 print("Dolphin log budget and bounded latest-boot tail: ok")

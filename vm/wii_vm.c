@@ -11,6 +11,8 @@
 
 #include "../gc_memory/MEM2.h"
 #include "wii_vm.h"
+#include "pagefile.h"
+#include "../main/perf_subsystem.h"
 
 #include <stdio.h>
 
@@ -218,6 +220,8 @@ void LoadingBar_showBar(float percent, const char* string);
 void __exception_sethandler(u32 nExcept, void (*pHndl)());
 extern void default_exceptionhandler();
 extern void dsi_handler();
+extern void (*_exceptionhandlertable[])();
+void (*vm_dsi_fallback)();
 
 void* VM_Init(size_t VMSize, size_t MEMSize)
 {
@@ -257,17 +261,16 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 		return NULL;
 	}
 
-	ISFS_Initialize();
+	pagefile_cache_reset();
+	if (ISFS_Initialize() < 0)
+		goto init_fail;
 	// doesn't matter if this fails, will be caught when file is opened
 	ISFS_CreateFile(VM_FILENAME, 0, ISFS_OPEN_RW, ISFS_OPEN_RW, ISFS_OPEN_RW);
 
 	pagefile_fd = ISFS_Open(VM_FILENAME, ISFS_OPEN_RW);
 	if (pagefile_fd < 0)
 	{
-		LWP_MutexDestroy(vm_mutex);
-		vm_mutex = LWP_MUTEX_NULL;
-		errno = ENOENT;
-		return NULL;
+		goto init_fail;
 	}
 
 	tlbia();
@@ -281,8 +284,8 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 	 * plus we need to be able to quickly seek to any page
 	 * within the file.
 	 */
-	ISFS_Seek(pagefile_fd, 0, SEEK_END);
-	ISFS_GetFileStats(pagefile_fd, st);
+	if (ISFS_Seek(pagefile_fd, 0, SEEK_END) < 0 || ISFS_GetFileStats(pagefile_fd, st) < 0)
+		goto init_fail;
 	for (i=st->file_length; i<VMSize;)
 	{
 		u32 to_write = VMSize - i;
@@ -290,14 +293,9 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 			to_write = MEMSize;
 
 		LoadingBar_showBar((float)i/VMSize, "Growing NAND pagefile");
-		if (ISFS_Write(pagefile_fd, MEM_Base, to_write) != to_write)
+		if (ISFS_Write(pagefile_fd, MEM_Base, to_write) != (s32)to_write)
 		{
-			LWP_MutexDestroy(vm_mutex);
-			vm_mutex = LWP_MUTEX_NULL;
-			ISFS_Close(pagefile_fd);
-			pagefile_fd = -1;
-			errno = ENOSPC;
-			return NULL;
+			goto init_fail;
 		}
 //		printf("Wrote %u bytes to offset %u\n", to_write, i);
 		i += to_write;
@@ -320,7 +318,9 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 		phys_map[index].locked = 0;
 		phys_map[index].dirty = 0;
 		phys_map[index].page_index = v_index;
-		phys_map[index].pte_index = insert_pte(v_index, MEM_VIRTUAL_TO_PHYSICAL(MEM_Base+index), 0, 0b10) - HTABORG;
+		PTE *pte = insert_pte(v_index, MEM_VIRTUAL_TO_PHYSICAL(MEM_Base+index), 0, 0b10);
+		if (!pte) goto init_fail;
+		phys_map[index].pte_index = pte - HTABORG;
 		virt_map[v_index].committed = 0;
 		virt_map[v_index].p_map_index = index;
 	}
@@ -340,22 +340,71 @@ void* VM_Init(size_t VMSize, size_t MEMSize)
 	// enable SR
 	asm volatile("mtsrin %0,%1" :: "r"(VM_VSID), "r"(VM_Base));
 	// hook DSI
+	vm_dsi_fallback = _exceptionhandlertable[EX_DSI];
 	__exception_sethandler(EX_DSI, dsi_handler);
 
 	vm_initialized = 1;
 
 	return VM_Base;
+
+init_fail:
+	if (pagefile_fd >= 0) ISFS_Close(pagefile_fd);
+	pagefile_fd = -1;
+	LWP_MutexDestroy(vm_mutex);
+	vm_mutex = LWP_MUTEX_NULL;
+	errno = EIO;
+	return NULL;
+}
+
+/* Finish load-time writeback before gameplay. Keep every current mapping. */
+int VM_Flush(void)
+{
+	if (!vm_initialized) return 0;
+	LWP_MutexLock(vm_mutex);
+	for (u16 index = 0; index < pmap_max; )
+	{
+		if (!phys_map[index].valid || phys_map[index].locked) { ++index; continue; }
+		PTE *pte = HTABORG + phys_map[index].pte_index;
+		if (!phys_map[index].dirty && !pte->C) { ++index; continue; }
+		u16 virtual = phys_map[index].page_index;
+		unsigned int count = 1;
+		while (count < 16 && index+count < pmap_max)
+		{
+			p_map *next = &phys_map[index+count];
+			if (!next->valid || next->locked || next->page_index != virtual+count) break;
+			PTE *next_pte = HTABORG + next->pte_index;
+			if (!next->dirty && !next_pte->C) break;
+			++count;
+		}
+		for (unsigned int i = 0; i < count; ++i) tlbie(VM_Base + virtual+i);
+		if (!pagefile_write(pagefile_fd, MEM_Base+index, virtual*PAGE_SIZE, count*PAGE_SIZE))
+		{
+			LWP_MutexUnlock(vm_mutex);
+			return 0;
+		}
+		// Publish clean/committed state only after the entire write succeeds.
+		for (unsigned int i = 0; i < count; ++i)
+		{
+			virt_map[virtual+i].committed = 1;
+			phys_map[index+i].dirty = 0;
+			HTABORG[phys_map[index+i].pte_index].C = 0;
+		}
+		index += count;
+	}
+	LWP_MutexUnlock(vm_mutex);
+	return 1;
 }
 
 void VM_Deinit(void)
 {
-	if (--vm_initialized)
+	if (!vm_initialized || --vm_initialized)
 		return;
+	pagefile_cache_reset();
 
 	// disable SR
 	asm volatile("mtsrin %0,%1" :: "r"(0x80000000), "r"(VM_Base));
-	// restore default DSI handler
-	__exception_sethandler(EX_DSI, default_exceptionhandler);
+	// Restore the agent/debugger entry that was installed before VM.
+	__exception_sethandler(EX_DSI, vm_dsi_fallback);
 
 	if (vm_mutex != LWP_MUTEX_NULL)
 	{
@@ -379,6 +428,7 @@ void VM_InvalidateAll(void)
 		return;
 
 	LWP_MutexLock(vm_mutex);
+	pagefile_cache_reset();
 
 	_CPU_ISR_Disable(irq);
 
@@ -429,12 +479,15 @@ int vm_dsi_handler(u32 dsisr, u32 dar)
 	if (!vm_initialized)
 		return 0;
 
+	unsigned long long fault_timer = perfProf_subsystemBegin(PERF_SUB_VM_FAULT);
 	LWP_MutexLock(vm_mutex);
 
 	dar &= ~0xFFF;
 	virt_index = (vm_page*)dar - VM_Base;
 
+	unsigned long long victim_timer = perfProf_subsystemBegin(PERF_SUB_VM_VICTIM);
 	phys_index = locate_oldest();
+	perfProf_subsystemEnd(PERF_SUB_VM_VICTIM, victim_timer);
 
 	// purge phys_index if it's dirty
 	if (phys_map[phys_index].dirty)
@@ -479,16 +532,17 @@ int vm_dsi_handler(u32 dsisr, u32 dar)
 			pmap_head++;
 		}
 
-		ISFS_Seek(pagefile_fd, flush_v_index*PAGE_SIZE, SEEK_SET);
-		ISFS_Write(pagefile_fd, MEM_Base+phys_index, PAGE_SIZE*pages_to_flush);
+		if (!pagefile_write(pagefile_fd, MEM_Base+phys_index, flush_v_index*PAGE_SIZE, PAGE_SIZE*pages_to_flush))
+			goto fault_fail;
 //		printf("VM page %d was purged (%d)\n", phys_map[phys_index].page_index, pages_to_flush);
 	}
 
 	// fetch virtual_index if it has been previously committed
 	if (virt_map[virt_index].committed)
 	{
-		ISFS_Seek(pagefile_fd, virt_index*PAGE_SIZE, SEEK_SET);
-		ISFS_Read(pagefile_fd, MEM_Base+phys_index, PAGE_SIZE);
+		if (!pagefile_read(pagefile_fd, MEM_Base+phys_index, virt_index*PAGE_SIZE,
+		                  0x80000000-(u32)VM_Base))
+			goto fault_fail;
 //		printf("VM page %d was fetched\n", virt_index);
 	}
 	else
@@ -498,9 +552,17 @@ int vm_dsi_handler(u32 dsisr, u32 dar)
 
 	virt_map[virt_index].p_map_index = phys_index;
 	phys_map[phys_index].page_index = virt_index;
-	phys_map[phys_index].pte_index = insert_pte(virt_index, MEM_VIRTUAL_TO_PHYSICAL(MEM_Base+phys_index), 0, 0b10) - HTABORG;
+	PTE *pte = insert_pte(virt_index, MEM_VIRTUAL_TO_PHYSICAL(MEM_Base+phys_index), 0, 0b10);
+	if (!pte) goto fault_fail;
+	phys_map[phys_index].pte_index = pte - HTABORG;
 
 	LWP_MutexUnlock(vm_mutex);
+	perfProf_subsystemEnd(PERF_SUB_VM_FAULT, fault_timer);
 
 	return 1;
+
+fault_fail:
+	LWP_MutexUnlock(vm_mutex);
+	perfProf_subsystemEnd(PERF_SUB_VM_FAULT, fault_timer);
+	return 0; // Fatal I/O/PTE failure: delegate rather than execute corrupt ROM bytes.
 }

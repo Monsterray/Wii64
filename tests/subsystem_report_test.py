@@ -8,7 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from subsystem_report import load, milliseconds, report
 from subsystem_compare import compare
 
-log = """subsystem_time: stage=lookup calls=254 timed_calls=2 period=127 timed_us=200
+log = """vm_io: read_ahead=1 reads=7 hits=21 read_bytes=229376 writes=0 write_bytes=0 errors=0
+subsystem_time: stage=lookup calls=254 timed_calls=2 period=127 timed_us=200
 subsystem_time: stage=limiter calls=100 timed_calls=100 period=1 timed_us=1000000
 game: n=1/1 how=vis vis=900 vi_rate=60 wall_us=15000000 sleep_us=900000 pmc1=100 pmc2=90 underruns=1 overruns=0 rom=sd:/wii64/roms/Test.z64
 game: n=2/2 how=vis vis=900 vi_rate=50 wall_us=18000000 pmc1=100 pmc2=90 rom=sd:/wii64/roms/Next.z64
@@ -20,6 +21,7 @@ with tempfile.TemporaryDirectory() as directory:
 assert milliseconds(rows[0]["subsystems"]["lookup"]) == 25.4
 assert milliseconds({"calls": 100, "timed_calls": 0}) is None
 assert not rows[1]["subsystems"]
+assert rows[0]["vm_io"]["hits"] == 21 and not rows[1]["vm_io"]
 out = io.StringIO()
 with contextlib.redirect_stdout(out):
     report(rows)
@@ -35,6 +37,13 @@ assert milliseconds(alias["subsystems"]["execute_inclusive"]) > alias["wall_us"]
 control = dict(rows[0], subsystems={})
 result = compare(rows[:1], [control], rows[:1])
 assert result[0]["cycles_percent"] == 0
+assert compare(rows[:1], rows[:1], rows[:1], same_probes=True)[0]["wall_percent"] == 0
+try:
+    compare(rows[:1], [dict(rows[0], vm_io={"errors": 1})], rows[:1], same_probes=True)
+except ValueError:
+    pass
+else:
+    raise AssertionError("failed NAND I/O accepted for performance comparison")
 for invalid in ([rows[1]], [], [dict(rows[0], pmc2=0)]):
     try:
         compare(rows[:1], invalid, rows[:1])

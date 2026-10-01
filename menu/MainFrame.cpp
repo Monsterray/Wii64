@@ -176,7 +176,8 @@ void Func_Settings()
 	pMenuContext->setActiveFrame(MenuContext::FRAME_SETTINGS,SettingsFrame::SUBMENU_GENERAL);
 }
 
-#define VERSION "1.6.2"
+#include "../main/version.h"
+#define VERSION WII64_VERSION
 #ifdef RICE_GFX
 	#define GFX_PLUGIN "Rice"
 #else

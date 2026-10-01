@@ -13,6 +13,7 @@ INCLUDE 	+= -I$(LIBOGC2_INCLUDE)
 OBJ		+= \
 		vm/dsihandler.o \
 		vm/wii_vm.o \
+		vm/pagefile.o \
 		main/wii.o \
 		main/Autoboot.o
 
@@ -21,3 +22,13 @@ OBJ_INPUT	+= \
 		gc_input/controller-WiimoteNunchuk.o
 
 LIB		+= -lwiiuse -lbte -lz
+
+# External HBC-Reborn SDK; opt-in development builds only.
+ifeq ($(HBC_AGENT),1)
+HBC_AGENT_ROOT ?= ../hbc-reborn
+FEATURES += -DWII64_HBC_AGENT
+INCLUDE += -I"$(HBC_AGENT_ROOT)/sdk"
+LIBPATHS += -L"$(HBC_AGENT_ROOT)/sdk/hbc_agent/libogc2"
+LIB := -lhbcagent $(LIB)
+OBJ += main/dev_agent.o
+endif

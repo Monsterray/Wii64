@@ -41,6 +41,7 @@
 #include "../gc_memory/MEM2.h"
 #include "../vm/wii_vm.h"
 static char* ROMBase = ROMCACHE_LO;
+static int ROMVMActive;
 #else
 #include "../gc_memory/ARAM.h"
 #define BLOCK_SIZE  (64*1024)
@@ -81,7 +82,8 @@ void ROMCache_init(fileBrowser_file* f){
 
 void ROMCache_deinit(){
 #ifdef HW_RVL
-	if (ROMTooBig) {
+	if (ROMVMActive) {
+		ROMVMActive = 0;
 		ROMBase = ROMCACHE_LO;
 		VM_Deinit();
 	}
@@ -198,28 +200,33 @@ int ROMCache_load(fileBrowser_file* file){
 	char txt[128];
 	perfProf_mark("ROMCache_load: enter");
 #ifdef HW_RVL
-	sprintf(txt, "Loading ROM %s into MEM2",ROMTooBig ? "partially" : "fully");
+	snprintf(txt, sizeof(txt), "Loading ROM %s into MEM2",ROMTooBig ? "partially" : "fully");
 #else
-	sprintf(txt, "Loading ROM %s into ARAM",ROMTooBig ? "partially" : "fully");
+	snprintf(txt, sizeof(txt), "Loading ROM %s into ARAM",ROMTooBig ? "partially" : "fully");
 #endif
 
 #ifdef HW_RVL
 	unsigned i = 0, loads_til_update = 0;
 	int bytes_read;
+	if (ROMSize < 64 || (ROMSize & 3))
+		return ROM_CACHE_INVALID_ROM;
 	if (ROMTooBig) {
-		void* VMBase = VM_Init(rom_length, ROMCACHE_SIZE);
+		void* VMBase = VM_Init(ROMSize, ROMCACHE_SIZE);
 		if (VMBase == NULL)
 			return ROM_CACHE_ERROR_READ;
 		
 		ROMBase = VMBase;
+		ROMVMActive = 1;
 	}
 	perfProf_mark("ROMCache_load: before first read");
-	do {
-		bytes_read = romFile_readFile(file, ROMBase + i, 32*KB);
+	while (i < ROMSize) {
+		unsigned requested = MIN(32*KB, ROMSize - i);
+		bytes_read = romFile_readFile(file, ROMBase + i, requested);
 		if (i == 0) {
 			perfProf_mark("ROMCache_load: first read returned");
 		}
-		if (bytes_read < 0)
+		// EOF before the advertised size is a failed load, not a valid ROM.
+		if (bytes_read <= 0 || (unsigned)bytes_read > requested || (bytes_read & 3))
 			return ROM_CACHE_ERROR_READ;
 
 		//initialize byteswapping if it isn't already
@@ -241,11 +248,15 @@ int ROMCache_load(fileBrowser_file* file){
 		i += bytes_read;
 
 		if (!loads_til_update--) {
-			LoadingBar_showBar((float)i / rom_length, txt);
+			LoadingBar_showBar((float)i / ROMSize, txt);
 			loads_til_update = 16;
 		}
-	} while (bytes_read > 0);
+	}
 	perfProf_mark("ROMCache_load: loop exited normally");
+#if defined(VM_ROM_PREFLUSH) && VM_ROM_PREFLUSH
+	if (ROMVMActive && !VM_Flush()) return ROM_CACHE_ERROR_READ;
+	perfProf_mark("ROMCache_load: VM writeback complete");
+#endif
 	//romFile_deinit(file);
 	return 0;
 #endif
@@ -294,5 +305,3 @@ int ROMCache_load(fileBrowser_file* file){
 	return 0;
 #endif
 }
-
-

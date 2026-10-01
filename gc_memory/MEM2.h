@@ -50,8 +50,14 @@
 #define TLBLUT_HI   (TLBLUT_LO + TLBLUT_SIZE)
 
 // We want 15MB for a Texture Cache
+#ifdef WII64_HBC_AGENT
+// HBC's log target and crash record survive IOS reload at 0x91800000.
+#define HBC_KEEP_SIZE (4*KB)
+#else
+#define HBC_KEEP_SIZE 0
+#endif
 #define TEXCACHE_SIZE (15*MB)
-#define TEXCACHE_LO   (TLBLUT_HI)
+#define TEXCACHE_LO   (TLBLUT_HI + HBC_KEEP_SIZE)
 #define TEXCACHE_HI   (TEXCACHE_LO + TEXCACHE_SIZE)
 
 #define TEX_THUMB_SIZE (320*240*2)
@@ -104,17 +110,22 @@
 #define XFB1_LO	(XFB0_LO + XFB_SIZE)
 #define XFB_HI	(XFB1_LO + XFB_SIZE)
 
-// 128KB for recomp-cache-heap swap buffer
+// 64KB for recomp-cache-heap swap buffer
 #define RECOMP_CACHE_HEAP_SCRATCH_LO (XFB_HI)
 #define RECOMP_CACHE_HEAP_SCRATCH_SIZE (64*KB)
 #define RECOMP_CACHE_HEAP_SCRATCH_HI (RECOMP_CACHE_HEAP_SCRATCH_LO + RECOMP_CACHE_HEAP_SCRATCH_SIZE)
 
-// Unclaimed MEM2
-#define UNCLAIMED_SIZE (MEM2_HI - RECOMP_CACHE_HEAP_SCRATCH_HI)
-#define UNCLAIMED_LO   (RECOMP_CACHE_HEAP_SCRATCH_HI)
+// NAND read-ahead uses a separate, IPC-aligned buffer, not the PTE region.
+#define ROM_READAHEAD_SIZE (32*KB)
+#define ROM_READAHEAD_LO (RECOMP_CACHE_HEAP_SCRATCH_HI)
+#define ROM_READAHEAD_HI (ROM_READAHEAD_LO + ROM_READAHEAD_SIZE)
+
+// Unclaimed MEM2; runtime Arena2Hi can impose a tighter limit.
+#define UNCLAIMED_SIZE (MEM2_HI - ROM_READAHEAD_HI)
+#define UNCLAIMED_LO   (ROM_READAHEAD_HI)
 #define UNCLAIMED_HI   (MEM2_HI)
 
-#define MEM2_USED_SIZE (ROMCACHE_SIZE + TLBLUT_SIZE \
+#define MEM2_USED_SIZE (ROMCACHE_SIZE + TLBLUT_SIZE + HBC_KEEP_SIZE + ROM_READAHEAD_SIZE \
                         + TEXCACHE_SIZE + TEX_THUMB_SIZE + INVCODE_SIZE \
                         + FONT_SIZE + FLASHRAM_SIZE \
                         + SRAM_SIZE + MEMPACK_SIZE \

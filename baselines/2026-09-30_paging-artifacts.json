@@ -1,0 +1,53 @@
+{
+  "version": "1.6.3",
+  "hbc_sdk_commit": "8074d5a7b0ac429cf9338096a7fe2732323c28d8",
+  "compiler": "devkitPPC r50-1, GCC 16.1.0",
+  "libogc2": "r2464.43f26d2",
+  "artifact_directory": ".dev/runs/rom-paging-20260930",
+  "source_note": "Frozen development worktree builds, not an exact clean-commit comparison. Reference and read-ahead share source. Preflush also includes asynchronous agent startup and the disarmed crash probe. New survey runs capture source hashes, SDK hash and make arguments.",
+  "artifacts": {
+    "reference": {
+      "flags": "HBC_AGENT=1 PERF_PROF PERF_SUBSYSTEM_PROBES VM_PAGE_READAHEAD=0 VM_ROM_PREFLUSH=0",
+      "dol_sha256": "c733e91c2bbe6dbb212da61608d4a6fa1a2b2dd67d62d23250feb7cbc7bf5d31",
+      "elf_sha256": "d0ea374ed54cf1b61093bf42dbd01bdfb35597f7454055919d143b2380406a07"
+    },
+    "candidate": {
+      "flags": "HBC_AGENT=1 PERF_PROF PERF_SUBSYSTEM_PROBES VM_PAGE_READAHEAD=1 VM_ROM_PREFLUSH=0",
+      "dol_sha256": "6c0a8bfa20d0ffeb72247ce2bfb7b06ec26fa141fdd3be151d61828e8b3ad529",
+      "elf_sha256": "6053c1bebdd48728e4c98d6d07fa4b1643ee48ca2445fc6846020068bff0b734"
+    },
+    "agent-crash": {
+      "flags": "HBC_AGENT=1 PERF_PROF PERF_SUBSYSTEM_PROBES VM_PAGE_READAHEAD=0 VM_ROM_PREFLUSH=0",
+      "dol_sha256": "a30b79450548ffa8795b8d1c569d29ee773fe9d5981a19ddde72dd70a3c52fdb",
+      "elf_sha256": "e7f6d40905ae996b57bece12e13ba606d80cff1d4ee54045111e83c41537c519"
+    },
+    "preflush": {
+      "flags": "HBC_AGENT=1 PERF_PROF PERF_SUBSYSTEM_PROBES VM_PAGE_READAHEAD=1 VM_ROM_PREFLUSH=1",
+      "dol_sha256": "48e54b516058e2c39ea851bf3b0877c203e5064cdb379b13f524930eca2901dd",
+      "elf_sha256": "2e422cd3edf3d1f4534b2c8dd9dcdb0e932a990ff367c1a769f8f67cfdd49e7d"
+    },
+    "release": {
+      "flags": "ordinary release; agent, subsystem probes and paging experiments off",
+      "dol_sha256": "f245e3a1c2c9219c3c348a8d08c8b0e8ade1c027925ecf215030fbffd40e8bb9",
+      "elf_sha256": "4562d543b1288533c6bedbdbe1015c7073147b82566d371a47ea797f8f889392"
+    }
+  },
+  "wii_runs": {
+    "reference_a": "2026-09-30_wii_paging_reference_a",
+    "read_ahead": "2026-09-30_wii_paging_readahead",
+    "reference_b": "2026-09-30_wii_paging_reference_b"
+  },
+  "queued_checks": {
+    "fatal_dsi": "20260930-173721-7f52a0",
+    "preflush": "20260930-173721-0d8b3e"
+  },
+  "matched_survey": {
+    "directory": ".dev/runs/subsystem-survey-20260930-180820-T054",
+    "sdk_archive_sha256": "94f669d788c9d46687e6638c1d200a350c0c95ca01ad12c36ac09f47f8b11e8d",
+    "full_dol_sha256": "48e54b516058e2c39ea851bf3b0877c203e5064cdb379b13f524930eca2901dd",
+    "full_elf_sha256": "12bdde4f2b61e7291ffd6097ef5043483dbfe9a975f112b3dbe6fb0a01bf9e27",
+    "control_dol_sha256": "50f03a895513ce0d6c58486e91acd16557f7ac6b64b303f00d403b860af5185d",
+    "control_elf_sha256": "4d2f72f52e49f58a02ee54fdc188a2ac6e12b61f22aeeed8fc5218dc3310c948",
+    "jobs": ["20260930-180927-a1a662", "20260930-180927-4ac09a", "20260930-180927-72df9a"]
+  }
+}

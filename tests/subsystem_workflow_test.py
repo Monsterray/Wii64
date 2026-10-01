@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-survey-") as directory:
     scripts = {
         "toolchain/bin/powerpc-eabi-gcc": "#!/bin/bash\necho fixture compiler\n",
         ".dev/build_profiling.sh": "#!/bin/bash\nset -eu\n"
-            "printf '%s' \"$2\" > wii64-glN64.dol\ncp wii64-glN64.dol wii64-glN64.elf\n",
+            "printf '%s\\n' \"$@\" > wii64-glN64.dol\ncp wii64-glN64.dol wii64-glN64.elf\n",
         ".dev/hardware_run.sh": "#!/bin/bash\nset -eu\n"
             '[[ "$WII64_QUEUE_ONLY" = 1 && "$WII64_SKIP_BUILD" = 1 ]]\n'
             "python3 queue/fake.py add\n",
@@ -38,7 +38,7 @@ if os.environ.get('FIXTURE_QUEUE_FAIL'):
 if sys.argv[1] == 'add':
     count = len(list(queue.glob('*.job')))
     dol = pathlib.Path(os.environ['WII64_DOL'])
-    full = count != 1
+    full = count % 3 != 1 or os.environ.get('WII64_SURVEY_SAME_PROBES') == '1'
     assert ('PERF_SUBSYSTEM_PROBES' in dol.read_text()) == full
     assert dol.with_suffix('.elf').is_file()
     job = f'fixture-{count}'
@@ -67,9 +67,39 @@ else:
         assert (out / (label + ".job")).read_text().strip() == f"fixture-{number}"
         assert (out / (label + ".report.txt")).is_file()
     assert (out / "source.json").is_file()
+    sdk = root / 'SDK with spaces'
+    (sdk / 'sdk/hbc_agent/libogc2').mkdir(parents=True)
+    (sdk / 'sdk/hbc_agent/libogc2/libhbcagent.a').write_bytes(b'fixture archive')
+    subprocess.run(['git', 'init', '-q', str(sdk)], check=True)
+    subprocess.run(['git', '-C', str(sdk), '-c', 'user.name=Fixture', '-c',
+                    'user.email=fixture@invalid', 'commit', '--allow-empty', '-qm', 'SDK'], check=True)
+    env.update(WII64_SURVEY_FULL_FLAGS='-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DVM_PAGE_READAHEAD=1',
+               WII64_SURVEY_CONTROL_FLAGS='-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DVM_PAGE_READAHEAD=0',
+               WII64_SURVEY_SAME_PROBES='1')
+    result = subprocess.run(['bash', '.dev/profile_subsystems.sh', 'subsystem_survey',
+                             'HBC_AGENT=1', f'HBC_AGENT_ROOT={sdk}'], cwd=root,
+                            env=env, text=True, capture_output=True)
+    assert result.returncode == 0 and 'not probe-cost calibration' in result.stdout, result.stdout + result.stderr
+    custom, = [p for p in (root / '.dev/runs').iterdir() if p != out]
+    metadata = json.loads((custom / 'source.json').read_text())
+    assert len(metadata['hbc_sdk']['archive_sha256']) == 64 and metadata['make_args'][0] == 'HBC_AGENT=1'
+    for mode, ahead in [('full', 1), ('control', 0)]:
+        build = (custom / (mode + '.dol')).read_text()
+        assert f'VM_PAGE_READAHEAD={ahead}' in build and f'HBC_AGENT_ROOT={sdk}' in build
+    # Resume without flags in the environment, rebuilding or creating jobs.
+    for name in ('WII64_SURVEY_FULL_FLAGS', 'WII64_SURVEY_CONTROL_FLAGS', 'WII64_SURVEY_SAME_PROBES'):
+        env.pop(name)
+    result = subprocess.run(['bash', '.dev/profile_subsystems.sh', '--collect', str(custom)],
+                            cwd=root, env=env, text=True, capture_output=True)
+    assert result.returncode == 0 and 'not probe-cost calibration' in result.stdout
+    assert len(list((root / 'queue').glob('*.job'))) == 6
+    (custom / 'full.dol').write_text('changed after queueing')
+    result = subprocess.run(['bash', '.dev/profile_subsystems.sh', '--collect', str(custom)],
+                            cwd=root, env=env, text=True, capture_output=True)
+    assert result.returncode != 0 and 'Survey complete:' not in result.stdout
     env["FIXTURE_QUEUE_FAIL"] = "1"
     result = subprocess.run(["bash", ".dev/profile_subsystems.sh"], cwd=root,
                             env=env, text=True, capture_output=True)
     assert result.returncode == 9 and "Survey complete:" not in result.stdout
-    assert len(list((root / "queue").glob("*.job"))) == 3
+    assert len(list((root / "queue").glob("*.job"))) == 6
 print("survey driver: frozen builds, spaced paths, queued A/B/A and reports: ok")

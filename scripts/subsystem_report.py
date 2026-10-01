@@ -11,7 +11,7 @@ def load(path):
     path = Path(path)
     if path.is_dir():
         path /= "perf.log"
-    rows, stages = [], {}
+    rows, stages, vm_io = [], {}, {}
     with path.open(encoding="latin-1") as log:
         for line in log:
             line = line.replace("\0", "").strip()
@@ -19,11 +19,16 @@ def load(path):
                 fields = dict(part.split("=", 1) for part in line.split()[1:])
                 name = fields.pop("stage")
                 stages[name] = {key: int(value) for key, value in fields.items()}
+            elif line.startswith("vm_io: "):
+                vm_io = {key: int(value) for key, value in
+                         (part.split("=", 1) for part in line.split()[1:])}
             elif line.startswith("game: "):
                 row = parse_game(line)
                 row["subsystems"] = stages
+                row["vm_io"] = vm_io
                 rows.append(row)
                 stages = {}
+                vm_io = {}
     return rows
 
 
@@ -42,6 +47,11 @@ def report(rows):
         print(f"\n{Path(row['rom']).name}: {row['vis']} VIs, {speed(row):.3f}x, "
               f"requested sleep {100 * row.get('sleep_us', 0) / row['wall_us']:.1f}%")
         stages = row["subsystems"]
+        if row.get("vm_io"):
+            io = row["vm_io"]
+            print(f"  NAND: {io['reads']} reads, {io['hits']} cached pages, "
+                  f"{io['read_bytes']} bytes; {io['writes']} writes, "
+                  f"{io['write_bytes']} bytes; {io['errors']} I/O errors")
         if not stages:
             print("  subsystem probes absent; counts/speed cannot identify an operation bottleneck")
             continue

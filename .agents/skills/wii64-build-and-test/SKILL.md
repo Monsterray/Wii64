@@ -41,6 +41,14 @@ For chain tests, Dolphin can render the game correctly while `xfb_NN.bin` is a s
 
 ## Deeper checks
 
+For MEM2 layout, ROM paging, HBC agent integration, or automated crash capture,
+read [paging and agent constraints](../../../doc/rom-paging-and-agent.md).
+Use `bash .dev/test_rom_vm.sh` for loader, layout and cache regressions. Preserve
+the record at `0x91800000` in agent builds and the prior VM DSI handler. A
+running agent also answers port 4299; use the HBC client's version check before
+calling that state "Homebrew Channel ready". Raw-SD Dolphin runs use the config
+already in the image; stage new arguments with folder sync first.
+
 For real Wii tests, configure the installed HBC-Reborn queue client with the
 central server first; see [hardware sessions](../../../doc/hardware-session.md).
 Use `.dev/hardware_run.sh`: it queues and waits before contacting the Wii.

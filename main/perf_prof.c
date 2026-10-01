@@ -9,6 +9,9 @@
 #include <aesndlib.h>
 #include <ogc/system.h>
 #include <ogc/machine/processor.h>
+#ifdef HW_RVL
+#include "../vm/pagefile.h"
+#endif
 
 /* Opened and closed per write rather than held open: this runs interleaved
    with ROM/boxart file I/O elsewhere in the menu, and there's no guarantee
@@ -369,6 +372,9 @@ static void pad_dump(int n)
 /* --- Per game --- */
 void perfProf_gameBegin(void)
 {
+#ifdef HW_RVL
+	pagefile_stats_reset();
+#endif
 	buf_flush();
 	memset(&g, 0, sizeof(g));
 	perfProf_subsystemReset();
@@ -383,6 +389,9 @@ void perfProf_gameBegin(void)
    not loadROM's tail or the autoboot pause before go(). */
 void perfProf_clockStart(void)
 {
+#ifdef HW_RVL
+	pagefile_stats_reset();
+#endif
 	g.start = gettime();
 	perfProf_subsystemReset();
 	extern volatile unsigned int diag_retraces; // main_gc-menu2.cpp
@@ -431,9 +440,15 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u playback_hz=%u queue_peak_ms=%u\n",
 		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
 #ifdef PERF_SUBSYSTEM_ENABLED
+#ifdef HW_RVL
+	struct pagefile_stats io = pagefile_stats_read();
+	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u\n",
+		VM_PAGE_READAHEAD, io.reads, io.cache_hits, io.read_bytes, io.writes, io.write_bytes, io.errors);
+#endif
 	static const char *const subsystemNames[] = {
 		"rsp_gfx", "rsp_audio", "rsp_other", "lookup", "compile", "dispatch",
-		"execute_inclusive", "rom_copy", "present", "limiter"
+		"execute_inclusive", "rom_copy", "present", "limiter",
+		"vm_fault", "vm_victim", "vm_read", "vm_write"
 	};
 	for (unsigned int i = 0; i < PERF_SUB_COUNT; i++) {
 		struct perf_subsystem_stats s = perfProf_subsystemRead(i);

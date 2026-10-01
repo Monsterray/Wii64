@@ -15,6 +15,7 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}")
 	if [ -n "${WII64_DOL:-}" ]; then job_env+=("WII64_DOL=$WII64_DOL"); fi
 	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
+	if [ -n "${WII64_HBC_ROOT:-}" ]; then job_env+=("WII64_HBC_ROOT=$WII64_HBC_ROOT"); fi
 	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --cwd "$PWD" -- \
 		env "${job_env[@]}" bash "$PWD/.dev/hardware_run.sh" "$@")"
 	if [ "${WII64_QUEUE_ONLY:-0}" = 1 ]; then
@@ -76,6 +77,16 @@ receiver_timeout=1200
 if [ "$chain" = hardware ]; then receiver_timeout=2400; fi
 receiver_cmd=("$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac_ip" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
 if [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
+hbc_root="${WII64_HBC_ROOT:-$PWD/../hbc-reborn}"
+hbc_client="$hbc_root/tools/hbc.py"
+if [ -f "$hbc_client" ]; then
+	# Port 4299 also answers inside an app: require HBC itself before uploading.
+	python3 "$hbc_client" --wii "$wii_ip" wait 90
+	python3 "$hbc_client" --wii "$wii_ip" --json status > "$out/hbc-before.json"
+	receiver_cmd+=(--hbc-client "$hbc_client")
+	elf="${dol%.dol}.elf"
+	if [ -f "$elf" ]; then receiver_cmd+=(--elf "$elf"); fi
+fi
 "${receiver_cmd[@]}" >"$out/receiver.log" 2>&1 &
 receiver=$!
 cleanup() { kill "$receiver" 2>/dev/null || true; }
@@ -100,11 +111,25 @@ while IFS= read -r line; do
 done < "$out/diag.cfg"
 ((${#diag_args[@]} <= 32)) || { echo "The Wii accepts at most 32 diagnostic lines." >&2; exit 1; }
 WIILOAD="tcp:$wii_ip" wiiload "$dol" "${diag_args[@]}"
+touch "$out/.sent"
 echo "Waiting for the Wii to finish; results will arrive in $out"
 wait "$receiver"
 trap - EXIT
 python3 scripts/chain_table.py "$out" | tee "$out/summary.txt"
 echo "Waiting for Homebrew Channel to return..."
+if [ -f "$hbc_client" ]; then
+python3 "$hbc_client" --wii "$wii_ip" wait 90
+python3 "$hbc_client" --wii "$wii_ip" --json status > "$out/hbc-after.json"
+python3 - "$hbc_client" "$out" "$elf" <<'PY'
+import json, pathlib, sys
+from scripts.hbc_watch import RunWatch, load_client
+out = pathlib.Path(sys.argv[2])
+watch = RunWatch(load_client(sys.argv[1]), '', out, sys.argv[3])
+failure = watch.new_crash(json.loads((out / 'hbc-after.json').read_text()))
+if failure:
+    sys.exit(failure)
+PY
+else
 python3 -c 'import socket,sys,time; host=sys.argv[1]; end=time.monotonic()+90
 while time.monotonic()<end:
     try:
@@ -116,6 +141,7 @@ while time.monotonic()<end:
         time.sleep(1)
 else:
     sys.exit("Homebrew Channel did not return within 90 seconds; check the Wii screen")' "$wii_ip"
+fi
 python3 scripts/check_hardware_run.py "$out"
 if [ "$chain" = smoke ]; then python3 scripts/hardware_smoke_check.py "$out"; fi
 echo "Hardware run complete: $out"

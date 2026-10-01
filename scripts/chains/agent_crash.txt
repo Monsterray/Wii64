@@ -1,0 +1,4 @@
+# Development-agent builds only. Exercise fatal DSI delegation with ROM VM active.
+dynacore=dynarec
+agent_crash_vi=60
+chain=900,input=neutral sd:/wii64/roms/Donkey Kong 64 (USA).z64

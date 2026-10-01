@@ -12,6 +12,7 @@
 #include "../gui/DEBUG.h"
 #include "gamehacks.h"
 #include "perf_prof.h"
+#include "dev_agent.h"
 
 timers Timers = {0.0, 0.0, 0, 1, 0, 100};
 float VILimit = 60.0;
@@ -115,6 +116,7 @@ void new_frame(void) {
 }
 
 void new_vi(void) {
+	if (devAgent_exitRequested()) r4300.stop = 1;
 	DWORD Dif;
 	DWORD CurrentFPSTime;
 	static DWORD LastFPSTime = 0;
@@ -135,6 +137,9 @@ void new_vi(void) {
 	VI_Counter++;
 	if (++diag_vi_count == 1)
 		perfProf_clockStart(); // wall time and PMCs count gameplay, not the load before it
+#if defined(WII64_HBC_AGENT) && defined(PERF_PROF)
+	if (devAgent_crashVi && diag_vi_count == devAgent_crashVi) devAgent_testCrash();
+#endif
 	if (diag_vi_count >= diag_stop_vi && diag_stop_vi) {
 		perfProf_mark("stop reason: chain guest VI limit");
 		stop_it();

@@ -55,6 +55,7 @@ extern "C" {
 #include "rom.h"
 #include "plugin.h"
 #include "perf_prof.h"
+#include "dev_agent.h"
 #include "dynarec_trace.h"
 #include "../gc_input/controller.h"
 #include <aesndlib.h>
@@ -505,7 +506,7 @@ static bool uploadFile(const char* name, bool required) {
 
 static void uploadResults(void) {
 	if (!g_resultHost[0]) return;
-	if (net_init() < 0) { perfProf_mark("hardware upload: network unavailable"); return; }
+	if (!devAgent_netReady() || net_init() < 0) { perfProf_mark("hardware upload: network unavailable"); return; }
 	bool ok = uploadFile("perf.log", true);
 	for (int i = 1; ok && i <= g_chainN; ++i) {
 		char name[32];
@@ -584,6 +585,9 @@ static bool chainNext(void) {
 }
 
 static void apply_diag_line(char* line) {
+#if defined(WII64_HBC_AGENT) && defined(PERF_PROF)
+	if (sscanf(line, "agent_crash_vi=%u", &devAgent_crashVi) == 1) return;
+#endif
 	line[strcspn(line, "\r\n")] = 0;
 	char romPath[192];
 	char coreName[32];
@@ -809,6 +813,7 @@ void load_config(const char *loaded_path) {
 
 extern "C" void ScanPADSandReset(u32 _) {
 	drcNeedScan = padNeedScan = wpadNeedScan = 1;
+	if (devAgent_exitRequested()) r4300.stop = 1;
 	// Host retraces keep coming when a guest hangs; guest VIs may not.
 	if(++diag_retraces > g_chainDeadline && diag_stop_vi && !g_chainTimedOut) {
 		g_chainTimedOut = true;
@@ -828,6 +833,10 @@ int main(int argc, const char* argv[]) {
 	/* Reload to IOS58 for USB */
 	if(IOS_GetVersion() != 58)
 		IOS_ReloadIOS(58);
+	// Fixed regions already own most MEM2; expose only the real remaining arena.
+	if ((char*)SYS_GetArena2Hi() < UNCLAIMED_LO) return 1;
+	if ((char*)SYS_GetArena2Hi() > MEM2_HI) SYS_SetArena2Hi(MEM2_HI);
+	if ((char*)SYS_GetArena2Lo() < UNCLAIMED_LO) SYS_SetArena2Lo(UNCLAIMED_LO);
 #endif
 
 	AESND_Init();
@@ -920,8 +929,9 @@ int main(int argc, const char* argv[]) {
 #else
 	load_config("sd");
 #endif
+	devAgent_init();
 	MenuContext *menu = new MenuContext(vmode); // runs an autoboot ROM, chain game 1 included
-	while (chainNext()) {}
+	while (!devAgent_exitRequested() && chainNext()) {}
 	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
 	//Switch to MiniMenu if active
 	if (miniMenuActive)
@@ -983,7 +993,7 @@ int main(int argc, const char* argv[]) {
 		perfProf_mark("test_saveload: done");
 		nativeSaveDevice = savedDevice;
 	}
-	while (menu->isRunning()) {}
+	while (!devAgent_exitRequested() && menu->isRunning()) {}
 
 	delete menu;
 

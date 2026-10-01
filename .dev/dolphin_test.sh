@@ -104,6 +104,13 @@ if [ "$folder_sync" = True ]; then
 	fi
 else
 	[ -f "$PROFILE_POSIX/Load/WiiSD.raw" ] || { echo "Raw SD image missing: $PROFILE_POSIX/Load/WiiSD.raw" >&2; exit 1; }
+	[ "$#" -le 2 ] || { echo "Diagnostic arguments require WII64_DOLPHIN_FOLDER_SYNC=True; raw mode uses the config already in WiiSD.raw." >&2; exit 2; }
+	# These are extracted copies, not live writes. An earlier chain's log
+	# must not make a new raw-image run appear complete before its first VI.
+	rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv
+	if ! python3 scripts/sdimage_read.py "$PROFILE_POSIX/Load/WiiSD.raw" wii64/diag.cfg "$LOCAL_WII64/diag.cfg" >/dev/null 2>&1; then
+		rm -f "$LOCAL_WII64/diag.cfg"
+	fi
 	echo "Using the pre-staged raw Dolphin SD image (folder sync is off)."
 fi
 

@@ -48,6 +48,12 @@ The job preserves these settings and `WII64_ROM_DIR` even if the dispatcher was
 already running. Only the dispatcher supplies `WII_BENCH_JOB`; normal callers
 use the queued entry point.
 
+For development-agent builds and crash capture, see
+[ROM paging and HBC agent](rom-paging-and-agent.md). Set `WII64_HBC_ROOT` for an
+external checkout outside the default sibling path. The runner preserves that
+setting, distinguishes HBC from a running agent, and retains new crash reports
+with the matching ELF. A crash fails the run instead of becoming a speed result.
+
 Keep the computer awake. On macOS, the receiver uses Apple's built-in Python so the
 firewall can allow it without a repeated Homebrew Python prompt. If the firewall does
 prompt, allow incoming connections for the test; keep the firewall enabled. The

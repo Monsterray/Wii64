@@ -40,4 +40,15 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
     client.write_text("import sys\nsys.exit(9)\n")
     result = subprocess.run(command, env=env, capture_output=True, text=True)
     assert result.returncode == 9 and not result.stdout.strip()
+    dol = state / 'agent build.dol'
+    dol.touch()
+    dol.with_suffix('.elf').touch()
+    command = ['bash', str(root / '.dev/test_agent_wii.sh'), str(dol)]
+    env['WII_BENCH_SERVER'] = ''
+    result = subprocess.run(command, env=env, capture_output=True, text=True)
+    assert result.returncode == 2 and 'central Wii queue' in result.stderr
+    env['WII_BENCH_SERVER'] = 'http://fixture.invalid:4310'
+    client.write_text("import sys\nassert sys.argv[1] == 'add'\nprint('fixture-crash-job')\n")
+    result = subprocess.run(command, env=env, capture_output=True, text=True)
+    assert result.returncode == 0 and result.stdout.strip() == 'fixture-crash-job'
 print("hardware entry point requires the central lease and preserves job arguments: ok")
