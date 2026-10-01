@@ -82,13 +82,13 @@ was active. HBC 1.8.6 returned without manual recovery. See
 `baselines/2026-09-30_agent-crash/`. LTO can omit a source line even when the
 matching ELF identifies the function.
 
-## Paging experiment
+## ROM paging defaults
 
 The reference now checks every NAND seek/read/write and rejects truncated ROM
 loads. Failed initialization and repeated teardown are safe. Fatal I/O no longer
 resumes with stale ROM bytes.
 
-The candidate has two opt-in build flags:
+Wii builds enable both paging improvements by default:
 
 - `VM_ROM_PREFLUSH=1`: write remaining dirty ROM pages after loading, before
   gameplay. Coalesce up to 16 physically and virtually consecutive pages.
@@ -97,7 +97,9 @@ The candidate has two opt-in build flags:
   publish a window only after an exact read. Mapping/replacement policy stays
   unchanged.
 
-Both flags remain off until hardware checks justify the defaults. Preflush
+Use `-DVM_ROM_PREFLUSH=0 -DVM_PAGE_READAHEAD=0` in `DEBUG_FLAGS` to build the
+old paging path for a comparison. Clean before changing flags. Fully cached
+ROMs skip preflush; GameCube's ARAM loader is unchanged. Preflush
 writes all remaining dirty mapped pages, including pages that a short scene
 might never evict. It can add startup NAND traffic, not just move writeback.
 
@@ -148,7 +150,8 @@ Artifact hashes and source differences are recorded in
 agent network startup, so repeat with the frozen survey before attributing
 all wall-time changes to one flag.
 Keep Dolphin and Wii numbers separate. Hardware results and crash recovery
-plus longer tests must be filed before enabling the experimental defaults.
+are recorded below. Longer runs test switching and later scenes; short intro
+timings do not establish compatibility.
 
 ## Read-ahead-only Wii comparison
 
@@ -186,23 +189,60 @@ and HBC return, so it is not an isolated preflush timing. The frozen build
 predates the explicit load/preflush duration and byte-count marks.
 
 The data is filed in `baselines/2026-09-30_wii_paging_preflush`. The source
-differences in the artifact manifest still apply; the matched survey and
-longer gameplay checks remain necessary before a default change.
+differences in that first artifact manifest still apply. The matched survey
+below isolates the combined paging change.
+
+## Matched Wii comparison
+
+Candidate/reference/candidate used one source tree, the same HBC SDK, and
+the same probes. All nine entries completed 900 VIs, with no paging errors
+or audio overruns. Every job returned to HBC 1.8.6.
+
+| Scene | Reference speed | Candidate mean | Wall-time reduction | Underruns, reference to candidate |
+|---|---:|---:|---:|---:|
+| Mario Party 3 PAL | 0.874x | 0.990x | 11.8% | 1 to 1 |
+| TWINE | 0.829x | 0.988x | 16.1% | 16 to 1 |
+| DK64 | 0.842x | 0.988x | 14.8% | 12 to 3 |
+
+The candidate repeats agreed within 0.1% in wall time. CPU cycles changed by
+less than 0.5%; the gain comes mainly from removing synchronous NAND waits,
+not from faster guest instructions. These are neutral intro/title scenes.
+Logs are filed in `baselines/2026-09-30_wii_paging_matched_*`; artifact hashes
+and queue IDs remain in `baselines/2026-09-30_paging-artifacts.json`.
+
+## Longer checks and startup cost
+
+The `rom_paging_long` chain passed on Dolphin and the Wii with 2,400 VIs of
+SM64, 3,600 each of MP3 PAL/TWINE/DK64, then 900 VIs of SM64 again. SM64 uses
+its start replay; MP3 presses A periodically. All targets completed, with no
+NAND I/O errors or audio overruns. The Wii returned to HBC 1.8.6. The first
+hardware attempt lacked the two replay files and correctly failed validation;
+the runner now stages them through the leased HBC file-transfer path.
+
+| ROM | Wii load | Included preflush | Longer-scene speed |
+|---|---:|---:|---:|
+| SM64 | 1.970 s | Not needed | 0.995x |
+| MP3 PAL | 39.261 s | 17.245 s | 0.997x |
+| TWINE | 29.925 s | 17.386 s | 0.995x |
+| DK64 | 29.897 s | 17.409 s | 0.996x |
+
+Each large ROM preflush wrote 16,711,680 bytes. Timed gameplay wrote none.
+These are longer scripted scenes and switching checks, not a full-game
+compatibility test. Preserve startup costs separately when comparing versions.
+Logs are filed in `baselines/2026-09-30_{wii,dolphin}_paging_long/`.
 
 ## Next checks
 
-1. Collect the matched survey; combined paging and fatal DSI each passed
-   their first hardware checks.
-2. Run the matched survey from one source tree, then test longer gameplay and
-   ROM switching. Include a small fully cached ROM and a 64 MiB paged ROM.
-3. Measure startup writeback separately from gameplay stalls. Retain ordinary
+1. Extend `rom_paging_long` with recorded gameplay routes and a 64 MiB ROM.
+   No 64 MiB ROM is available in this workstation's test collection yet.
+2. Measure startup writeback separately from gameplay stalls. Retain ordinary
    release checks with probes and the agent off.
-4. Measure texture/JIT occupancy before changing MEM2 sizes. After paging is
+3. Measure texture/JIT occupancy before changing MEM2 sizes. After paging is
    under control, rank observed RSP/graphics/compile spans; do not choose the
    next layer from aliased hot-operation estimates alone.
 
-The matched survey is queued in
-`.dev/runs/subsystem-survey-20260930-180820-T054`. Its collector is running;
-reports and the three-way comparison are written there after the jobs finish.
-These jobs share the central queue with other workstations. Their results are
-not yet acceptance evidence.
+The matched survey completed in
+`.dev/runs/subsystem-survey-20260930-180820-T054`. `scripts/subsystem_report.py`
+now separates ROM-load time and preflush duration/bytes from gameplay timings
+when the log contains those marks. Preflush is included in total ROM-load
+time; adding the two durations would count it twice.

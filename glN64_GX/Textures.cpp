@@ -40,6 +40,23 @@
 #include "convert.h"
 #include "2xSAI.h"
 #include "FrameBuffer.h"
+#include "../main/perf_subsystem.h"
+#include "texture_hash.h"
+
+#ifndef GLN64_TMEM_HASH_CACHE
+#define GLN64_TMEM_HASH_CACHE 0
+#endif
+#if defined(__GX__) && GLN64_TMEM_HASH_CACHE
+// ponytail: two slots; benchmark misses before spending more RAM on a wider cache.
+static TextureHashMemo textureHashMemo[2];
+#endif
+
+void TextureCache_InvalidateHash()
+{
+#if defined(__GX__) && GLN64_TMEM_HASH_CACHE
+	textureHashMemo[0].dirty = textureHashMemo[1].dirty = true;
+#endif
+}
 
 TextureCache	cache;
 #ifdef __GX__
@@ -644,6 +661,10 @@ BOOL TextureCache_FreeOneTexture()
 
 void TextureCache_Init()
 {
+	TextureCache_InvalidateHash();
+#if defined(__GX__) && GLN64_TMEM_HASH_CACHE
+	textureHashMemo[0].valid = textureHashMemo[1].valid = false;
+#endif
 	TextureCache_InitSlots();
 	TextureCache_ForgetAllBackgrounds();
 	cache.current[0] = NULL;
@@ -969,6 +990,7 @@ void TextureCache_Destroy()
 
 void TextureCache_LoadBackground( CachedTexture *texInfo )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_LOAD);
 	u8 *dest = NULL, *scaledDest;
 #ifndef __GX__
 	u8 *swapped;
@@ -1316,6 +1338,7 @@ bool TextureCache_UseMirrorFixes()
 
 void TextureCache_Load( CachedTexture *texInfo )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_LOAD);
 	u8 *dest = NULL, *scaledDest;
 #ifndef __GX__
 	GLuint			glInternalFormat;
@@ -1734,6 +1757,24 @@ void TextureCache_Load( CachedTexture *texInfo )
 
 u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_HASH);
+#if defined(__GX__) && GLN64_TMEM_HASH_CACHE
+	TextureHashKey key = { gSP.textureTile[t]->tmem,
+		width << gSP.textureTile[t]->size >> 1, height,
+		gSP.textureTile[t]->line, 0, 0 };
+	if (gSP.textureTile[t]->size == G_IM_SIZ_32b)
+		key.line <<= 1;
+	if ((gDP.otherMode.textureLUT != G_TT_NONE) || (gSP.textureTile[t]->format == G_IM_FMT_CI)) {
+		if (gSP.textureTile[t]->size == G_IM_SIZ_4b) {
+			key.palette_offset = 0x100 + (gSP.textureTile[t]->palette << 4);
+			key.palette_bytes = 128;
+		} else if ((gSP.textureTile[t]->size == G_IM_SIZ_8b) || (gSP.textureTile[t]->size == G_IM_SIZ_16b)) {
+			key.palette_offset = 0x100;
+			key.palette_bytes = 2048;
+		}
+	}
+	return t < 2 ? TextureHash_Get(textureHashMemo[t], TMEM, key) : TextureHash_Calculate(TMEM, key);
+#else
 	u32 crc;
 	u32 y, bpl, line;
 	u64 *src;
@@ -1761,10 +1802,12 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 			crc = Hash_Calculate( crc, &TMEM[0x100], 2048 );
 	}
 	return crc;
+#endif
 }
 
 void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_ACTIVATE);
 #ifndef __GX__
 	// If multitexturing, set the appropriate texture
 	if (OGL.ARB_multitexture)
@@ -1852,6 +1895,7 @@ void TextureCache_UpdateBackground()
 	u32 numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
 	u32 crc;
 
+	unsigned long long hash_timer = perfProf_subsystemBegin(PERF_SUB_TEX_HASH);
 	crc = Hash_Calculate( 0xFFFFFFFF, &RDRAM[gSP.bgImage.address], numBytes );
 
    	if (gSP.bgImage.format == G_IM_FMT_CI)
@@ -1862,6 +1906,8 @@ void TextureCache_UpdateBackground()
 			crc = Hash_Calculate( crc, &TMEM[0x100], 2048 );
 	}
 
+	perfProf_subsystemEnd(PERF_SUB_TEX_HASH, hash_timer);
+	unsigned long long lookup_timer = perfProf_subsystemBegin(PERF_SUB_TEX_LOOKUP);
 	CachedTexture *current = cache.top;
 
  	while (current)
@@ -1872,6 +1918,7 @@ void TextureCache_UpdateBackground()
 			(current->format == gSP.bgImage.format) &&
 			(current->size == gSP.bgImage.size))
 		{
+			perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
 			TextureCache_ActivateTexture( 0, current );
 //			TextureCache_ActivateDummy( 0 );
 
@@ -1883,6 +1930,7 @@ void TextureCache_UpdateBackground()
 		current = current->lower;
 	}
 
+	perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
 	cache.misses++;
 
 #ifndef __GX__
@@ -2277,6 +2325,7 @@ void TextureCache_Update( u32 t )
 //	if (!TextureCache_Verify())
 //		current = cache.top;
 
+	unsigned long long lookup_timer = perfProf_subsystemBegin(PERF_SUB_TEX_LOOKUP);
 	current = cache.top;
  	while (current)
   	{
@@ -2301,6 +2350,7 @@ void TextureCache_Update( u32 t )
 			(current->format == gSP.textureTile[t]->format) &&
 			(current->size == gSP.textureTile[t]->size))
 		{
+			perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
 			TextureCache_ActivateTexture( t, current );
 //			TextureCache_ActivateDummy( t );
 
@@ -2311,6 +2361,7 @@ void TextureCache_Update( u32 t )
 		current = current->lower;
 	}
 
+	perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
 	cache.misses++;
 
 #ifndef __GX__

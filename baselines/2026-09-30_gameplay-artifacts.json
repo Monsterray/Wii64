@@ -1,0 +1,68 @@
+{
+  "version": "1.6.4",
+  "compiler": "devkitPPC r50-1, GCC 16.1.0",
+  "libogc2": "r2464.43f26d2",
+  "hbc_sdk_commit": "8074d5a7b0ac429cf9338096a7fe2732323c28d8",
+  "hbc_sdk_archive_sha256": "94f669d788c9d46687e6638c1d200a350c0c95ca01ad12c36ac09f47f8b11e8d",
+  "source_note": "Frozen development worktree artifacts, not a clean-commit comparison. Survey source.json files retain source hashes, flags and SDK identity. The texture experiments remain off in release builds.",
+  "paging_long": {
+    "flags": "HBC_AGENT=1 PERF_PROF PERF_SUBSYSTEM_PROBES; paging defaults on; texture memo off",
+    "dol_sha256": "d4066420592618efd4cfa2423fd0c3cd8a9766a7b8ba9b69d830f1ccdd40dd18",
+    "elf_sha256": "01696b01841f16e6c33041b4e03df78c6632fa3d5fcdf04b9c9a5b6139ebe058",
+    "wii_job": "20260930-191337-3013e4",
+    "wii_baseline": "2026-09-30_wii_paging_long",
+    "dolphin_baseline": "2026-09-30_dolphin_paging_long",
+    "status": "All requested VI targets completed; staged replays passed; no I/O errors or overruns; Wii returned to HBC 1.8.6",
+    "excluded_attempt": "20260930-185920-c2341c failed replay validation before automatic staging was added"
+  },
+  "graphics_probe_overhead": {
+    "directory": ".dev/runs/subsystem-survey-20260930-185925-ebRT",
+    "source_manifest_sha256": "50c1ecff19277f89ef276fe3f7a6c86a8c309b969804bfffe3c672a782830c72",
+    "full_dol_sha256": "d4066420592618efd4cfa2423fd0c3cd8a9766a7b8ba9b69d830f1ccdd40dd18",
+    "full_elf_sha256": "01696b01841f16e6c33041b4e03df78c6632fa3d5fcdf04b9c9a5b6139ebe058",
+    "control_dol_sha256": "4d6a8aeb3cce81934a69d9e5761d2b44eab7a082be00772800b795a8734893cf",
+    "control_elf_sha256": "f4a062c4a87c60afadeaa9b5299c06d5ce3fdf5f7115ae80cee39efdb9173306",
+    "jobs": ["20260930-190104-66bb8b", "20260930-190104-02e307", "20260930-190104-2d2eb2"],
+    "baselines": ["2026-09-30_wii_graphics_probes_full1", "2026-09-30_wii_graphics_probes_control", "2026-09-30_wii_graphics_probes_full2"],
+    "status": "All nine VI targets passed and returned to HBC; added cycles SM64 5.14%, Banjo 4.42%, Snap 2.54%; probes remain opt-in"
+  },
+  "texture_memo_initial": {
+    "directory": ".dev/runs/subsystem-survey-20260930-192100-KQAe",
+    "source_manifest_sha256": "582f6e1b4e8b7ee838c4cdc376f53ee3f225c7326891812533c6d1d0bb215a52",
+    "full_dol_sha256": "880d374e1de8d7086a1a6ec3efea6aa67e848c05f526f1a1c3911066db2fbfb0",
+    "full_elf_sha256": "4ffb7fb1f9e6e14f9ccecb25c3c3b97f6ce7f6e55de6cf0b9116883bc8a775f5",
+    "control_dol_sha256": "6b4a09a18c592af8696aae6ad063aaa150915222551825fb56fd4e3a59929178",
+    "control_elf_sha256": "579ae7a64b807d2f7714dcfa6b283a180793fba8c4c24e1c10a15c2d3bd9d182",
+    "jobs": ["20260930-192215-2393e5", "20260930-192215-98ff86", "20260930-192215-454000"],
+    "dolphin_baseline": "2026-09-30_dolphin_texture_memo_initial",
+    "baselines": ["2026-09-30_wii_texture_memo_initial_full1", "2026-09-30_wii_texture_memo_initial_control", "2026-09-30_wii_texture_memo_initial_full2"],
+    "status": "All nine matched Wii VI targets and HBC returns passed. Rejected: cycles SM64 +0.03%, Banjo +0.34%, Snap +1.41%; no useful wall-time gain"
+  },
+  "texture_snapshot": {
+    "directory": ".dev/runs/subsystem-survey-20260930-192828-eNwS",
+    "source_manifest_sha256": "c349b88f9d40c99b39bc4738d525da14c07a9a3038d13172181408eeeba3bb38",
+    "full_dol_sha256": "83e7f18ffbb22c7b54a1791d8b370d0695e629ce2356aa8975cea7b36ffb4dcb",
+    "full_elf_sha256": "d3f9ef84c097ea9ddda9f577b3cab07cdf999c952230825162a9630211f1cc5a",
+    "control_dol_sha256": "6b4a09a18c592af8696aae6ad063aaa150915222551825fb56fd4e3a59929178",
+    "control_elf_sha256": "e3276777dcbac177fadc5097470b20a79d7a691154e703820a9fe46986f1b0df",
+    "jobs": ["20260930-192942-8c6ad2", "20260930-192942-61a19c", "20260930-192942-3b4927"],
+    "dolphin_baseline": "2026-09-30_dolphin_texture_snapshot",
+    "dolphin_long_baseline": "2026-09-30_dolphin_texture_snapshot_long",
+    "baselines": ["2026-09-30_wii_texture_snapshot_full1", "2026-09-30_wii_texture_snapshot_control", "2026-09-30_wii_texture_snapshot_full2"],
+    "hash_time_percent": {"sm64": 12.94, "banjo": 14.73, "snap": -27.38},
+    "status": "All nine matched Wii VI targets and HBC returns passed; no I/O errors or overruns. Cycles SM64 +0.86%, Banjo +1.50%, Snap -1.73%; mixed result, disabled by default"
+  },
+  "release": {
+    "flags": "ordinary glN64 Wii release; paging defaults on; agent, probes and texture experiment off",
+    "dol_sha256": "45ed13a89e90201d7719285c10e8113d45605feaa5fd1b241ecc500427a55508",
+    "elf_sha256": "ccc7b8f3e96f960dbf9d8a60391dba76d1d604462d190462ac3eea896acb5be9",
+    "directory": ".dev/runs/gameplay-1.6.4",
+    "status": "Clean build and muted LLE/MMU Dolphin menu boot passed"
+  },
+  "rice_release": {
+    "flags": "ordinary Rice Wii release; paging defaults on; agent and probes off",
+    "dol_sha256": "84056a06417fca7dfef0eaafbb1f64e75ec2ba4289f0569b3a2d48cc0c5ee380",
+    "elf_sha256": "5aef3d788325bce298fa3081184ef021a7a293ff7e0af26a93e4e57e96824f03",
+    "status": "Clean build and muted LLE/MMU Dolphin menu boot passed"
+  }
+}

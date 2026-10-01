@@ -15,7 +15,7 @@ typedef uint8_t u8;
 typedef int BOOL;
 static int rom_length;
 #define BYTE_SWAP_BAD -1
-static int swap_calls, reads, closes, vm_closes, fail_vm, available, short_read, fail_flush;
+static int swap_calls, reads, closes, vm_closes, fail_vm, available, short_read, fail_flush, flush_calls;
 int init_byte_swap(unsigned int magic) { return magic == 0x80371240 ? 0 : -1; }
 void byte_swap(char *p, unsigned int n, int type) {
     (void)p; (void)type; assert(n && !(n & 3)); swap_calls++;
@@ -39,7 +39,7 @@ int (*romFile_seekFile)(fileBrowser_file *, unsigned int, unsigned int) = seek_f
 int (*romFile_deinit)(fileBrowser_file *) = close_file;
 void *VM_Init(size_t v, size_t m) { (void)v; (void)m; return fail_vm ? NULL : backing; }
 void VM_Deinit(void) { vm_closes++; }
-int VM_Flush(void) { return !fail_flush; }
+int VM_Flush(void) { flush_calls++; return !fail_flush; }
 void LoadingBar_showBar(float p, const char *s) { (void)s; assert(p >= 0 && p <= 1); }
 static int load(unsigned int size, int bytes) {
     fileBrowser_file f = {0}; f.size = size; rom_length = size; available = bytes;
@@ -57,6 +57,7 @@ int main(void) {
     assert(load(64, 64) == 0 && reads == 8); /* aligned partial reads are legal */
     short_read = 0;
     assert(load(32772, 32772) == 0 && reads == 2);
+    assert(!flush_calls); /* Fully cached ROMs never write the NAND pagefile. */
     fail_vm = 1;
     assert(load(ROMCACHE_SIZE + 4, ROMCACHE_SIZE + 4) == ROM_CACHE_ERROR_READ);
     ROMCache_deinit(); ROMCache_deinit(); assert(!vm_closes);
@@ -67,6 +68,7 @@ int main(void) {
     ROMCache_deinit(); vm_closes = 0; fail_flush = 0;
 #endif
     assert(load(ROMCACHE_SIZE + 4, ROMCACHE_SIZE + 4) == 0);
+    assert(flush_calls == (VM_ROM_PREFLUSH ? 2 : 0));
     ROMCache_deinit(); ROMCache_deinit(); assert(vm_closes == 1);
     puts("ROM loader regression checks passed");
 }

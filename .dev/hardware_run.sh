@@ -12,7 +12,7 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	[[ -f "$bench_client" ]] || { echo "Set up the workstation's wiibench.py client first; see doc/hardware-session.md." >&2; exit 2; }
 	bench_server="${WII_BENCH_SERVER-$(sed -n '1p' "$bench_state/server" 2>/dev/null || true)}"
 	[[ -n "${bench_server//[[:space:]]/}" ]] || { echo "Configure the central lease server with wiibench.py setup --server URL before testing." >&2; exit 2; }
-	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}")
+	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}" "WII64_STAGE_INPUTS=${WII64_STAGE_INPUTS:-1}")
 	if [ -n "${WII64_DOL:-}" ]; then job_env+=("WII64_DOL=$WII64_DOL"); fi
 	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
 	if [ -n "${WII64_HBC_ROOT:-}" ]; then job_env+=("WII64_HBC_ROOT=$WII64_HBC_ROOT"); fi
@@ -83,6 +83,9 @@ if [ -f "$hbc_client" ]; then
 	# Port 4299 also answers inside an app: require HBC itself before uploading.
 	python3 "$hbc_client" --wii "$wii_ip" wait 90
 	python3 "$hbc_client" --wii "$wii_ip" --json status > "$out/hbc-before.json"
+	if [ "${WII64_STAGE_INPUTS:-1}" = 1 ]; then
+		bash .dev/stage_wii_inputs.sh "$chain"
+	fi
 	receiver_cmd+=(--hbc-client "$hbc_client")
 	elf="${dol%.dol}.elf"
 	if [ -f "$elf" ]; then receiver_cmd+=(--elf "$elf"); fi

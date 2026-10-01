@@ -11,11 +11,19 @@ def load(path):
     path = Path(path)
     if path.is_dir():
         path /= "perf.log"
-    rows, stages, vm_io = [], {}, {}
+    rows, stages, vm_io, startup = [], {}, {}, {}
     with path.open(encoding="latin-1") as log:
         for line in log:
             line = line.replace("\0", "").strip()
-            if line.startswith("subsystem_time: "):
+            if line == "mark: ROMCache_load: enter":
+                startup = {}
+            elif line.startswith("mark: ROMCache_load: preflush_us="):
+                startup["preflush"] = {key: int(value) for key, value in
+                                       (part.split("=", 1) for part in line.split()[2:])}
+            elif line.startswith("mark: ROMCache_load: elapsed_us="):
+                startup.update({key: int(value) for key, value in
+                                (part.split("=", 1) for part in line.split()[2:])})
+            elif line.startswith("subsystem_time: "):
                 fields = dict(part.split("=", 1) for part in line.split()[1:])
                 name = fields.pop("stage")
                 stages[name] = {key: int(value) for key, value in fields.items()}
@@ -26,9 +34,11 @@ def load(path):
                 row = parse_game(line)
                 row["subsystems"] = stages
                 row["vm_io"] = vm_io
+                row["startup"] = startup
                 rows.append(row)
                 stages = {}
                 vm_io = {}
+                startup = {}
     return rows
 
 
@@ -47,6 +57,14 @@ def report(rows):
         print(f"\n{Path(row['rom']).name}: {row['vis']} VIs, {speed(row):.3f}x, "
               f"requested sleep {100 * row.get('sleep_us', 0) / row['wall_us']:.1f}%")
         stages = row["subsystems"]
+        startup = row.get("startup", {})
+        if "elapsed_us" in startup:
+            print(f"  Startup: ROM load {startup['elapsed_us'] / 1e6:.3f} s, "
+                  f"{startup['bytes']} bytes, VM {startup['vm']} (excluded from gameplay)")
+        if "preflush" in startup:
+            flush = startup["preflush"]
+            print(f"  Preflush: {flush['preflush_us'] / 1e6:.3f} s (included in ROM load)" +
+                  (f", {flush['writes']} writes, {flush['bytes']} bytes" if "writes" in flush else ""))
         if row.get("vm_io"):
             io = row["vm_io"]
             print(f"  NAND: {io['reads']} reads, {io['hits']} cached pages, "
@@ -70,7 +88,8 @@ def report(rows):
         if limiter.get("timed_calls") and limiter["timed_calls"] == limiter["calls"]:
             actual, requested = limiter["timed_us"], row.get("sleep_us", 0)
             print(f"  limiter observed-requested: {(actual - requested) / 1000:+.1f} ms")
-    print("\nInclusive spans overlap (dispatch includes lookup/compile; execution can include RSP/limiter). "
+    print("\nInclusive spans overlap (dispatch includes lookup/compile; execution can include RSP/limiter; "
+          "draw_rect includes state/texture setup). "
           "Do not sum them. Timing includes interruptions and waits; sampled estimates can alias.")
 
 

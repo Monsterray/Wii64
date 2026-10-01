@@ -2,7 +2,7 @@
 #define WII64_PAGEFILE_H
 
 #ifndef VM_PAGE_READAHEAD
-#define VM_PAGE_READAHEAD 0 /* Enable only in measured candidate builds. */
+#define VM_PAGE_READAHEAD 1 /* Reduce NAND waits during gameplay. */
 #endif
 #define VM_PAGE_SIZE 4096
 #include "../main/perf_subsystem.h"

@@ -40,6 +40,9 @@
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
 #include "../vm/wii_vm.h"
+#ifndef VM_ROM_PREFLUSH
+#define VM_ROM_PREFLUSH 1
+#endif
 #ifdef PERF_PROF
 #include <ogc/lwp_watchdog.h>
 #endif
@@ -262,8 +265,9 @@ int ROMCache_load(fileBrowser_file* file){
 		}
 	}
 	perfProf_mark("ROMCache_load: loop exited normally");
-#if defined(VM_ROM_PREFLUSH) && VM_ROM_PREFLUSH
+#if VM_ROM_PREFLUSH
 	if (ROMVMActive) {
+		LoadingBar_showBar(1.0f, "Preparing ROM for gameplay");
 #ifdef PERF_PROF
 		unsigned long long flush_start = gettime();
 #endif

@@ -162,7 +162,7 @@ For audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supp
 
 For a real Wii, see [hardware testing](doc/hardware-session.md). Set up the shared Wii queue client and SD test chain once. `.dev/hardware_baseline.sh` waits for the central lease, builds a profiling DOL, sends it from Homebrew Channel with `wiiload`, collects the results, and files a baseline. SD results remain available if transfer fails. Use `.dev/profile_subsystems.sh` for a matched subsystem probe/control survey.
 
-For optional HBC-Reborn crash capture and ROM paging comparisons, see [the development agent and MEM2 notes](doc/rom-paging-and-agent.md).
+Wii builds prepare large ROMs before gameplay to reduce paging stalls. This can increase load time. For optional HBC-Reborn crash capture and matched paging comparisons, see [the development agent and MEM2 notes](doc/rom-paging-and-agent.md).
 
 ## CREDITS
  * Core Coder: tehpola

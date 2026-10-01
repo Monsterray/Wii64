@@ -18,8 +18,10 @@ ignored `.dev/runs/` directory. Each run releases the lease after returning to
 Homebrew Channel. Other workstations retain their turns.
 
 Use a chain name as the first argument to select another file in `scripts/chains/`.
-ROMs and replay files must already be on the Wii SD card, or use the existing
-LAN ROM transfer option. Run one build workflow at a time: targets share objects.
+ROMs must already be on the Wii SD card, or use the existing LAN ROM transfer
+option. With the external HBC-Reborn client, the runner stages the selected
+chain's replay files before launch. Run one build workflow at a time: targets
+share objects. Do not change engine source while the two builds are compiling.
 
 To inspect an existing result:
 
@@ -55,10 +57,19 @@ that reset is discarded. One summary per game adds no per-frame file writes.
 | `rom_copy` | Wii `ROMCache_read` copy, including synchronous VM faults | All |
 | `present` | glN64 exported `UpdateScreen` | All |
 | `limiter` | Actual `usleep` duration | All |
+| `tex_hash` | Tile TMEM/palette hash or background RDRAM/palette hash | All |
+| `tex_lookup` | Texture cache search, excluding activation on a hit | All |
+| `tex_load` | Texture/background allocation, conversion and cache flush; each mip level separately | All |
+| `tex_activate` | Texture activation, GX setup and LRU promotion | All |
+| `draw_triangles` | glN64 triangle batch submission and its state setup | All |
+| `draw_rect` | Filled/textured rectangles, including state and texture setup | All |
 
 These are inclusive wall-clock spans, not CPU partitions. Dispatch overlaps
 lookup and compilation. Execution can include RSP work, sleep, and exceptions.
 Presentation from other graphics paths remains inside the graphics span.
+The rectangle span can contain texture spans. Mip-chain assembly and
+framebuffer texture paths are not included in `tex_load`. These CPU-side
+spans include FIFO stalls but are not measurements of GPU execution time.
 The report scales sparse samples by calls/timed calls and labels them estimates.
 Deterministic sampling can alias; an estimate can exceed wall time or be smaller
 than a fully timed child. Preserve those values and change the sampling interval
@@ -130,7 +141,70 @@ Matching DOL/ELF files remain ignored under `.dev/runs/subsystem-survey-20260930
 their hashes and job IDs are in `baselines/2026-09-30_subsystems_artifacts.json`.
 The ordinary 1.6.2 release build also linked with the new probes disabled.
 
-## Next subsystem: large-ROM paging
+## Paging status
+
+Paging is now enabled by default after matched hardware checks;
+see [paging results](rom-paging-and-agent.md#matched-wii-comparison).
+The original investigation plan remains here for later regressions.
+
+## Graphics detail and current probe cost
+
+The 1.6.4 `graphics_survey` adds texture and draw timers. A matched
+full/disabled/full Wii triple completed all nine entries and returned to HBC.
+Paging defaults, audio settings, replays and VI targets were identical.
+
+| ROM | Added CPU cycles | Wall-time change | Hash time, first full run |
+|---|---:|---:|---:|
+| SM64 | +5.14% | −0.08% | 282.2 ms |
+| Banjo-Kazooie | +4.42% | +0.07% | 384.4 ms |
+| Pokémon Snap | +2.54% | +0.27% | 1,593.0 ms |
+
+Snap made 147,492 hash calls but only 136 texture conversions, which took
+18.9 ms. Cache searches took 43.8 ms. Hashing is a better next target than
+replacing the cache-search structure or adding more texture memory. All timers
+remain opt-in: frame-rate limiting can hide probe CPU cost in wall time.
+These scene-specific costs do not calibrate a different game or replay.
+Results are filed in `baselines/2026-09-30_wii_graphics_probes_*`.
+
+## Texture-hash experiment
+
+Run `bash .dev/test_texture_hash.sh` for exact legacy XXH32 comparisons and
+mutation/reset checks under AddressSanitizer and UndefinedBehaviorSanitizer.
+For the matched Wii candidate/reference/candidate test:
+
+```bash
+bash .dev/profile_texture_hash.sh graphics_survey HBC_AGENT=1
+```
+
+The candidate uses two hash memos, one per texture unit. Every TMEM load marks
+both dirty. A dirty memo can reuse its hash only if the hash inputs and every
+byte the original hash reads still match its snapshot. Palette bytes and
+wrapped/clamped rows are included. New ROMs reset both memos; background RDRAM
+images keep live hashes. Snapshots occupy about 8 KiB of MEM1, not a new MEM2
+reservation. The original hash path remains available with
+`GLN64_TMEM_HASH_CACHE=0`. The matched hardware result is mixed, so this
+experiment remains disabled by default.
+
+The first generation-only memo passed all nine matched Wii targets but added
+0.03%/0.34%/1.41% CPU cycles in SM64/Banjo/Snap, without a useful wall-time gain.
+It is rejected: TMEM reloads invalidate that design too often. The byte-snapshot
+comparison is a separate experiment. Logs for the rejected
+triple remain in `baselines/2026-09-30_wii_texture_memo_initial_*`.
+
+The byte-snapshot candidate completed all nine matched Wii targets, with no
+I/O errors or audio overruns, and returned to HBC after every job. Its CPU-cycle
+changes were +0.86% in SM64, +1.50% in Banjo and −1.73% in Snap. Wall-time
+changes stayed within 0.1% because these scenes run near their VI limits.
+Hash time changed by +12.94%/+14.73%/−27.38% in SM64/Banjo/Snap respectively.
+It is not a general speed improvement and does not justify a ROM-name override
+from one intro scene. Keep it opt-in while testing recorded gameplay and a
+cache policy that reduces misses without adding enough work to erase the gain.
+Logs are in `baselines/2026-09-30_wii_texture_snapshot_*`; matching artifacts,
+flags, source-manifest hashes and queue IDs are recorded in
+`baselines/2026-09-30_gameplay-artifacts.json`. Dolphin completed both the
+three-game graphics chain and the longer five-entry chain with this candidate.
+
+## Original paging investigation
 
 `gc_memory/MEM2.h` reserves 16 MB for the ROM cache. Larger ROMs use `VM_Init`
 in `main/ROM-Cache.c`. `vm/wii_vm.c` backs that mapping with the NAND
@@ -151,11 +225,22 @@ first measured VI is excluded.
    optimization only if cycles or wall time improve without new faults, scene
    changes, or audio regressions. Repeat enough runs to separate SD/NAND variance.
 
+## Next probes
+
 Graphics is the next scene-specific candidate: Snap's graphics span uses 36.7%
 of Wii wall time. Split display-list parsing, texture conversion/upload, GX
 submission, and waits before selecting a change. Function lookup is secondary:
 its sparse estimate was 1.6–4.8% in MP3/SM64/Banjo and lower in TWINE/DK64.
 Tree depth 31 in Banjo is evidence to investigate, not a reason to replace it.
+
+Version 1.6.4 adds the texture and draw boundaries above, compiled out in
+ordinary builds. Run `.dev/profile_subsystems.sh graphics_survey HBC_AGENT=1`
+after building the external agent SDK. This queues SM64/Banjo/Snap with
+full/disabled/full probes and measures their added cost. Use the matching
+chain in muted LLE Dolphin for correctness. Keep GX waits, texture hashes,
+cache keys and ownership unchanged until a measured substage justifies a fix.
+Use the newer graphics overhead table above, not the original six-game costs,
+when estimating the added probes' effect on these three scenes.
 
 ## Verification
 

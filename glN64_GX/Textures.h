@@ -128,6 +128,7 @@ void TextureCache_MoveToTop( CachedTexture *newtop );
 void TextureCache_Remove( CachedTexture *texture );
 void TextureCache_RemoveBottom();
 void TextureCache_Init();
+void TextureCache_InvalidateHash();
 void TextureCache_Destroy();
 void TextureCache_Update( u32 t );
 void TextureCache_ActivateTexture( u32 t, CachedTexture *texture );

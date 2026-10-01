@@ -965,6 +965,7 @@ void OGL_AddTriangle( SPVertex *vertices, int v0, int v1, int v2 )
 
 void OGL_DrawTriangles()
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_DRAW_TRIANGLES);
 
 	if (OGL.usePolygonStipple && (gDP.otherMode.alphaCompare == G_AC_DITHER) && !(gDP.otherMode.alphaCvgSel))
 	{
@@ -1189,6 +1190,7 @@ void OGL_DrawLine( SPVertex *vertices, int v0, int v1, float width )
 
 void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_DRAW_RECT);
 	OGL_UpdateStates();
 
 #ifndef __GX__
@@ -1281,6 +1283,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color )
 
 void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip, const float *colorOverride )
 {
+	PERF_SUBSYSTEM_SCOPE(PERF_SUB_DRAW_RECT);
 #ifdef __GX__
 	OGL.GXrenderTexRect = true;
 #endif //__GX__

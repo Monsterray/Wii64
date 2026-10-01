@@ -36,13 +36,17 @@
     "reference_a": "2026-09-30_wii_paging_reference_a",
     "read_ahead": "2026-09-30_wii_paging_readahead",
     "reference_b": "2026-09-30_wii_paging_reference_b",
-    "preflush": "2026-09-30_wii_paging_preflush"
+    "preflush": "2026-09-30_wii_paging_preflush",
+    "matched_a": "2026-09-30_wii_paging_matched_a",
+    "matched_reference": "2026-09-30_wii_paging_matched_reference",
+    "matched_b": "2026-09-30_wii_paging_matched_b"
   },
   "completed_checks": {
     "fatal_dsi": "20260930-173721-7f52a0",
     "preflush": "20260930-173721-0d8b3e"
   },
   "matched_survey": {
+    "status": "all three jobs passed and returned to HBC 1.8.6",
     "directory": ".dev/runs/subsystem-survey-20260930-180820-T054",
     "sdk_archive_sha256": "94f669d788c9d46687e6638c1d200a350c0c95ca01ad12c36ac09f47f8b11e8d",
     "full_dol_sha256": "48e54b516058e2c39ea851bf3b0877c203e5064cdb379b13f524930eca2901dd",

@@ -720,6 +720,9 @@ static BOOL _gDPCheckForFrameBufferTexture( u32 address, u32 width, u32 bytes, u
 
 void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
+#ifdef __GX__
+	TextureCache_InvalidateHash();
+#endif
 	u32 address, height, bpl, line, y;
 	u64 *dest;
 	u8 *src;
@@ -815,6 +818,9 @@ void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 {
+#ifdef __GX__
+	TextureCache_InvalidateHash();
+#endif
 	gDPSetTileSize( tile, uls, ult, lrs, dxt );
 	gDP.loadTile = &gDP.tiles[tile];
 
@@ -902,6 +908,9 @@ end_dxt:
 
 void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
+#ifdef __GX__
+	TextureCache_InvalidateHash();
+#endif
 	gDPSetTileSize( tile, uls, ult, lrs, lrt );
 
 	if (gDP.tiles[tile].tmem < 256) {

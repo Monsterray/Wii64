@@ -52,6 +52,8 @@ already in the image; stage new arguments with folder sync first.
 For real Wii tests, configure the installed HBC-Reborn queue client with the
 central server first; see [hardware sessions](../../../doc/hardware-session.md).
 Use `.dev/hardware_run.sh`: it queues and waits before contacting the Wii.
+With the external HBC-Reborn client, it stages the chain's replay files before
+launch. Keep manual replay staging for older HBC with `WII64_STAGE_INPUTS=0`.
 Keep each queued DOL unchanged and retain its matching ELF. The same workflow
 uses the installed macOS/Linux or Windows client; server failure leaves the
 job waiting rather than permitting a direct upload.
@@ -62,5 +64,10 @@ full/control/full Wii builds and reports. New timers require both `PERF_PROF`
 and `PERF_SUBSYSTEM_PROBES`; ordinary profiling builds have no new timer cost.
 Interpret inclusive spans separately. Hot-operation estimates can alias, and
 requested limiter sleep is not a measurement of available CPU capacity.
+Wii paging now defaults to read-ahead plus startup preflush. Explicitly disable
+both flags for the old reference path; keep startup time separate from gameplay.
+For texture changes, run `bash .dev/test_texture_hash.sh` and use the matched
+graphics chain. Texture hashes, lookups, conversion and submission are separate
+probes; do not infer GPU execution time from their inclusive CPU-side spans.
 
 Use [controller testing](../../../doc/controller-testing.md) for input checks and [hardware sessions](../../../doc/hardware-session.md) for Wii results. Use `.dev/build_profiling.sh`, `.dev/wii64_diag.sh`, and the existing performance baselines when comparing speed. Compare dynarec and interpreter runs separately. Check the target's preprocessor branches before changing code: Wii builds and host builds do not execute every branch. Keep ROMs, profiles, logs, screenshots, and build products out of Git.

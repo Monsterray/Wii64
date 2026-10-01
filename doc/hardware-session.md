@@ -54,6 +54,14 @@ external checkout outside the default sibling path. The runner preserves that
 setting, distinguishes HBC from a running agent, and retains new crash reports
 with the matching ELF. A crash fails the run instead of becoming a speed result.
 
+With the external HBC-Reborn client available, the runner now copies the selected
+chain's `scripts/inputs/*.txt` files to `sd:/wii64/input/` before launching.
+This happens under the same lease and outside timed gameplay. Missing local
+replays stop the run. To stage them separately, run
+`bash .dev/stage_wii_inputs.sh <chain-name>`; it also queues and waits.
+Set `WII64_STAGE_INPUTS=0` to retain manually staged files or use an older HBC
+without file transfers. Do not upload to the shared Wii outside its lease.
+
 Keep the computer awake. On macOS, the receiver uses Apple's built-in Python so the
 firewall can allow it without a repeated Homebrew Python prompt. If the firewall does
 prompt, allow incoming connections for the test; keep the firewall enabled. The
