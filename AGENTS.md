@@ -2,6 +2,7 @@
 
 For build, Dolphin, controller, or performance work, read [the Wii64 build-and-test skill](.agents/skills/wii64-build-and-test/SKILL.md). Use [README.md](README.md) and [the macOS setup notes](doc/macos-development-setup.md) for contributor instructions.
 
+- Use the code graph before reading files to find code: callers, call paths, every writer of a variable. On the bench workstation the ignored `.mcp.json` registers `codebase-memory-local` (project `wii64`; the index refreshes itself): `search_graph` for symbols, `trace_path` for callers and callees, `get_code_snippet` for source. Without the MCP tools, its CLI works: `C:/ai/venvs/codebase-memory/Scripts/codebase-memory-mcp.exe cli --quiet search_graph '{"project":"wii64","name_pattern":"gDPLoadBlock"}'`. Use grep for literals and for code the graph does not parse.
 - Keep libogc2 and libfat in separate source checkouts. Build them with the devkitPPC used for Wii64.
 - Use `.dev/env.sh` and `.dev/build.sh <target>`. Clean when you change targets, toolchains, or build flags because targets share object files.
 - Both hosts build with devkitPro's current devkitPPC (GCC 16) and source-built libogc2 and libfat. The Wii makefile accepts both tested libogc2 layouts. Do not use WiiStation's r41-2 pin or its prebuilt `C:\devkitPro\libogc2`: current Wii64 does not compile against them.

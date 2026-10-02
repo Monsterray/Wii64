@@ -222,6 +222,79 @@ its game code runs from TLB-mapped addresses, so it paid the check and never
 hit. There is no host test for this path; the Dolphin chains and the Wii
 triple are its checks.
 
+### Kept: fewer Mario Kart copies, a texture hint, paired-single colors
+
+Wii, `gpu_survey`, candidate/reference/candidate with all three on against
+all three off (`baselines/2026-10-02_hw_skipdepth_hint_color_*`):
+
+| Scene | CPU cycles |
+|---|---:|
+| Mario Kart 64 | −18.79% |
+| Pokémon Snap | −1.26% |
+| GoldenEye 007 | −1.09% |
+| Wave Race 64 | −0.93% |
+| Super Mario 64 | −0.88% |
+| Banjo-Kazooie | −0.35% |
+| Super Smash Bros. | −0.31% |
+| Diddy Kong Racing | −0.24% |
+| Donkey Kong 64 | −0.13% |
+
+- **`GLN64_COLOR_IMAGE_SKIP_DEPTH`.** A `SETCIMG` trace showed Mario Kart's
+  frame: draw the background into framebuffer X, switch to the depth image
+  to clear it (copy A), return to X for the scene, leave X for the next
+  framebuffer (copy B). Copy A only fills X while X is still being drawn,
+  and copy B replaces it; Kart's CPU builds the billboard from an earlier
+  framebuffer. No RDP texture load reads these framebuffers (traced over a
+  60 s race), so the copy must stay in RDRAM for the CPU. Skipping copy A
+  halved `SETCIMG`: 10.9 to 5.2 s per race. The replays never bring the
+  billboard on screen (the kart stays at the walls), so the billboard itself
+  is not visually checked; race screenshots taken on the Wii through the
+  agent (`hbc.py screen`) match with and without the skip.
+- **`GLN64_TEXTURE_HINT`.** Each texture lookup walked the whole cache list
+  (1.5 us per lookup in Kart). A 256-bucket table keeps the last entry
+  found per CRC; it is used only when it passes the same full comparison,
+  and freed entries leave it. An entry is made only after a search finds no
+  match, so no two entries match one request. `tex_lookup` time fell 20–30%.
+- **`GLN64_PS_COLOR`.** Vertex colors go to the GX FIFO as two quantized
+  paired-single stores (GQR2, as `GXcastf32u8`) instead of four stores and
+  reloads through memory.
+- **`OGL_AddTriangle` (no flag).** Loop-invariant texture and combiner state
+  now sits in locals; the compiler had reloaded it for every vertex because a
+  store into the vertex buffer could alias it. The same expressions in the
+  same order: Dolphin drew byte-identical SM64 and Banjo frames before and
+  after. Against the previous survey of the same chain, triangle commands
+  cost 1–4% less per call (Smash `TRI2` 11.5%).
+
+### Not done: the GPU billboard copy
+
+Moving the Kart copy to the GPU (an EFB-to-texture copy, then detiling) would
+change what the billboard shows (the frame being drawn, not the last shown
+one) and needs a GPU wait per copy. With copy A skipped, the CPU copy costs
+about 9% of the race; the GPU copy remains a candidate if that matters.
+
+## Library check after these changes
+
+Every owned ROM, with the library sweep's own replays and VI targets
+(`doc/library-testing.md`), on one frozen `PERF_PROF` build of the working
+tree: 18 entries on the Wii in three chains, and the 9 local ROMs in Dolphin.
+Compared with the 2026-10-01 sweep (1.6.7). Results:
+`baselines/library-20261002-{hardware-01,hardware-02,hardware-03,dolphin}`.
+
+- All 18 Wii and 9 Dolphin entries reached their VI targets, consumed the
+  same replay records and returned to HBC. Every final frame shows the
+  expected scene.
+- Guest work matched: the same exception and recompile counts, within a
+  few, in every game but Mario Kart, where exceptions fell 3.4% on the Wii
+  and 4.4% in Dolphin. Kart now runs at speed instead of 0.985x, and its
+  audio interrupt count follows output timing.
+- CPU cycles fell 3.6% to 11.8% per game (Mario Kart 41.6%). Speed rose or
+  held: Kart 0.985x to 0.997x. Audio underruns fell in most games (Kart 102
+  to 8, Majora's Mask 38 to 8, OoT MQ 133 to 66).
+- Rice was checked separately in Dolphin (SM64, Banjo): same counts.
+
+The 2026-10-01 sweep ran from the Mac; that Dolphin is a different host,
+so compare Dolphin speeds within one host only.
+
 ## The frame limiter's sleep
 
 WiiStation found that its own limiter asked `usleep` for ten times the wait

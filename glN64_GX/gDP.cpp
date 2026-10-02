@@ -330,6 +330,9 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 }*/
 
 #include "YUYVConvert.h"
+#ifndef GLN64_COLOR_IMAGE_SKIP_DEPTH
+#define GLN64_COLOR_IMAGE_SKIP_DEPTH 1 // 0: copy at every switch, for A/B runs
+#endif
 extern VIInfo VI;
 void gDPUpdateColorImage(void)
 {
@@ -346,9 +349,12 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 		(gDP.colorImage.address != gDP.depthImageAddress) &&
 		(gDP.colorImage.address != RSP_SegmentToPhysical( address )))
 	{
-		if(enablegDPUpdateColorImage) {
+		// No copy when the game leaves its framebuffer only to clear the depth
+		// image: it comes back and draws the frame, and the copy as it leaves for
+		// the next framebuffer replaces this one before the game's CPU reads it.
+		// Mario Kart does this every frame, so this halves the copies.
+		if (!GLN64_COLOR_IMAGE_SKIP_DEPTH || RSP_SegmentToPhysical( address ) != gDP.depthImageAddress)
 			gDPUpdateColorImage();
-		}
 		//OGL_ClearDepthBuffer();
 		gDP.colorImage.changed = FALSE;
 		gDP.colorImage.height = 1;

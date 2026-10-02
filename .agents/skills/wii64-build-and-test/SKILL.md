@@ -41,6 +41,12 @@ For chain tests, a solid-color `xfb_NN.bin` means texture XFB was on (see above)
 
 The HOME menu (the HBC agent's overlay, in every Wii build) can be driven without a controller: `python ../hbc-reborn/tools/hbc.py --wii <this PC's LAN IP> key h` (then `l`/`r`/`u`/`d`/`a`/`b`) against a running `.dev/wii64_diag.sh start` instance; Dolphin binds port 4299 on the LAN address, not 127.0.0.1, and only one Dolphin can hold it (check `netstat -ano | grep :4299` -- a WiiStation run answers otherwise). `.dev/wii64_diag.sh shot` captures the whole window.
 
+When the user has a Dolphin open on `.dev/dolphin_profile`, leave it alone: `.dev/dolphin_test.sh` (and `.dev/library_check.sh ... dolphin`, which calls it) stops any Dolphin on that profile, and `.dev/wii64_diag.sh start` refuses. Run chains in a side profile instead: `.dev/wii64_diag.sh chain <dol> <chain file> <out dir>` uses `.dev/dolphin_runs`, and `WII64_RUNS=dolphin_runs2` picks another for a second run at once. The side profiles keep their own Wii64 settings on their SD cards, so compare frames, not batch counts, across profiles.
+
+To see frames in the middle of a run, capture them on the Wii: queue a job that runs `.dev/hardware_run.sh` and, beside it, `hbc.py --wii "$WII_BENCH_IP" screen shot_NN.png` every few seconds (the agent answers while the game runs). Dolphin's frame dumping wrote nothing with the RAM-XFB settings, and window capture of a second instance returned 1x1 images.
+
+Before calling a change safe for "other games", run the library chains: `baselines/library-*-hardware-0{1,2,3}/diag.cfg` hold the 18 entries with their replays. Compare per game with `scripts/chain_compare.py` or the guest counts (exceptions, recompiles), which should match the previous sweep within a few.
+
 ## Deeper checks
 
 For MEM2 layout, ROM paging, HBC agent integration, or automated crash capture,

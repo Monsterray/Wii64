@@ -25,7 +25,8 @@ The [GPU survey](gpu-results-2026-10-02.md) measured the GP's own counters on
 the Wii: the GP is idle more than 85% of the time in nine 3D scenes. Graphics
 cost is CPU-side glN64 work. Mario Kart's `SETCIMG` billboard copy is now twice as fast
 (race 0.978x to 0.993x), vertex loads use the paired-single unit (−2 to −3.5%
-cycles), and the dynarec dispatcher remembers its targets (−1 to −6.6%). See
+cycles), the dynarec dispatcher remembers its targets (−1 to −6.6%), and Kart skips
+half its billboard copies (race −18.8% more). An 18-ROM library check passed. See
 [the changes and rejected experiments](gpu-results-2026-10-02.md#changes-from-this-survey-2026-10-02). Paging is now
 on by default; the section below is its history.
 

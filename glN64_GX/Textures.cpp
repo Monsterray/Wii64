@@ -566,8 +566,23 @@ static CachedTexture *TextureCache_AllocSlot()
 	return slot;
 }
 
+/* The last texture found for each CRC bucket. An entry is made only after a
+   full search finds no match and its compared fields do not change, so no two
+   entries match one request: a hinted entry that matches is the one the list
+   search would return. Freed entries leave the table. */
+#ifndef GLN64_TEXTURE_HINT
+#define GLN64_TEXTURE_HINT 1 // 0: always search the list, for A/B runs
+#endif
+static CachedTexture *crcHint[256];
+static inline CachedTexture *&TextureCache_Hint( u32 crc )
+{
+	return crcHint[(crc ^ (crc >> 8) ^ (crc >> 16) ^ (crc >> 24)) & 255];
+}
+
 static void TextureCache_FreeSlot( CachedTexture *slot )
 {
+	if (TextureCache_Hint( slot->crc ) == slot)
+		TextureCache_Hint( slot->crc ) = NULL;
 	slot->lower = freeTextureSlots;
 	freeTextureSlots = slot;
 }
@@ -676,6 +691,7 @@ static void _texHeapDropRetired();
 
 void TextureCache_Init()
 {
+	memset( crcHint, 0, sizeof( crcHint ) );
 	TextureCache_InvalidateHash();
 #if defined(__GX__) && GLN64_TMEM_HASH_CACHE
 	textureHashMemo[0].valid = textureHashMemo[1].valid = false;
@@ -2431,39 +2447,40 @@ void TextureCache_Update( u32 t )
 //		current = cache.top;
 
 	unsigned long long lookup_timer = perfProf_subsystemBegin(PERF_SUB_TEX_LOOKUP);
-	current = cache.top;
- 	while (current)
-  	{
-		if ((current->crc == crc) &&
-//			(current->address == gDP.textureImage.address) &&
-//			(current->palette == gSP.textureTile[t]->palette) &&
-			(current->width == width) &&
-			(current->height == height) &&
-			(current->clampWidth == clampWidth) &&
-			(current->clampHeight == clampHeight) &&
-			(current->maskS == gSP.textureTile[t]->masks) &&
-			(current->maskT == gSP.textureTile[t]->maskt) &&
-			(current->mirrorS == gSP.textureTile[t]->mirrors) &&
-			(current->mirrorT == gSP.textureTile[t]->mirrort) &&
-			(current->clampS == gSP.textureTile[t]->clamps) &&
-			(current->clampT == gSP.textureTile[t]->clampt) &&
-//			(current->tMem == gSP.textureTile[t]->tMem) &&
-/*			(current->ulS == gSP.textureTile[t]->ulS) &&
-			(current->ulT == gSP.textureTile[t]->ulT) &&
-			(current->lrS == gSP.textureTile[t]->lrS) &&
-			(current->lrT == gSP.textureTile[t]->lrT) &&*/
-			(current->format == gSP.textureTile[t]->format) &&
-			(current->size == gSP.textureTile[t]->size))
-		{
-			perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
-			TextureCache_ActivateTexture( t, current );
-//			TextureCache_ActivateDummy( t );
+	auto matches = [&]( const CachedTexture *c ) {
+		return ((c->crc == crc) &&
+	//			(c->address == gDP.textureImage.address) &&
+	//			(c->palette == gSP.textureTile[t]->palette) &&
+				(c->width == width) &&
+				(c->height == height) &&
+				(c->clampWidth == clampWidth) &&
+				(c->clampHeight == clampHeight) &&
+				(c->maskS == gSP.textureTile[t]->masks) &&
+				(c->maskT == gSP.textureTile[t]->maskt) &&
+				(c->mirrorS == gSP.textureTile[t]->mirrors) &&
+				(c->mirrorT == gSP.textureTile[t]->mirrort) &&
+				(c->clampS == gSP.textureTile[t]->clamps) &&
+				(c->clampT == gSP.textureTile[t]->clampt) &&
+	//			(c->tMem == gSP.textureTile[t]->tMem) &&
+	/*			(c->ulS == gSP.textureTile[t]->ulS) &&
+				(c->ulT == gSP.textureTile[t]->ulT) &&
+				(c->lrS == gSP.textureTile[t]->lrS) &&
+				(c->lrT == gSP.textureTile[t]->lrT) &&*/
+				(c->format == gSP.textureTile[t]->format) &&
+				(c->size == gSP.textureTile[t]->size));
+	};
+	current = GLN64_TEXTURE_HINT ? TextureCache_Hint( crc ) : NULL;
+	if (!current || !matches( current ))
+		for (current = cache.top; current && !matches( current ); current = current->lower);
+	if (current)
+	{
+		TextureCache_Hint( crc ) = current;
+		perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
+		TextureCache_ActivateTexture( t, current );
+//		TextureCache_ActivateDummy( t );
 
-			cache.hits++;
-			return;
-		}
-
-		current = current->lower;
+		cache.hits++;
+		return;
 	}
 
 	perfProf_subsystemEnd(PERF_SUB_TEX_LOOKUP, lookup_timer);
@@ -2489,6 +2506,7 @@ void TextureCache_Update( u32 t )
 
 	cache.current[t]->address = gDP.textureImage.address;
 	cache.current[t]->crc = crc;
+	TextureCache_Hint( crc ) = cache.current[t];
 
 	cache.current[t]->format = gSP.textureTile[t]->format;
 	cache.current[t]->size = gSP.textureTile[t]->size;

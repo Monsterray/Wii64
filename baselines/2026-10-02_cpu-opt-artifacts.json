@@ -123,5 +123,43 @@
       "control": "20261002-094850-d1ca72",
       "full2": "20261002-094850-ee73dc"
     }
+  },
+  "library_check": {
+    "head": "f971efa328c98d01510eb04366c3d196e0ca83c5",
+    "flags": "-DPERF_PROF",
+    "source_diff_sha256": "73489d256528e560690c082854224af1d3d182c1588bee52c1996879b292d766",
+    "artifacts": {
+      "*build.dol": "7e2c703891f4b075d7eb5370cc462a76569e3adc6c14f879f1420f8afbdc2686",
+      "*build.elf": "2f9e1d75e9cbad00a22c29c9342d5f5bf02617d3252e3ad7a0ef091484a89f5b",
+      "*lib01.txt": "f192efef68beabf3a5ed5dc98d6b931e16c77f7c09f41fab32885cb791b385fb",
+      "*lib02.txt": "2d06b70de40dd8c5d007d54b9ae366b6931b896b2ffca12b2d1e15ef57590f0e",
+      "*lib03.txt": "4e3c873c91f31b43f58b0fed111cc6717903a4e8d1e64b9f2e1d9904b24522e9"
+    },
+    "jobs": {
+      "01": "20261002-110201-05da99",
+      "02": "20261002-110202-7911c3",
+      "03": "20261002-110202-2fb60b"
+    },
+    "note": "Working tree with the dispatch table, paired-single vertex loads, the Kart copy and its depth-switch skip."
+  },
+  "skipdepth_hint_color": {
+    "head": "f971efa328c98d01510eb04366c3d196e0ca83c5",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_COLOR_IMAGE_SKIP_DEPTH=1 -DGLN64_TEXTURE_HINT=1 -DGLN64_PS_COLOR=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_COLOR_IMAGE_SKIP_DEPTH=0 -DGLN64_TEXTURE_HINT=0 -DGLN64_PS_COLOR=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "314d9d7b7ffef371dbe9fc643fcb23aba8e667ca9b65570e66a9202aa0fc89f1",
+      "control.elf": "7035cdc3dfe1be2a702cbeb92e294ff6f8e0a3686d48b3f37697f0182cc80114",
+      "full.dol": "ac43cdc503b55da344273fb11c0be502c74e8c0a2734de301493b64614ae6bae",
+      "full.elf": "96d48bc8489ddca51b77bcb2232ddf501357eddf6eaa12877b6628633e03ee28"
+    },
+    "jobs": {
+      "full1": "20261002-111357-f2f361",
+      "control": "20261002-111358-bb5c33",
+      "full2": "20261002-111358-b91956"
+    },
+    "note": "The AddTriangle rewrite is in both builds; it is bit-identical in Dolphin frames."
   }
 }

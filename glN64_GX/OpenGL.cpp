@@ -858,102 +858,106 @@ void OGL_AddTriangle( SPVertex *vertices, int v0, int v1, int v2 )
 //	float lod_fraction = min( 1.0f, max( 0.0f, lod - 1.0f ) / max( 1.0f, gSP.texture.level ) );
 
 
-	for (int i = 0; i < 3; i++)
+	// Loop-invariant state in locals: a store into OGL.vertices could alias any
+	// of it, so the compiler reloaded it for every vertex. Same expressions, same order.
+	const f32 texPerspHalf = (GBI_IsTexturePersp() && gDP.otherMode.texturePersp == 0)
+	                         ? 0.5f : 1.0f;
+	const f32 texPerspScaleS = gSP.texture.scales * texPerspHalf;
+	const f32 texPerspScaleT = gSP.texture.scalet * texPerspHalf;
+	const BOOL usesT0 = combiner.usesT0, usesT1 = combiner.usesT1;
+	const CachedTexture *tex0 = cache.current[0], *tex1 = cache.current[1];
+	const gDPTile *tile0 = gSP.textureTile[0], *tile1 = gSP.textureTile[1];
+	const BOOL fbTex0 = usesT0 || usesT1 ? tex0->frameBufferTexture : FALSE;
+	const WORD constColor = combiner.vertex.color, constAlpha = combiner.vertex.alpha;
+	GLVertex *out = &OGL.vertices[OGL.numVertices];
+
+	for (int i = 0; i < 3; i++, out++)
 	{
-		OGL.vertices[OGL.numVertices].x = vertices[v[i]].x;
-		OGL.vertices[OGL.numVertices].y = vertices[v[i]].y;
+		const SPVertex &in = vertices[v[i]];
+		out->x = in.x;
+		out->y = in.y;
 #ifndef __GX__
-		OGL.vertices[OGL.numVertices].z = gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * vertices[v[i]].w : vertices[v[i]].z;
+		out->z = gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * in.w : in.z;
 #else // !__GX__
 		//TODO: primDepthZ should now be handled with a Ztex. Verify this.
-		//Note: Could also handle primDepthZ by manipulating the Projection matrix
-//		OGL.vertices[OGL.numVertices].z = (gDP.otherMode.depthSource == G_ZS_PRIM) && !(OGL.GXuseProj) ? gDP.primDepth.z * vertices[v[i]].w : vertices[v[i]].z;
-		OGL.vertices[OGL.numVertices].z = vertices[v[i]].z;
+		out->z = in.z;
 #endif // __GX__
-		OGL.vertices[OGL.numVertices].w = vertices[v[i]].w;
+		out->w = in.w;
 
-		OGL.vertices[OGL.numVertices].color.r = vertices[v[i]].r;
-		OGL.vertices[OGL.numVertices].color.g = vertices[v[i]].g;
-		OGL.vertices[OGL.numVertices].color.b = vertices[v[i]].b;
-		OGL.vertices[OGL.numVertices].color.a = vertices[v[i]].a;
-		SetConstant( OGL.vertices[OGL.numVertices].color, combiner.vertex.color, combiner.vertex.alpha );
-		//SetConstant( OGL.vertices[OGL.numVertices].secondaryColor, combiner.vertex.secondaryColor, ONE );
+		out->color.r = in.r;
+		out->color.g = in.g;
+		out->color.b = in.b;
+		out->color.a = in.a;
+		SetConstant( out->color, constColor, constAlpha );
 
 		if (OGL.EXT_secondary_color)
 		{
-			OGL.vertices[OGL.numVertices].secondaryColor.r = 0.0f;//lod_fraction; //vertices[v[i]].r;
-			OGL.vertices[OGL.numVertices].secondaryColor.g = 0.0f;//lod_fraction; //vertices[v[i]].g;
-			OGL.vertices[OGL.numVertices].secondaryColor.b = 0.0f;//lod_fraction; //vertices[v[i]].b;
-			OGL.vertices[OGL.numVertices].secondaryColor.a = 1.0f;
-			SetConstant( OGL.vertices[OGL.numVertices].secondaryColor, combiner.vertex.secondaryColor, ONE );
+			out->secondaryColor.r = 0.0f;
+			out->secondaryColor.g = 0.0f;
+			out->secondaryColor.b = 0.0f;
+			out->secondaryColor.a = 1.0f;
+			SetConstant( out->secondaryColor, combiner.vertex.secondaryColor, ONE );
 		}
 
 #ifndef __GX__
 		if ((gSP.geometryMode & G_FOG) && OGL.EXT_fog_coord && OGL.fog)
 		{
-			if (vertices[v[i]].z < -vertices[v[i]].w)
-				OGL.vertices[OGL.numVertices].fog = max( 0.0f, -(float)gSP.fog.multiplier + (float)gSP.fog.offset );
+			if (in.z < -in.w)
+				out->fog = max( 0.0f, -(float)gSP.fog.multiplier + (float)gSP.fog.offset );
 			else
-				OGL.vertices[OGL.numVertices].fog = max( 0.0f, vertices[v[i]].z / vertices[v[i]].w * (float)gSP.fog.multiplier + (float)gSP.fog.offset );
+				out->fog = max( 0.0f, in.z / in.w * (float)gSP.fog.multiplier + (float)gSP.fog.offset );
 		}
 #else //!__GX__
 		//Fog is taken care of in hardware with GX.
 #endif //__GX__
 
-		const f32 texPerspHalf = (GBI_IsTexturePersp() && gDP.otherMode.texturePersp == 0)
-		                         ? 0.5f : 1.0f;
-		const f32 texPerspScaleS = gSP.texture.scales * texPerspHalf;
-		const f32 texPerspScaleT = gSP.texture.scalet * texPerspHalf;
-		if (combiner.usesT0)
+		if (usesT0)
 		{
-			if (cache.current[0]->frameBufferTexture)
+			if (fbTex0)
 			{
-/*				OGL.vertices[OGL.numVertices].s0 = (cache.current[0]->offsetS + (vertices[v[i]].s * cache.current[0]->shiftScaleS * texPerspScaleS - gSP.textureTile[0]->fuls)) * cache.current[0]->scaleS;
-				OGL.vertices[OGL.numVertices].t0 = (cache.current[0]->offsetT - (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - gSP.textureTile[0]->fult)) * cache.current[0]->scaleT;*/
-
-				if (gSP.textureTile[0]->masks)
-					OGL.vertices[OGL.numVertices].s0 = (cache.current[0]->offsetS + (vertices[v[i]].s * cache.current[0]->shiftScaleS * texPerspScaleS - fmod( gSP.textureTile[0]->fuls, 1 << gSP.textureTile[0]->masks ))) * cache.current[0]->scaleS;
+				if (tile0->masks)
+					out->s0 = (tex0->offsetS + (in.s * tex0->shiftScaleS * texPerspScaleS - fmod( tile0->fuls, 1 << tile0->masks ))) * tex0->scaleS;
 				else
-					OGL.vertices[OGL.numVertices].s0 = (cache.current[0]->offsetS + (vertices[v[i]].s * cache.current[0]->shiftScaleS * texPerspScaleS - gSP.textureTile[0]->fuls)) * cache.current[0]->scaleS;
+					out->s0 = (tex0->offsetS + (in.s * tex0->shiftScaleS * texPerspScaleS - tile0->fuls)) * tex0->scaleS;
 
 #ifndef __GX__
-				if (gSP.textureTile[0]->maskt)
-					OGL.vertices[OGL.numVertices].t0 = (cache.current[0]->offsetT - (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - fmod( gSP.textureTile[0]->fult, 1 << gSP.textureTile[0]->maskt ))) * cache.current[0]->scaleT;
+				if (tile0->maskt)
+					out->t0 = (tex0->offsetT - (in.t * tex0->shiftScaleT * texPerspScaleT - fmod( tile0->fult, 1 << tile0->maskt ))) * tex0->scaleT;
 				else
-					OGL.vertices[OGL.numVertices].t0 = (cache.current[0]->offsetT - (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - gSP.textureTile[0]->fult)) * cache.current[0]->scaleT;
+					out->t0 = (tex0->offsetT - (in.t * tex0->shiftScaleT * texPerspScaleT - tile0->fult)) * tex0->scaleT;
 #else //!__GX__
-				if (gSP.textureTile[0]->maskt)
-					OGL.vertices[OGL.numVertices].t0 = (cache.current[0]->offsetT + (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - fmod( gSP.textureTile[0]->fult, 1 << gSP.textureTile[0]->maskt ))) * cache.current[0]->scaleT;
+				if (tile0->maskt)
+					out->t0 = (tex0->offsetT + (in.t * tex0->shiftScaleT * texPerspScaleT - fmod( tile0->fult, 1 << tile0->maskt ))) * tex0->scaleT;
 				else
-					OGL.vertices[OGL.numVertices].t0 = (cache.current[0]->offsetT + (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - gSP.textureTile[0]->fult)) * cache.current[0]->scaleT;
+					out->t0 = (tex0->offsetT + (in.t * tex0->shiftScaleT * texPerspScaleT - tile0->fult)) * tex0->scaleT;
 #endif //__GX__
 			}
 			else
 			{
-				OGL.vertices[OGL.numVertices].s0 = (vertices[v[i]].s * cache.current[0]->shiftScaleS * texPerspScaleS - gSP.textureTile[0]->fuls + cache.current[0]->offsetS) * cache.current[0]->scaleS; 
-				OGL.vertices[OGL.numVertices].t0 = (vertices[v[i]].t * cache.current[0]->shiftScaleT * texPerspScaleT - gSP.textureTile[0]->fult + cache.current[0]->offsetT) * cache.current[0]->scaleT;
+				out->s0 = (in.s * tex0->shiftScaleS * texPerspScaleS - tile0->fuls + tex0->offsetS) * tex0->scaleS;
+				out->t0 = (in.t * tex0->shiftScaleT * texPerspScaleT - tile0->fult + tex0->offsetT) * tex0->scaleT;
 			}
 		}
 
-		if (combiner.usesT1)
+		if (usesT1)
 		{
-			if (cache.current[0]->frameBufferTexture)
+			if (fbTex0)
 			{
-				OGL.vertices[OGL.numVertices].s1 = (cache.current[1]->offsetS + (vertices[v[i]].s * cache.current[1]->shiftScaleS * texPerspScaleS - gSP.textureTile[1]->fuls)) * cache.current[1]->scaleS;
+				out->s1 = (tex1->offsetS + (in.s * tex1->shiftScaleS * texPerspScaleS - tile1->fuls)) * tex1->scaleS;
 #ifndef __GX__
-				OGL.vertices[OGL.numVertices].t1 = (cache.current[1]->offsetT - (vertices[v[i]].t * cache.current[1]->shiftScaleT * texPerspScaleT - gSP.textureTile[1]->fult)) * cache.current[1]->scaleT;
+				out->t1 = (tex1->offsetT - (in.t * tex1->shiftScaleT * texPerspScaleT - tile1->fult)) * tex1->scaleT;
 #else //!__GX__
-				OGL.vertices[OGL.numVertices].t1 = (cache.current[1]->offsetT + (vertices[v[i]].t * cache.current[1]->shiftScaleT * texPerspScaleT - gSP.textureTile[1]->fult)) * cache.current[1]->scaleT;
+				out->t1 = (tex1->offsetT + (in.t * tex1->shiftScaleT * texPerspScaleT - tile1->fult)) * tex1->scaleT;
 #endif //__GX__
 			}
 			else
 			{
-				OGL.vertices[OGL.numVertices].s1 = (vertices[v[i]].s * cache.current[1]->shiftScaleS * texPerspScaleS - gSP.textureTile[1]->fuls + cache.current[1]->offsetS) * cache.current[1]->scaleS; 
-				OGL.vertices[OGL.numVertices].t1 = (vertices[v[i]].t * cache.current[1]->shiftScaleT * texPerspScaleT - gSP.textureTile[1]->fult + cache.current[1]->offsetT) * cache.current[1]->scaleT;
+				out->s1 = (in.s * tex1->shiftScaleS * texPerspScaleS - tile1->fuls + tex1->offsetS) * tex1->scaleS;
+				out->t1 = (in.t * tex1->shiftScaleT * texPerspScaleT - tile1->fult + tex1->offsetT) * tex1->scaleT;
 			}
 		}
-		OGL.numVertices++;
 	}
+	OGL.numVertices += 3;
 	OGL.numTriangles++;
 
 	if (OGL.numVertices >= 255)
@@ -964,6 +968,9 @@ void OGL_AddTriangle( SPVertex *vertices, int v0, int v1, int v2 )
 	int CntTriProj, CntTriProjW, CntTriOther, CntTriNear, CntTriPolyOffset;
 #endif
 
+#ifndef GLN64_PS_COLOR
+#define GLN64_PS_COLOR 1 // 0: four GXcastf32u8 conversions per vertex, for A/B runs
+#endif
 void OGL_DrawTriangles()
 {
 	PERF_SUBSYSTEM_SCOPE(PERF_SUB_DRAW_TRIANGLES);
@@ -981,7 +988,9 @@ void OGL_DrawTriangles()
 #ifndef __GX__
 	glDrawArrays( GL_TRIANGLES, 0, OGL.numVertices );
 #else // !__GX__
+#if !GLN64_PS_COLOR || defined(GLN64_SDLOG)
 	GXColor GXcol;
+#endif
 	float invW;
 
 #ifdef GLN64_SDLOG
@@ -1062,11 +1071,22 @@ void OGL_DrawTriangles()
 			else if (zClamp >  1.0f) zClamp =  1.0f;
 			GX_Position3f32( OGL.vertices[i].x*invW, OGL.vertices[i].y*invW, zClamp );
 		}
+#if GLN64_PS_COLOR
+		// GXcastf32u8's quantized store (GQR2), two components at a time, straight
+		// into the write-gather pipe: the same bytes without a store and reload each.
+		__asm__ volatile(
+			"psq_l   0, 0(%0), 0, 0 \n" // r, g
+			"psq_l   1, 8(%0), 0, 0 \n" // b, a
+			"psq_st  0, 0(%1), 0, 2 \n"
+			"psq_st  1, 0(%1), 0, 2 \n"
+			: : "b"(&OGL.vertices[i].color.r), "b"(wgPipe) : "fr0", "fr1", "memory");
+#else
 		GXcol.r = GXcastf32u8(OGL.vertices[i].color.r);
 		GXcol.g = GXcastf32u8(OGL.vertices[i].color.g);
 		GXcol.b = GXcastf32u8(OGL.vertices[i].color.b);
 		GXcol.a = GXcastf32u8(OGL.vertices[i].color.a);
-		GX_Color4u8(GXcol.r, GXcol.g, GXcol.b, GXcol.a); 
+		GX_Color4u8(GXcol.r, GXcol.g, GXcol.b, GXcol.a);
+#endif
 //		if (combiner.usesT0) GX_TexCoord2f32(OGL.vertices[i].s0,OGL.vertices[i].t0);
 //		if (combiner.usesT1) GX_TexCoord2f32(OGL.vertices[i].s1,OGL.vertices[i].t1);
 		if (combiner.usesT0) GX_TexCoord2f32(OGL.vertices[i].s0,OGL.vertices[i].t0);
