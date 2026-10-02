@@ -20,7 +20,7 @@ static void search_test(void)
         for (unsigned int i = 0; i < 192; i++)
             for (unsigned int c = 0; c < 2; c++) {
                 random = random * 1664525u + 1013904223u;
-                processor.input[i][c] = trial < 100 ? (int16_t)(random >> 16) : (i % 4) * 100;
+                processor.input[i][c] = trial < 100 ? (int16_t)(random >> 16) : (int16_t)((i % 4) * 100);
             }
         memcpy(processor.tail, processor.input + (trial % 64), sizeof(processor.tail[0]) * 64);
         unsigned int target = 64, best = target;

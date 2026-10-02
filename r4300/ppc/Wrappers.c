@@ -35,24 +35,15 @@
 #include "../../main/perf_prof.h"
 #include <string.h>
 
-#ifndef DYNAREC_DISPATCH_CACHE
-#define DYNAREC_DISPATCH_CACHE 1 // 0: find every target in the block's func tree, for A/B runs
-#endif
 #if DYNAREC_DISPATCH_CACHE
 /* Recently dispatched targets, so a repeat skips the invalid-address update
-   (and its TLB lookup) and the func tree walk. An entry is used only while
-   its page and the pages update_invalid_addr checks are not marked invalid:
-   the kseg alias, or for a TLB-mapped address its physical page and that
-   page's alias (a TLB write marks the virtual pages it unmaps). Otherwise the
-   slow path invalidates as before. Freeing or recompiling code empties it. */
-#define DISPATCH_CACHE_SIZE 1024
-static struct dispatch_entry {
-	unsigned int address, page1, page2;
-	PowerPC_func* func;
-	PowerPC_instr* code;
-} dispatchCache[DISPATCH_CACHE_SIZE];
+   (and its TLB lookup) and the func tree walk. Only a target found with no
+   page marked invalid is put in: its page and the pages update_invalid_addr
+   checks (the kseg alias, or for a TLB-mapped address its physical page and
+   that page's alias; a TLB write marks the virtual pages it unmaps). Any page
+   marked invalid after that, or freed code, empties it. */
+struct dispatch_entry dispatchCache[DISPATCH_CACHE_SIZE] __attribute__((aligned(32)));
 #endif
-int dispatchCacheStale = 1;
 
 #include <stdio.h>
 
@@ -206,8 +197,7 @@ void dynarec(unsigned int address){
 			dispatchCacheStale = 0;
 		}
 		struct dispatch_entry *hit = &dispatchCache[(address >> 2) & (DISPATCH_CACHE_SIZE - 1)];
-		if(hit->address == address && hit->func && !invalid_code_get(address>>12) &&
-		   !invalid_code_get(hit->page1) && !invalid_code_get(hit->page2)){
+		if(hit->address == address && hit->func){
 			func = hit->func;
 			code = hit->code;
 #ifdef USE_RECOMP_CACHE
@@ -270,19 +260,16 @@ void dynarec(unsigned int address){
 		// Recompute the block offset
 		code = (PowerPC_instr *)func->code_addr[index];
 #if DYNAREC_DISPATCH_CACHE
-		// A compile can rebuild an existing func's code in place, so it empties
-		// the table; a target found without compiling is remembered.
-		if(compiled)
-			dispatchCacheStale = 1;
-		else if(address >= 0x80000000 && address < 0xC0000000){
+		// A compile can rebuild the func it returns in place (filling a hole),
+		// so that func's entries go; freeing any other func marks the table
+		// stale. A target found without compiling is remembered.
+		if(compiled){
+			struct dispatch_entry *e;
+			for(e = dispatchCache; e < dispatchCache + DISPATCH_CACHE_SIZE; e++)
+				if(e->func == func) e->address = 0, e->func = NULL;
+		} else if((address >= 0x80000000 && address < 0xC0000000) ||
+		        (paddr >= 0x80000000 && paddr < 0xC0000000)){
 			hit->address = address;
-			hit->page1 = hit->page2 = (address^0x20000000)>>12;
-			hit->func = func;
-			hit->code = code;
-		} else if(paddr >= 0x80000000 && paddr < 0xC0000000){
-			hit->address = address;
-			hit->page1 = paddr>>12;
-			hit->page2 = (paddr^0x20000000)>>12;
 			hit->func = func;
 			hit->code = code;
 		}
@@ -408,15 +395,27 @@ void invalidate_func(unsigned int addr){
 void invalidate_func_range(unsigned int addr, unsigned int bytes){
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
 #if DYNAREC_INVALIDATE_PAGE_SKIP
-	/* Keep the original four-byte stride, including unaligned/wrapped ranges. */
+	/* Free the funcs that hold any of the original four-byte points (also for
+	   unaligned/wrapped ranges): per page, one tree query per func, not one
+	   per point. Skip pages already marked invalid. Compiled stores call this
+	   for every store, so one or two points take the short path. */
+	if(bytes <= 8){
+		if(bytes) invalidate_func(addr);
+		if(bytes > 4) invalidate_func(addr + 4);
+		return;
+	}
 	unsigned int words = bytes / 4 + (bytes % 4 != 0);
 	while(words){
-		unsigned int step = 1;
-		if(invalid_code_get(addr >> 12)){
-			step = (0x1000 - (addr & 0xfff) + 3) / 4;
-			if(step > words) step = words;
-		} else {
-			invalidate_func(addr);
+		unsigned int step = (0x1000 - (addr & 0xfff) + 3) / 4;
+		if(step > words) step = words;
+		if(!invalid_code_get(addr >> 12)){
+			PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_INVALIDATE);
+			unsigned int lo = addr, hi = addr + (step - 1) * 4;
+			PowerPC_func* func;
+			while((func = find_func_overlap(&blocks[addr>>12]->funcs, lo, hi))){
+				lo = func->end_addr;
+				RecompCache_Free(func->start_addr);
+			}
 		}
 		addr += step * 4;
 		words -= step;

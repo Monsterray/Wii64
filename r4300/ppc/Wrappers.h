@@ -23,9 +23,9 @@
 #ifndef WRAPPERS_H
 #define WRAPPERS_H
 
-/* Opt-in until matched Wii runs establish the gameplay benefit. */
+/* 0: check every four bytes of a DMA or store range, for A/B runs. */
 #ifndef DYNAREC_INVALIDATE_PAGE_SKIP
-#define DYNAREC_INVALIDATE_PAGE_SKIP 0
+#define DYNAREC_INVALIDATE_PAGE_SKIP 1
 #endif
 
 #include "Recompile.h"

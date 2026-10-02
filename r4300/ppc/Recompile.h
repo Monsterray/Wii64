@@ -58,6 +58,7 @@ typedef struct func {
 } PowerPC_func;
 
 PowerPC_func* find_func(PowerPC_func_node** root, unsigned int addr);
+PowerPC_func* find_func_overlap(PowerPC_func_node** root, unsigned int lo, unsigned int hi);
 void insert_func(PowerPC_func_node** root, PowerPC_func* func);
 void remove_func(PowerPC_func_node** root, PowerPC_func* func);
 

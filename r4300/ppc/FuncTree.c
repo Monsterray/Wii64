@@ -57,6 +57,22 @@ PowerPC_func* find_func(PowerPC_func_node** root, unsigned int addr){
 	return node ? node->function : NULL;
 }
 
+/* The first func, by address, that overlaps [lo, hi], or NULL. The funcs
+   in a block do not overlap: a compile frees the ones its func overlaps. */
+PowerPC_func* find_func_overlap(PowerPC_func_node** root, unsigned int lo, unsigned int hi){
+	PowerPC_func_node* node = *root;
+	PowerPC_func* first = NULL;
+	while(node){
+		if(lo >= node->function->end_addr)
+			node = node->right;
+		else {
+			if(hi >= node->function->start_addr) first = node->function;
+			node = node->left;
+		}
+	}
+	return first;
+}
+
 void insert_func(PowerPC_func_node** root, PowerPC_func* func){
 	PowerPC_func_node** node = _find(root, func->start_addr);
 	if(*node) return; // Avoid a memory leak if this function exists

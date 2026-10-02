@@ -122,11 +122,13 @@ limiter sleep); this includes other waits and interruptions, not CPU self time.
 
 The first 1.6.5 instrumented artifacts timed every invalidation call, including
 already-invalid pages. Their `jit_invalidate` boundary differs from the reduced
-probe boundary above. Compare only binaries with the same definition. The
-range-skip experiment is opt-in with `DYNAREC_INVALIDATE_PAGE_SKIP=1`; value 0
-retains the original walker. It skips already-invalid pages but visits eligible
-addresses at the original four-byte stride, including unaligned and wrapped
-ranges. Run `python3 tests/invalidation_range_test.py` for differential checks.
+probe boundary above. Compare only binaries with the same definition. Since
+2026-10-02 the range walker skips already-invalid pages by default
+(`DYNAREC_INVALIDATE_PAGE_SKIP`, 0 keeps the original walker). On the other
+pages it frees the same funcs as the original four-byte points (also for
+unaligned and wrapped ranges) with one tree query per freed func, so
+`jit_invalidate` counts pages, not points. Run
+`python3 tests/invalidation_range_test.py` for differential checks.
 
 These are inclusive wall-clock spans, not CPU partitions. Dispatch overlaps
 lookup and compilation. Execution can include RSP work, sleep, and exceptions.

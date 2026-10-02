@@ -7,6 +7,8 @@
 
 extern unsigned char *const invalid_code;
 #define invalid_code_get(block_num) (invalid_code[(block_num)])
-#define invalid_code_set(block_num, value) (invalid_code[(block_num)] = (value))
+extern int dispatchCacheStale; // Recomp-Cache.h: a page turning invalid empties the dispatch table
+#define invalid_code_set(block_num, value) \
+	(dispatchCacheStale |= (value) && !invalid_code[(block_num)], invalid_code[(block_num)] = (value))
 
 #endif

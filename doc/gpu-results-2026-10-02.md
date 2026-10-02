@@ -199,6 +199,8 @@ that page's alias; a TLB write marks the virtual pages it unmaps). Otherwise
 the slow path invalidates as before. Freeing code (`free_func`) or compiling
 empties the table, because a compile can rebuild an existing func in place.
 The LRU update, linking and freed-func handling still run on every dispatch.
+(The table changed again in the second round; see
+[Compiled JR/JALR read the table](#kept-compiled-jrjalr-read-the-dispatch-table).)
 
 Dolphin: SM64, Banjo, Mario Party and Zelda OoT MQ (code overlays) completed
 with the same exception and recompile counts as without it, within the usual
@@ -264,6 +266,126 @@ all three off (`baselines/2026-10-02_hw_skipdepth_hint_color_*`):
   same order: Dolphin drew byte-identical SM64 and Banjo frames before and
   after. Against the previous survey of the same chain, triangle commands
   cost 1–4% less per call (Smash `TRI2` 11.5%).
+
+### Kept: compiled JR/JALR read the dispatch table
+
+Function returns and other indirect jumps (`JR`, `JALR`) always went back to
+the C dispatcher, about 160,000 times a second in SM64. Their compiled code
+(`genJumpTo` in `r4300/ppc/MIPS-to-PPC.c`, flag `DYNAREC_JR_LOOKUP`, default
+on) now looks the target up in the dispatcher's table and jumps straight to
+it: 24 instructions, with the same LRU and `last_pc` updates a linked branch
+makes. It returns to the dispatcher for a pending interrupt (the same
+`Count - next_interrupt` test, now made by the JR's count update), a stale
+table, a miss or an empty entry.
+
+Compiled code cannot afford the per-use `invalid_code` checks, so the table
+changed: `invalid_code_set` with a nonzero value marks the table stale (every
+place that marks a page invalid uses it), and the dispatcher empties a stale
+table before its next use. An entry is made only when the slow path found no
+page invalid, so an entry in a fresh table has valid pages. A compile now
+removes only the entries of the func it returns (the only func a compile
+rebuilds in place); a compile that frees other funcs marks the table stale
+through `free_func`. Entries are 16 bytes, so the JR code indexes with one
+rotate.
+
+Returns to the C dispatcher fell 82–95%:
+
+| Scene | Dispatches before | After |
+|---|---:|---:|
+| Super Mario 64 | 6,519 k | 1,127 k |
+| Mario Kart 64 | 8,651 k | 642 k |
+| Banjo-Kazooie | 4,132 k | 728 k |
+| Pokémon Snap | 3,517 k | 263 k |
+| Super Smash Bros. | 2,909 k | 344 k |
+| GoldenEye 007 | 1,558 k | 129 k |
+| Wave Race 64 | 2,012 k | 163 k |
+| Diddy Kong Racing | 1,666 k | 258 k |
+| Donkey Kong 64 | 1,604 k | 251 k |
+
+### Kept: one tree query per freed func when DMA overwrites code
+
+`DYNAREC_INVALIDATE_PAGE_SKIP` is now on by default. It skips pages already
+marked invalid (measured −0.8% in SM64 and Banjo on 2026-10-01). On the other
+pages the walker no longer calls `find_func` for each four-byte point:
+`find_func_overlap` (`FuncTree.c`) returns the first func that overlaps the
+points on the page, the walker frees it and continues after its end. It frees
+the same funcs in the same order. `tests/invalidation_range_test.py` checks
+this against the original walker with random funcs, unaligned, wrapped and
+aliased ranges, and single stores at func starts; a one-character mutation of
+the overlap test fails it.
+
+Compiled stores to pages that can hold code call the walker for every store
+(about 10 million calls in TWINE's 30 s). The first version paid the page
+setup on each of them, and the library check found it: TWINE +0.8% overall,
+and a TWINE/GoldenEye triple with only the page skip toggled gave +2.5% and
++1.3%. Ranges of eight bytes or less now take the old one- or two-point path.
+With that, the same triple (`baselines/2026-10-02_hw_page_skip_tlb_*`, chain
+`tlb_games`) gives TWINE −2.6% and GoldenEye −1.6%. The JR lookup alone gave
+TWINE −1.0% and GoldenEye −2.6% (TWINE has no TLB-mapped code; returns to C
+fell from 1.22 M to 0.29 M, GoldenEye from 3.38 M to 0.37 M).
+
+Wii, `gpu_survey`, candidate/reference/candidate with both changes on
+against both off, final code (`baselines/2026-10-02_hw_jr_lookup_final_*`; the
+audio and compile changes below are in all three builds):
+
+| Scene | CPU cycles | Non-sleep wall |
+|---|---:|---:|
+| Banjo-Kazooie | −9.04% | −8.69% |
+| Super Mario 64 | −7.76% | −8.60% |
+| Diddy Kong Racing | −7.18% | −6.55% |
+| GoldenEye 007 | −7.17% | −6.88% |
+| Super Smash Bros. | −6.94% | −7.07% |
+| Mario Kart 64 | −6.46% | −6.46% |
+| Donkey Kong 64 | −6.27% | −5.77% |
+| Pokémon Snap | −6.18% | −6.06% |
+| Wave Race 64 | −5.11% | −5.00% |
+
+The first version, without the short store path, gave −1.42% (DK64) to
+−5.22% (Banjo) (`baselines/2026-10-02_hw_jr_lookup_{full1,control,full2}`).
+All game runs reached their VI targets with the same replays. Exception and
+recompile counts match within a few; the Smash and Wave Race attract demos
+vary by up to 2% between two candidate runs as much as against the
+reference.
+
+### Kept: the envelope mixers stop reloading their settings per sample
+
+`audioMixerPrecision` is a `char`, and a `char` may alias anything, so the
+compiler reloaded it after every sample store; `alist_envmix_mix` was also an
+out-of-line call per sample. The mixers now read the setting once per
+command, and the per-sample helpers are always inlined. The NEAD mixer
+(Mario Kart) keeps its envelope and xor values in locals for the same
+reason. The arithmetic is unchanged: `tests/alist_envmix_test.c` now also
+covers NEAD, `alist_mix` and the hi-fi mixer, with hashes taken from the old
+code. Against the previous survey of the same chain, per sample on the Wii:
+
+| Scene (envmix variant) | Envmix ns/sample | Audio task |
+|---|---:|---:|
+| Super Mario 64 (exp) | 97 → 62 | −16% |
+| Wave Race 64 (exp) | 102 → 64 | −16% |
+| GoldenEye 007 (ge) | 97 → 61 | −14% |
+| Banjo-Kazooie (lin) | 85 → 55 | −11% |
+| Super Smash Bros. (lin) | 103 → 72 | −10% |
+| Donkey Kong 64 (lin) | 83 → 52 | −10% |
+| Diddy Kong Racing (ge) | 91 → 54 | −8% |
+| Pokémon Snap (exp) | 118 → 80 | −8% |
+| Mario Kart 64 (nead) | 60 → 57 | −2% |
+
+`alist_mix`, resample and ADPCM did not change (16, 40–44 and 41–47 ns per
+sample).
+
+### Library check after the second round
+
+The 18 Wii entries (three chains) and the 9 Dolphin ROMs, with the library
+replays, on a frozen `PERF_PROF` build: `baselines/library-20261002b-*`. All
+reached their VI targets with the same replays and the same exception and
+recompile counts (Mario Kart excepted, as before: its audio interrupts follow
+output timing). Against this morning's sweep, CPU cycles fell 2.2–10.7% in 17
+games; TWINE rose 0.8%, which led to the short store path above. Chain 1 on
+the final code (`baselines/library-20261002c-hardware-01`): TWINE −4.8%,
+Majora's Mask −6.0%, DK64 −6.7%, Diddy Kong Racing −7.2%, GoldenEye −8.5%,
+Banjo −9.3%. In Dolphin, five final frames are byte-identical to the
+morning's; the others differ in animation phase or the speed overlay, and
+Kart's replay drifts as before.
 
 ### Not done: the GPU billboard copy
 

@@ -26,7 +26,13 @@ the Wii: the GP is idle more than 85% of the time in nine 3D scenes. Graphics
 cost is CPU-side glN64 work. Mario Kart's `SETCIMG` billboard copy is now twice as fast
 (race 0.978x to 0.993x), vertex loads use the paired-single unit (−2 to −3.5%
 cycles), the dynarec dispatcher remembers its targets (−1 to −6.6%), and Kart skips
-half its billboard copies (race −18.8% more). An 18-ROM library check passed. See
+half its billboard copies (race −18.8% more). An 18-ROM library check passed.
+In a second round, compiled `JR`/`JALR` jump through the dispatcher's table
+(82–95% fewer returns to C), DMA invalidation makes one tree query per freed
+func (together −5.1 to −9.0% CPU cycles), and the envelope mixers cost
+30–40% less per sample. What is left, largest first: compiled code itself, the
+display-list translation in Snap, Smash, Wave Race and Kart, and the slow
+memory handlers (TLB-mapped accesses in GoldenEye). See
 [the changes and rejected experiments](gpu-results-2026-10-02.md#changes-from-this-survey-2026-10-02). Paging is now
 on by default; the section below is its history.
 

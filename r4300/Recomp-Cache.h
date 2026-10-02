@@ -43,7 +43,25 @@
 #include "ppc/Recompile.h"
 
 void RecompCache_Init(void);
-// Set when recompiled code is freed: the dispatcher's target table (Wrappers.c) forgets it.
+
+#ifndef DYNAREC_DISPATCH_CACHE
+#define DYNAREC_DISPATCH_CACHE 1 // 0: find every target in the block's func tree, for A/B runs
+#endif
+#ifndef DYNAREC_JR_LOOKUP
+#define DYNAREC_JR_LOOKUP DYNAREC_DISPATCH_CACHE // 0: every JR/JALR returns to the dispatcher
+#endif
+/* Recently dispatched targets (Wrappers.c fills it; JR/JALR code reads it).
+   Set dispatchCacheStale when recompiled code is freed or a code page turns
+   invalid (invalid_code_set does that): the table is then empty before its
+   next use. */
+#define DISPATCH_CACHE_SIZE 1024
+struct dispatch_entry {
+	unsigned int address;
+	PowerPC_func* func;
+	PowerPC_instr* code;
+	unsigned int pad; // 16 bytes, so JR code indexes with one rotate
+};
+extern struct dispatch_entry dispatchCache[DISPATCH_CACHE_SIZE];
 extern int dispatchCacheStale;
 // Allocate and free memory to be used for recompiled code
 //   Any memory allocated this way can be freed at any time

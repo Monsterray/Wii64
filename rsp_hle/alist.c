@@ -65,25 +65,29 @@ static int16_t* alist_s16(struct hle_t* hle, uint16_t dmem)
 }
 
 
-static void sample_mix(int16_t* dst, int16_t src, int16_t gain)
+/* The mixers read audioMixerPrecision once per command and pass hifi down:
+   it is a char, so the compiler reloads it after every sample store. */
+static inline __attribute__((always_inline))
+void sample_mix(int16_t* dst, int16_t src, int16_t gain, bool hifi)
 {
-    if (audioMixerPrecision == AUDIOMIX_HIFI)
+    if (hifi)
         *dst = audio_mix_hifi(*dst, src, gain, 15);
     else
         *dst = clamp_s16(*dst + ((src * gain) >> 15));
 }
 
-static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src,
-                            int16_t left, int16_t right, int16_t dry, int16_t wet)
+static inline __attribute__((always_inline))
+void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src,
+                      int16_t left, int16_t right, int16_t dry, int16_t wet, bool hifi)
 {
     size_t i;
 
     for(i = 0; i < n; ++i) {
-        if (audioMixerPrecision == AUDIOMIX_HIFI) {
+        if (hifi) {
             int64_t gain = (int64_t)((i & 1) ? right : left) * (i < 2 ? dry : wet);
             *dst[i] = audio_mix_hifi(*dst[i], src, gain, 30);
         } else
-            sample_mix(dst[i], src, gains[i]);
+            sample_mix(dst[i], src, gains[i], false);
     }
 }
 
@@ -277,6 +281,7 @@ void alist_envmix_exp(
         uint32_t address)
 {
     unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_EXP, count / 2);
+    const bool hifi = audioMixerPrecision == AUDIOMIX_HIFI;
     size_t n = (aux) ? 4 : 2;
 
     const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
@@ -336,7 +341,7 @@ void alist_envmix_exp(
             for (x = 0; x < 8; ++x) {
                 int16_t* buffers[4] = { dl + (ptr^S), dr + (ptr^S),
                                         wl + (ptr^S), wr + (ptr^S) };
-                alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet);
+                alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet, hifi);
                 ++ptr;
             }
         }
@@ -371,7 +376,7 @@ void alist_envmix_exp(
             gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
             gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-            alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet);
+            alist_envmix_mix(n, buffers, gains, in[ptr^S], l_vol, r_vol, dry, wet, hifi);
             ++ptr;
         }
     }
@@ -405,6 +410,7 @@ void alist_envmix_ge(
         uint32_t address)
 {
     unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_GE, count / 2);
+    const bool hifi = audioMixerPrecision == AUDIOMIX_HIFI;
     unsigned k;
     size_t n = (aux) ? 4 : 2;
 
@@ -454,7 +460,7 @@ void alist_envmix_ge(
         for (k = 0; k < count; ++k) {
             int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
                                     wl + (k^S), wr + (k^S) };
-            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
+            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet, hifi);
         }
     } else {
         for (k = 0; k < count; ++k) {
@@ -473,7 +479,7 @@ void alist_envmix_ge(
             gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
             gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
+            alist_envmix_mix(n, buffers, gains, in[k^S], l_vol, r_vol, dry, wet, hifi);
         }
     }
 
@@ -504,6 +510,7 @@ void alist_envmix_lin(
         uint32_t address)
 {
     unsigned long long timer = perfProf_audioStage(PERF_AUDIO_ENVMIX_LIN, count / 2);
+    const bool hifi = audioMixerPrecision == AUDIOMIX_HIFI;
     size_t k;
     struct ramp_t ramps[2];
     int16_t save_buffer[40];
@@ -552,7 +559,7 @@ void alist_envmix_lin(
         for (k = 0; k < count; ++k) {
             int16_t* buffers[4] = { dl + (k^S), dr + (k^S),
                                     wl + (k^S), wr + (k^S) };
-            alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
+            alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet, hifi);
         }
     } else {
     for(k = 0; k < count; ++k) {
@@ -571,7 +578,7 @@ void alist_envmix_lin(
         gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
         gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
 
-        alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet);
+        alist_envmix_mix(4, buffers, gains, in[k^S], l_vol, r_vol, dry, wet, hifi);
     }
     }
 
@@ -613,19 +620,26 @@ void alist_envmix_nead(
     if (swap_wet_LR)
         swap(&wl, &wr);
 
+    /* Locals: the sample stores may alias the 16-bit envelope and xor arrays
+       as far as the compiler knows, so it would reload them for each sample. */
+    const bool hifi = audioMixerPrecision == AUDIOMIX_HIFI;
+    const int16_t x0 = xors[0], x1 = xors[1], x2 = xors[2], x3 = xors[3];
+
     while (count != 0) {
+        const uint16_t e0 = env_values[0], e1 = env_values[1], e2 = env_values[2];
         size_t i;
         for(i = 0; i < 8; ++i) {
-            int16_t l  = (((int32_t)in[i^S] * (uint32_t)env_values[0]) >> 16) ^ xors[0];
-            int16_t r  = (((int32_t)in[i^S] * (uint32_t)env_values[1]) >> 16) ^ xors[1];
-            int16_t l2 = (((int32_t)l * (uint32_t)env_values[2]) >> 16) ^ xors[2];
-            int16_t r2 = (((int32_t)r * (uint32_t)env_values[2]) >> 16) ^ xors[3];
+            const int16_t s = in[i^S];
+            int16_t l  = (((int32_t)s * (uint32_t)e0) >> 16) ^ x0;
+            int16_t r  = (((int32_t)s * (uint32_t)e1) >> 16) ^ x1;
+            int16_t l2 = (((int32_t)l * (uint32_t)e2) >> 16) ^ x2;
+            int16_t r2 = (((int32_t)r * (uint32_t)e2) >> 16) ^ x3;
 
-            if (audioMixerPrecision == AUDIOMIX_HIFI) {
-                l = audio_mix_hifi(0, in[i^S], env_values[0], 16) ^ xors[0];
-                r = audio_mix_hifi(0, in[i^S], env_values[1], 16) ^ xors[1];
-                l2 = audio_mix_hifi(0, l, env_values[2], 16) ^ xors[2];
-                r2 = audio_mix_hifi(0, r, env_values[2], 16) ^ xors[3];
+            if (hifi) {
+                l = audio_mix_hifi(0, s, e0, 16) ^ x0;
+                r = audio_mix_hifi(0, s, e1, 16) ^ x1;
+                l2 = audio_mix_hifi(0, l, e2, 16) ^ x2;
+                r2 = audio_mix_hifi(0, r, e2, 16) ^ x3;
             }
 
             dl[i^S] = clamp_s16(dl[i^S] + l);
@@ -652,13 +666,14 @@ void alist_envmix_nead(
 void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
 {
     unsigned long long timer = perfProf_audioStage(PERF_AUDIO_MIX, count / 2);
+    const bool hifi = audioMixerPrecision == AUDIOMIX_HIFI;
     int16_t       *dst = (int16_t*)(hle->alist_buffer + dmemo);
     const int16_t *src = (int16_t*)(hle->alist_buffer + dmemi);
 
     count >>= 1;
 
     while(count != 0) {
-        sample_mix(dst, *src, gain);
+        sample_mix(dst, *src, gain, hifi);
 
         ++dst;
         ++src;

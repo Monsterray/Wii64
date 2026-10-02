@@ -9,5 +9,4 @@
 #include "../gc_memory/MEM2.h"
 #endif
 unsigned char *const invalid_code = (unsigned char *)(INVCODE_LO);
-
-
+int dispatchCacheStale = 1;

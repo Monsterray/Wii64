@@ -1871,7 +1871,7 @@ static int JR(MIPS_instr mips){
 #ifdef COMPARE_CORE
 	GEN_LI(R4, 1);
 #endif
-	genUpdateCount(0);
+	genUpdateCount(DYNAREC_JR_LOOKUP); // cr3: the JR lookup returns for an interrupt
 	invalidateRegisters();
 
 #ifdef INTERPRET_JR
@@ -1910,7 +1910,7 @@ static int JALR(MIPS_instr mips){
 #ifdef COMPARE_CORE
 	GEN_LI(R4, 1);
 #endif
-	genUpdateCount(0);
+	genUpdateCount(DYNAREC_JR_LOOKUP); // cr3: the JR lookup returns for an interrupt
 
 	// Set LR to next instruction
 	int rd = mapRegisterNew(MIPS_GET_RD(mips));
@@ -4142,7 +4142,37 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 	if(type == JUMPTO_REG){
 		// Load the register as the return value
 		GEN_LWZ(R3, (loc*8+4)+offsetof(R4300,gpr), DYNAREG_R4300);
+#if DYNAREC_JR_LOOKUP
+		/* Jump straight to a target the dispatcher remembered. Return to it
+		   for an interrupt (cr3), a stale table, or a miss. */
+		GEN_BGELR(CR3, 0);
+		GEN_LIS(R5, extractUpper16((unsigned int)&dispatchCacheStale));
+		GEN_LIS(R4, extractUpper16((unsigned int)dispatchCache));
+		GEN_LWZ(R0, extractLower16((unsigned int)&dispatchCacheStale), R5);
+		GEN_RLWINM(R5, R3, 2, 18, 27); // ((target >> 2) & 1023) * 16
+		GEN_ADDI(R4, R4, extractLower16((unsigned int)dispatchCache));
+		GEN_CMPI(CR0, R0, 0);
+		GEN_ADD(R4, R4, R5);
+		GEN_BNELR(CR0, 0);
+		GEN_LWZ(R0, offsetof(struct dispatch_entry, address), R4);
+		GEN_LWZ(R5, offsetof(struct dispatch_entry, func), R4);
+		GEN_CMPL(CR0, R0, R3);
+		GEN_LWZ(R4, offsetof(struct dispatch_entry, code), R4);
+		GEN_BNELR(CR0, 0);
+		GEN_CMPI(CR0, R5, 0);
+		GEN_BCLR(0, 0xc, CR0*4+2); // beqlr: an empty entry matches target 0
+		GEN_MTCTR(R4);
+		GEN_MR(DYNAREG_FUNC, R5);
+		// As a linked branch does: make the func the LRU, and the count base
+		GEN_LWZ(R0, offsetof(R4300,nextLRU), DYNAREG_R4300);
+		GEN_STW(R0, offsetof(PowerPC_func, lru), DYNAREG_FUNC);
+		GEN_ADDI(R0, R0, 1);
+		GEN_STW(R0, offsetof(R4300,nextLRU), DYNAREG_R4300);
+		GEN_STW(R3, offsetof(R4300,last_pc), DYNAREG_R4300);
+		GEN_BCTR(0);
+#else
 		GEN_BLR(0);
+#endif
 	} else {
 		// Calculate the destination address
 		loc <<= 2;

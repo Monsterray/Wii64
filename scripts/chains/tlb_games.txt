@@ -1,0 +1,9 @@
+# GoldenEye runs its code from TLB-mapped addresses; TWINE was the one library game slower after the JR lookup.
+dynacore=dynarec
+audio_quality=accurate
+audio_output=dsp
+audio_mixer=accurate
+audio_latency=stable
+audio_sync=native
+chain=1800,input=neutral sd:/wii64/roms/007 - The World Is Not Enough (USA).z64
+chain=1800,input=neutral sd:/wii64/roms/GoldenEye 007 (USA).z64
