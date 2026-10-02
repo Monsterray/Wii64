@@ -8,7 +8,7 @@ See [the 2026-10-01 results](library-results-2026-10-01.md) for the first comple
 Build an instrumented glN64 or Rice DOL with its matching ELF, then run:
 
 ```bash
-bash .dev/build_profiling.sh glN64_wii 'DEBUG_FLAGS=-DPERF_PROF -DPERF_SUBSYSTEM_PROBES' HBC_AGENT=1
+bash .dev/build_profiling.sh glN64_wii 'DEBUG_FLAGS=-DPERF_PROF -DPERF_SUBSYSTEM_PROBES'
 bash .dev/library_check.sh path/to/instrumented.dol both
 ```
 

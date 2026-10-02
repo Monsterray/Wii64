@@ -176,7 +176,9 @@ Settings, Audio, Advanced has synthesis, output, mixer, latency, and sync contro
 Optional **Hi-Fi** modes add cubic synthesis, a CPU sinc output converter, and
 higher-precision gain arithmetic. **Preserve Pitch** adds CPU time stretching.
 See [Audio settings](audio-settings.md) for limits, defaults, and diagnostic keys.
-These enhancements do not replace AESND's DSP firmware or its output filter.
+These enhancements do not replace AESND's DSP mixer, which resamples by 16.16 zero-order
+hold (WiiStation `Docs/SOUND_SYSTEM.md` section 4.2; an earlier FIR note was wrong): the
+Wii DSP output path adds hold images at N64 rates, which the Hi-Fi sinc converter avoids.
 
 The Wii audio hardware path is already active: Wii64 streams one stereo PCM voice;
 AESND handles output rate, pitch, mute, mixing, and the Wii DSP transfer. libogc2

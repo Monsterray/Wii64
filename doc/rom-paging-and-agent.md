@@ -1,4 +1,4 @@
-# ROM paging and HBC development agent
+# ROM paging and the HBC agent
 
 ## MEM2 budget
 
@@ -28,43 +28,87 @@ which the last-output block overran by 300 bytes into the texture heap's header.
 The 32 KiB NAND buffer occupies previously unclaimed MEM2 and is IPC-aligned.
 Run `bash .dev/test_rom_vm.sh` to check both layouts and the loader/cache.
 
-## Development agent
+## The HBC agent: HOME menu and development tools
 
-Keep HBC-Reborn in an external checkout beside Wii64, like libogc2 and libfat.
-Set `WII64_HBC_ROOT` if it is elsewhere. In a devkitPro shell:
+HBC-Reborn's agent is part of every Wii build (`Makefile.wii`; GameCube builds have
+none and `main/dev_agent.h` makes its calls no-ops). It is Wii64's HOME menu, and it
+gives `hbc.py` status, mounted-device file requests, cooperative exit, crash and hang
+reports, and the app's last output. Keep HBC-Reborn in a checkout beside Wii64, like
+libogc2 and libfat (`WII64_HBC_ROOT` or `HBC_AGENT_ROOT=` if elsewhere); the Windows
+setup script clones it. Build its library once, and again after updating it:
 
 ```bash
 bash .dev/build_agent.sh
 bash .dev/build.sh glN64_wii clean
-bash .dev/build.sh glN64_wii HBC_AGENT=1
+bash .dev/build.sh glN64_wii
 ```
 
-For another location, also pass `HBC_AGENT_ROOT=/path/to/hbc-reborn` to the Wii64
-build. Quote paths with spaces. These steps use the same compiler and libogc2
-as Wii64 on macOS and in Windows' devkitPro MSYS2 shell. `build_agent.sh` writes the
-library to Wii64's own `.dev/hbc_agent/`, which `Makefile.wii` links first. It does
-not write into the HBC-Reborn checkout: WiiStation builds the agent there with its
-r41-2 toolchain, and the copy Wii64 linked from there was that build (agent 1.9.0,
-GCC 12, old libogc2). The helper probes the installed headers for libogc2 r1's
-renamed exception-frame fields and removed `MQ_ERROR_SUCCESSFUL`, for HBC-Reborn
-checkouts that do not handle them yet. It keeps the SDK's frame-offset assertions
-active and rebuilds its small archive when flags change.
+`build_agent.sh` builds with Wii64's compiler against the same libogc2
+`Makefile.wii` picks (the Windows `wii64-sdk` first), naming that libogc2's own
+include directory as the SDK makefile's `$(DEVKITPRO)/$(OGC)`, so no other libogc2
+is on the path. It writes `.dev/hbc_agent/`, which `Makefile.wii` links first, and
+never writes into the HBC-Reborn checkout: WiiStation builds the agent there with its
+r41-2 toolchain, and the copy Wii64 used to link from there was that build (agent
+1.9.0, GCC 12, old libogc2). The build stops with a pointer to the script when no
+library exists. For HBC-Reborn checkouts older than 92a101d it maps libogc2 r1's
+renamed exception-frame fields and removed `MQ_ERROR_SUCCESSFUL` with `-D` flags.
+`HBC_AGENT=1` in older commands is now a no-op. Wii64 needs HBC-Reborn 29e19e0 or
+later for the HOME menu (below).
 
-The agent is off in ordinary builds. Development builds provide status,
-mounted-device file requests, cooperative exit, and fatal-exception records.
-With SDK 1.9 they also arm the agent's hang watchdog: each guest VI and each menu
-frame calls `devAgent_alive()` (from thread context, never the VI interrupt), and
-`loadROM` and the result upload hold it, so 60 s without progress outside those is
-reported as a hang (`hbc.py crash`). The link wraps `c_default_exceptionhandler`
+### HOME menu
+
+HOME on a Wii Remote or Classic Controller, or `hbc.py key h`, opens the agent's
+overlay (`main/dev_agent.c`):
+
+- In a game, `new_vi` sees HOME (`devAgent_pollHome`) and stops emulation like the
+  exit combo. After `go()` returns, with emulation, audio and GX idle and autosave
+  done, `devAgent_homeAfterStop` opens the overlay over the game's last frame from
+  the menu thread. Closing it resumes the game (`goto resume_after_home` in both
+  `Func_PlayGame`s); the Wii64 Menu button or an Exit choice goes to the menu. It
+  never runs inside emulation, so Wii64's VI callbacks and GX state are left alone;
+  `GX_DrawDone` first lets any pending draw-sync callback fire.
+- In Wii64's menus, the menu loop (`devAgent_menuHome`) opens it over the menu.
+- Memory: the overlay's own path allocates 1.8 MB (a 600 KB frame copy and two
+  framebuffers), and Wii64 has about 0.4 MB of MEM1 and 0.3 MB of MEM2 arena free
+  (`hbc.py status`: mem1_free 401408, mem2_free 288704 in a game). Wii64 lends the
+  one of its two MEM2 framebuffers (`XFB0_LO`/`XFB1_LO`) that is not on screen, and
+  HBC-Reborn 29e19e0 then reads the frame in place: no allocation. The Wii's VI scans
+  MEM2 (Wii64 has always shown its game from there); the SDK used to refuse MEM2.
+- Buttons: the bar's left slot (0) is a **Wii64** menu, `hbc_agent_set_slot_menu`:
+  live info rows (version, game, speed, video plugin, CPU core) and **Wii64 Menu**
+  (disabled outside a game). Up to 12 items; info strings are read every frame, so
+  `refreshInfo()` updates them in place before opening. The right slot (1) keeps
+  the agent's **Shot** (screenshot to `sd:/screenshots`); `hbc_agent_set_slot(1, ...)`
+  replaces it. Each slot takes either one action or a menu of buttons and info rows.
+- Exit: Homebrew Channel and Power off go through Wii64's own shutdown (`shutdown`:
+  `Gui::draw` fades, restores a Wii U's aspect ratio, exits or powers off); System
+  Menu and Restart are the agent's. GameCube controllers work inside the overlay
+  (`gc_pads`, START is HOME) but cannot open it: their exit combo goes to the menu.
+- The mini menu's hint reads "(Home) Menu".
+
+Testing it in Dolphin needs no controller: start Wii64 (`.dev/wii64_diag.sh start`),
+then `python ../hbc-reborn/tools/hbc.py --wii <this PC's LAN IP> key h` (also `l`,
+`r`, `u`, `d`, `a`, `b`); Dolphin binds the agent's port 4299 on the LAN address,
+not 127.0.0.1. Only one Dolphin can hold that port: a WiiStation run (its agent is
+1.9.3 too) takes it first, and then `hbc.py` reaches WiiStation instead, so check
+`netstat -ano | grep :4299` before sending keys. The overlay draws with the CPU, so
+Dolphin must store XFB copies in RAM and present at VI scan
+(`Graphics.Hacks.XFBToTextureEnable=False`, `ImmediateXFBEnable=False`, now both
+launchers' default); with texture XFB the game pauses but the overlay never shows.
+`.dev/wii64_diag.sh shot` captures the whole window.
+
+### Watchdog, crashes and DSI
+
+SDK 1.9 arms the agent's hang watchdog: each guest VI and each menu frame calls
+`devAgent_alive()` (from thread context, never the VI interrupt), and `loadROM`
+and the result upload hold it, so 60 s without progress outside those is reported
+as a hang (`hbc.py crash`). The link wraps `c_default_exceptionhandler`
 (WiiStation's fix): an exception taken with MSR[RI] clear skips the agent's table
 hook, and the wrap still records it before libogc's crash screen.
 ROM staging completes before agent initialization. The agent starts networking
 asynchronously when needed; result uploads wait for that startup to finish.
 VM saves and restores the prior DSI entry and delegates faults outside its
-managed range, failed NAND I/O, and failed PTE insertion to that entry.
-
-The HOME overlay is not enabled. It needs about 1.8 MiB of transient MEM1;
-spare MEM2 is not a substitute for a tested framebuffer integration. Keep
+managed range, failed NAND I/O, and failed PTE insertion to that entry. Keep
 transfers out of timed gameplay because they consume CPU and heap capacity.
 
 Use [the leased hardware runner](hardware-session.md). When the external
@@ -84,8 +128,8 @@ bash .dev/test_agent_wii.sh /path/to/frozen-build.dol
 
 Keep its ELF beside it. This queued test loads DK64 (>16 MiB, VM active), then
 `agent_crash_vi=60` deliberately writes to `0x10`. It passes only if the report
-identifies `devAgent_testCrash` and HBC returns. The probe exists only with both
-`HBC_AGENT=1` and `PERF_PROF`. Normal runs leave it disarmed. Never power off the
+identifies `devAgent_testCrash` and HBC returns. The probe exists only in
+`PERF_PROF` builds. Normal runs leave it disarmed. Never power off the
 Wii at the end of a job.
 
 The first hardware regression passed: job `20260930-173721-7f52a0` captured

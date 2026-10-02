@@ -28,6 +28,11 @@
  * The game can be exited any time by pressing X and Y together on a GC pad or Classic Controller,
    1 and 2 together on a Wiimote (only with Nunchuck attached), or the reset button
      (Note: this must be done to save your game; it will not be done automatically)
+ * On a Wii, HOME on a Wii Remote or Classic Controller opens the HOME menu, in a game and in
+   Wii64's menus. In a game it pauses emulation; close it with HOME or B to carry on. Its
+   **Wii64** button shows the game, speed, video plugin and CPU core, and goes to Wii64's
+   own menu (save states, settings). **Exit** returns to the Homebrew Channel, the System
+   Menu, or restarts or powers off the Wii; **Shot** saves a screenshot to sd:/screenshots.
 
 ### Controls:
 * Controls are fully configurable so any button on your controller can be mapped
@@ -144,13 +149,13 @@ Save Settings. Hi-Fi and Preserve Pitch are optional CPU enhancements.
 Report and view any open issues on the [issue tracker](https://github.com/emukidid/Wii64/issues).
 
 ## BUILDING FROM SOURCE
-Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its Wii development tools. Keep [libogc2](https://github.com/extremscorner/libogc2) and [libfat](https://github.com/extremscorner/libfat) in separate checkouts and build/install them with the same devkitPPC toolchain as Wii64. Set `DEVKITPRO`, `DEVKITPPC`, and `PATH` for that installation; `PATH` must include `$(DEVKITPRO)/tools/bin` and `$(DEVKITPPC)/bin`.
+Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its Wii development tools. Keep [libogc2](https://github.com/extremscorner/libogc2) and [libfat](https://github.com/extremscorner/libfat) in separate checkouts and build/install them with the same devkitPPC toolchain as Wii64. Wii builds also link [HBC-Reborn](https://github.com/Monsterray/hbc-reborn)'s agent, the HOME menu: clone it beside this repository and run `.dev/build_agent.sh`, which builds its library with the same toolchain into `.dev/hbc_agent/`. Set `DEVKITPRO`, `DEVKITPPC`, and `PATH` for that installation; `PATH` must include `$(DEVKITPRO)/tools/bin` and `$(DEVKITPPC)/bin`.
 
 On Windows:
 
 1. Install [devkitPro](https://github.com/devkitPro/installer/releases/latest) with "Wii Development" checked, at `C:\devkitPro`. Install Git for Windows and Python 3.
 2. Clone this repository to a path without spaces, for example `C:\projects\Wii64`.
-3. From devkitPro's MSYS2 shell or Git Bash, run `.dev/setup-devkitpro-windows.sh` once. It clones libogc2 and libfat beside this repository, builds them with devkitPro's current devkitPPC, and installs them into `C:\devkitPro\wii64-sdk`. It does not change `C:\devkitPro\libogc2`, so other projects that use that copy are not affected. Run it again after you update either checkout.
+3. From devkitPro's MSYS2 shell or Git Bash, run `.dev/setup-devkitpro-windows.sh` once. It clones libogc2, libfat and HBC-Reborn beside this repository, builds libogc2 and libfat with devkitPro's current devkitPPC and installs them into `C:\devkitPro\wii64-sdk`, then builds the HBC agent library (`.dev/build_agent.sh`). It does not change `C:\devkitPro\libogc2`, so other projects that use that copy are not affected. Run it again after you update any of the checkouts.
 4. Build with `.dev/build.sh glN64_wii`, or with `make -f Makefile.glN64_wii` as shown below. The makefiles use `C:\devkitPro\wii64-sdk` when it exists. When it does not exist, they stop and tell you to run the setup script.
 
 On macOS, see [the Intel Mac development notes](doc/macos-development-setup.md).
@@ -163,7 +168,7 @@ make -f Makefile.glN64_wii
 
 Other targets: `Makefile.glN64_gc[_exp]`, `Makefile.glN64_wiivc`, `Makefile.Rice_wii`, `Makefile.Rice_gc[_exp]`, and `Makefile.Rice_wiivc`. The Wii makefile recognizes both `libogc2/include` + `libogc2/lib/wii` and `libogc2/wii/include` + `libogc2/wii/lib` layouts. Clean before switching targets or toolchains because object files are built beside their sources.
 
-For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, ROMs come from `C:\tools\Dolphin-x64\User\Load\WiiSDSync\wii64\roms` (or `WII64_ROM_DIR`), and Dolphin is `C:\Tools\Dolphin-x64\Dolphin.exe` unless `DOLPHIN_EXE` says otherwise. Dolphin runs with MMU emulation on: ROMs larger than 16 MB page through address-translation faults and do not boot without it.
+For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, ROMs come from `C:\tools\Dolphin-x64\User\Load\WiiSDSync\wii64\roms` (or `WII64_ROM_DIR`), and Dolphin is `C:\Tools\Dolphin-x64\Dolphin.exe` unless `DOLPHIN_EXE` says otherwise. Dolphin runs with MMU emulation on: ROMs larger than 16 MB page through address-translation faults and do not boot without it. It also stores XFB copies in emulated RAM and presents them at VI scan (`XFBToTextureEnable=False`, `ImmediateXFBEnable=False`), as a Wii does; otherwise the HOME menu, which the CPU draws, never shows, and chain screenshots read stale memory.
 
 For audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supports AddressSanitizer and UndefinedBehaviorSanitizer. It checks synthesis, output streaming, queue boundaries, settings, and diagnostics. See [the optimization handoff](doc/optimization-handoff.md) for current audio status and test-profile storage limits.
 
@@ -171,7 +176,7 @@ For a real Wii, see [hardware testing](doc/hardware-session.md). Set up the shar
 
 For a ROM-library smoke test on Dolphin and the Wii, see [library testing](doc/library-testing.md). It records coverage, VI speed, video/audio activity and stutter candidates without muting the guest sound engine.
 
-Wii builds prepare large ROMs before gameplay to reduce paging stalls. This can increase load time. For optional HBC-Reborn crash capture and matched paging comparisons, see [the development agent and MEM2 notes](doc/rom-paging-and-agent.md).
+Wii builds prepare large ROMs before gameplay to reduce paging stalls. This can increase load time. For the HBC agent (HOME menu, crash reports, file transfer) and matched paging comparisons, see [the agent and MEM2 notes](doc/rom-paging-and-agent.md).
 
 ## CREDITS
  * Core Coder: tehpola

@@ -29,7 +29,7 @@ Treat an LTO serial-compilation note as a build-speed warning, not a link failur
 
 Run `.dev/dolphin_test.sh wii64-glN64.dol` for a timed smoke test. Use `.dev/dolphin_test.sh wii64-glN64.dol interactive` for controller or ROM tests. The script uses `.dev/dolphin_profile`; do not edit the user's normal Dolphin profile. On macOS it launches through `open` to use the GUI session and copies the normal Mac Wii Remote bindings. On Windows, set `DOLPHIN_EXE` if Dolphin is outside its default location.
 
-The script enables MMU and SD folder sync. The timed test also enables immediate XFB and disables modal panic dialogs. If Dolphin reports an unknown DSP ucode, set `DSPHLE=False` (LLE) in the isolated profile. If the menu stays black, check immediate XFB there. Do not assume every black screen is a Wii64 bug.
+The script enables MMU and SD folder sync and disables modal panic dialogs. XFB copies go to emulated RAM and are presented at VI scan (`XFBToTextureEnable=False`, `ImmediateXFBEnable=False`), as on a Wii: the CPU-drawn HOME menu shows, and `xfb_NN.bin` snapshots hold the real frame. With `WII64_DOLPHIN_XFB_TEXTURE=True` (texture XFB, faster) immediate XFB is turned on with it, since the menu stays black without it there; the HOME menu then never shows and snapshots are a stale solid color. `.dev/wii64_diag.sh start` uses the same RAM-XFB settings. If Dolphin reports an unknown DSP ucode, set `DSPHLE=False` (LLE) in the isolated profile. Do not assume every black screen is a Wii64 bug.
 
 Stage legally obtained ROMs in `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms` on macOS, or set `WII64_ROM_DIR` to another folder. Wii64 reads `sd:/wii64/roms`; Dolphin's SD sync folder must be copied into the isolated profile **before boot**. For USB tests, mount a compatible USB device and use `usb:/wii64/roms`. A missing directory does not show whether the drive mounted; check both separately.
 
@@ -37,20 +37,24 @@ For mouse-as-Wii-Remote on macOS, use an emulated Wii Remote 1 with `Quartz/0/Ke
 
 Read only the latest boot section of Dolphin's append-only log. If Dolphin reports an invalid read or write, record its address and PC, then map the PC against the **matching** `.elf`. MMU can expose a guest fault; enabling it is not a code fix. The earlier direct-DOL null reads at `0x80004558` and `0x8005b43c` were traced to unchecked startup arguments/config access and fixed in Wii64. Do not classify a repeat as harmless.
 
-For chain tests, Dolphin can render the game correctly while `xfb_NN.bin` is a solid color. Check Dolphin's frame dump or live video before calling this a rendering failure. The same capture path produced valid frames on the Wii.
+For chain tests, a solid-color `xfb_NN.bin` means texture XFB was on (see above), not a rendering failure. The same capture path produces valid frames on the Wii and with the default RAM XFB.
+
+The HOME menu (the HBC agent's overlay, in every Wii build) can be driven without a controller: `python ../hbc-reborn/tools/hbc.py --wii <this PC's LAN IP> key h` (then `l`/`r`/`u`/`d`/`a`/`b`) against a running `.dev/wii64_diag.sh start` instance; Dolphin binds port 4299 on the LAN address, not 127.0.0.1, and only one Dolphin can hold it (check `netstat -ano | grep :4299` -- a WiiStation run answers otherwise). `.dev/wii64_diag.sh shot` captures the whole window.
 
 ## Deeper checks
 
 For MEM2 layout, ROM paging, HBC agent integration, or automated crash capture,
 read [paging and agent constraints](../../../doc/rom-paging-and-agent.md).
 Use `bash .dev/test_rom_vm.sh` for loader, layout and cache regressions. Preserve
-the 8 KiB record gap at `0x91800000` in agent builds (crash record and SDK 1.9's
-4140-byte last-output block) and the prior VM DSI handler. Build the agent library
-with `.dev/build_agent.sh`: it goes to `.dev/hbc_agent/`, never into the shared
-HBC-Reborn checkout, whose copy is whatever toolchain built it last (WiiStation's
-r41-2). Agent builds call `devAgent_alive()` per guest VI and menu frame, hold the
-watchdog in `loadROM` and the upload, and wrap `c_default_exceptionhandler`. Never
-call the agent or `perfProf_mark` from the VI interrupt; use `perfProf_markLater`. A
+the 8 KiB record gap at `0x91800000` (crash record and SDK 1.9's 4140-byte
+last-output block) and the prior VM DSI handler. The agent is in every Wii build:
+build its library with `.dev/build_agent.sh` (to `.dev/hbc_agent/`, never into the
+shared HBC-Reborn checkout, whose copy is whatever toolchain built it last --
+WiiStation's r41-2). Wii64 calls `devAgent_alive()` per guest VI and menu frame,
+holds the watchdog in `loadROM` and the upload, wraps `c_default_exceptionhandler`,
+and opens the HOME overlay only from the menu thread after `go()` returns (HOME in a
+game stops emulation first). Never call `perfProf_mark` or anything that sleeps from
+an interrupt; use `perfProf_markLater`. A
 running agent also answers port 4299; use the HBC client's version check before
 calling that state "Homebrew Channel ready". Raw-SD Dolphin runs use the config
 already in the image; stage new arguments with folder sync first.

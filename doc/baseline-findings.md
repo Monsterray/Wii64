@@ -59,7 +59,7 @@ MEM1 for the heap to grow into. Frames = avg_fps x wall time.)
    50 Hz timing is the ROM or the hang.
 2. **Hardware session** (`doc/hardware-session.md`, `scripts/chains/hardware.txt`).
    Required before any speed work: idle %, IPC and real audio gaps exist only there.
-   Fix WiiStation's PMC probe first if its session shares the trip.
+   (WiiStation's PMC wrap fix landed on 2026-09-22; no longer a blocker.)
 3. **Make the baseline represent gameplay.** Replay recorded play by VI (`chain=...,input=`
    from a Dolphin movie, `doc/controller-testing.md`; works now, no recordings yet) to get
    past title screens, and more ROMs covering
