@@ -1,4 +1,5 @@
 import contextlib
+import re
 import io
 from pathlib import Path
 import sys
@@ -18,8 +19,14 @@ probe_schema: version=2 self=1 interval=127
 subsystem_self: stage=memory_slow calls=254 timed_calls=2 self_us=100 dropped=0
 gpu_status: samples=5 command_busy=1 fifo_busy=2 over_high=0 under_low=3
 audio_time: stage=resample sampled_calls=7 sampled_us=100
-game: n=1/1 how=vis vis=900 vi_rate=60 wall_us=15000000 sleep_us=900000 pmc1=100 pmc2=90 underruns=1 overruns=0 rom=sd:/wii64/roms/Test.z64
-game: n=2/2 how=vis vis=900 vi_rate=50 wall_us=18000000 pmc1=100 pmc2=90 rom=sd:/wii64/roms/Next.z64
+gfx_ucodes: mask=00000004
+gfx_opcode: op=da calls=254 timed_calls=2 timed_us=40
+gfx_opcode: op=05 calls=127 timed_calls=1 timed_us=10
+gfx_opcode: op=df calls=5 timed_calls=0 timed_us=0
+gpu_counters: clks=3645000000 tb_clks=3645000000 ras_busy=729000000 xf_wait_in=2916000000 xf_wait_out=36450000 ras_peak_permille=400 ztop_in=0 ztop_out=0 z_in=1000 z_out=750 blend_in=46080000 copy_clks=0 fifo_overflows=0
+game: n=1/1 how=vis vis=900 vi_rate=60 wall_us=15000000 sleep_us=900000 avg_fps=10 pmc1=100 pmc2=90 underruns=1 overruns=0 rom=sd:/wii64/roms/Test.z64
+gpu_counters: clks=0 tb_clks=4374000000 ras_busy=0 xf_wait_in=0 xf_wait_out=0 ras_peak_permille=0 ztop_in=0 ztop_out=0 z_in=0 z_out=0 blend_in=0 copy_clks=0 fifo_overflows=3
+game: n=2/2 how=vis vis=900 vi_rate=50 wall_us=18000000 avg_fps=30 pmc1=100 pmc2=90 rom=sd:/wii64/roms/Next.z64
 """
 with tempfile.TemporaryDirectory() as directory:
     path = Path(directory) / "perf.log"
@@ -49,7 +56,16 @@ assert "+100.0 ms" in out.getvalue() and "1.000x" in out.getvalue()
 assert "ROM load 31.000 s" in out.getvalue() and "Preflush: 15.000 s" in out.getvalue()
 assert "Do not sum" in out.getvalue() and "probes absent" in out.getvalue()
 assert "absent=audio_submit,audio_callback" in out.getvalue()
-assert "Not directly measured: GPU execution" in out.getvalue()
+assert "Not directly measured: GP time per unit" in out.getvalue()
+# 150 frames; 20% busy, 80% starved, never blocked: CPU-side graphics limits the scene.
+assert "rasterizer busy 20.0% (busiest 500 ms 40.0%), XF waiting for input 80.0%" in out.getvalue()
+assert "blended 307 k (1.00 x 640x480)" in out.getvalue() and "late Z in 0 k, 25% rejected" in out.getvalue()
+assert "limited by CPU-side graphics" in out.getvalue()
+assert rows[0]["gfx_opcodes"][0xda]["calls"] == 254 and not rows[1]["gfx_opcodes"]
+# F3DEX2 names; 254/2 x 40 us = 5.08 ms ranks first, at 20 us per call.
+assert re.search(r"da MTX +5\.1 ms \( 80\.0%\), +254 calls, +20\.00 us/call \[few samples\]", out.getvalue())
+assert "05 TRI1" in out.getvalue() and "df ENDDL" in out.getvalue() and "no timed samples" in out.getvalue()
+assert "3 (0.2/s)" in out.getvalue() and "not valid in this run" in out.getvalue()
 assert "sampled only" in out.getvalue()
 assert "0.09% non-sleep" in out.getvalue() and "Not GPU time or utilization" in out.getvalue()
 out = io.StringIO()

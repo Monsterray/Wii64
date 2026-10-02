@@ -36,6 +36,12 @@ void perfProf_subsystemReset(void);
 unsigned long long perfProf_subsystemBegin(unsigned int stage);
 void perfProf_subsystemEnd(unsigned int stage, unsigned long long start);
 struct perf_subsystem_stats perfProf_subsystemRead(unsigned int stage);
+/* gfx_command split by GBI opcode: exact calls, the stage's own samples timed.
+   ucode is the microcode type (glN64 GBI.h), kept as a mask of types seen. */
+void perfProf_subsystemEndOpcode(unsigned int stage, unsigned long long start,
+                                 unsigned int op, unsigned int ucode);
+struct perf_subsystem_stats perfProf_subsystemOpcodeRead(unsigned int op);
+unsigned int perfProf_subsystemUcodes(void);
 unsigned int perfProf_subsystemPeriod(unsigned int stage);
 unsigned int perfProf_subsystemHasSelf(unsigned int stage);
 #ifdef __cplusplus
@@ -45,6 +51,7 @@ unsigned int perfProf_subsystemHasSelf(unsigned int stage);
 #define perfProf_subsystemReset() ((void)0)
 #define perfProf_subsystemBegin(stage) (0ULL)
 #define perfProf_subsystemEnd(stage, start) ((void)(start))
+#define perfProf_subsystemEndOpcode(stage, start, op, ucode) ((void)(start))
 #endif
 #ifndef __cplusplus
 #ifdef PERF_SUBSYSTEM_ENABLED

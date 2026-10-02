@@ -2,6 +2,7 @@
 # Freeze full/control builds, queue a Wii A/B/A survey, then compare results.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+source .dev/env.sh  # toolchain; python3 on Windows, used from here on
 [[ -z "${WII_BENCH_JOB:-}" ]] || { echo "Start this survey outside a Wii lease." >&2; exit 2; }
 chain="${1:-subsystem_survey}"
 resume=""
@@ -60,7 +61,6 @@ source .dev/bench_session.sh "$chain"
 cp "scripts/chains/$chain.txt" "$out/chain.txt"
 echo "Survey artifacts and logs: $out"
 if [ -z "$reuse" ]; then
-source .dev/env.sh
 git status --short > "$out/source.status"
 git diff --binary HEAD > "$out/source.diff"
 "$DEVKITPPC/bin/powerpc-eabi-gcc" --version > "$out/compiler.txt"

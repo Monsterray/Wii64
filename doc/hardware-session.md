@@ -35,6 +35,23 @@ waiting in Homebrew Channel.
    The script waits for Homebrew Channel to return, then makes PNGs and prints a
    per-game table under `.dev/runs/`. Smoke runs also fail if a game stops rendering.
 
+On a Windows bench workstation the SD card usually stays in the Wii. Skip the
+setup wizard and write `.dev/hardware.env` by hand: `WII64_WII_IP=`,
+`WII64_MAC_IP=` (this computer's LAN IPv4; the name is historical) and
+`WII64_CHAIN=`. The run stages replay files over the network. To see which ROMs
+are on the card, queue a listing:
+
+```bash
+python /c/tools/wii-bench/wiibench.py add --name "ls roms" --cwd "$PWD" -- \
+    env X=1 bash -c 'source .dev/env.sh; python3 ../hbc-reborn/tools/hbc.py --wii "$WII_BENCH_IP" ls sd:/wii64/roms'
+```
+
+Start a queued command with `env ...` or an absolute program path, never a
+bare `bash`: Windows looks in `System32` first and finds WSL's bash, which has
+no Python. The receiver listens on TCP 39364; the Windows firewall must allow
+inbound Python on the private network. `python3` is a shell function from
+`.dev/env.sh`, so `timeout python3 ...` runs the Store placeholder instead.
+
 For a filed nine-entry baseline, run `.dev/hardware_baseline.sh` instead. It runs the
 hardware workflow and files the result in `baselines/` only after every entry reports.
 Its status and detailed hardware log are under `.dev/runs/<baseline id>.*`.

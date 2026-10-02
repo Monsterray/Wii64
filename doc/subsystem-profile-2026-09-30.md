@@ -1,6 +1,7 @@
 # Subsystem survey: 2026-09-30
 
-See [the 2026-10-01 whole-system results](subsystem-results-2026-10-01.md) for
+See [the 2026-10-02 GPU survey](gpu-results-2026-10-02.md) for where graphics time goes, and
+[the 2026-10-01 whole-system results](subsystem-results-2026-10-01.md) for
 the expanded coverage, renderer surveys, probe cost and invalidation experiment.
 
 ## Run the survey
@@ -183,20 +184,54 @@ guest VI. Automated chains do not write the user's saves to exercise these
 probes. All existing active `GX_DrawDone` calls in glN64, Rice and the UI are
 timed; no new waits are added.
 
-`gpu_status` samples command/FIFO idle and watermark bits at the existing
-approximately 500 ms VI-service sample point. This point can follow limiter
-sleep: counts are observations, **not GPU utilization or execution time**.
-The [libogc2 status implementation](https://github.com/extremscorner/libogc2/blob/master/libogc/gx.c)
-reads status registers without inserting GX commands. `dsp_samples` records
-the number of existing periodic AESND usage observations; its mean/peak describe
-the latest DSP block budget, not CPU wall time. Actual GPU execution and
-separate inline load/store cost still require other measurement methods.
+`dsp_samples` records the number of existing periodic AESND usage
+observations; its mean/peak describe the latest DSP block budget, not CPU wall
+time. Separate inline load/store cost still requires other measurement methods.
 
-Run the targeted CPU/graphics/VM chain with full/control/full probes:
+### GP counters (1.6.8, every `PERF_PROF` build)
+
+The GP's own counters replace the old `gpu_status` busy-bit samples, which
+could not measure utilization. Each game writes one `gpu_counters:` line:
+
+| Field | What the GP counted |
+|---|---|
+| `clks` | GP clocks (243 MHz) |
+| `tb_clks` | The same span from the time base x 4; `clks` must match it |
+| `ras_busy` | Clocks the rasterizer was busy; `ras_peak_permille` is the busiest 500 ms |
+| `xf_wait_in` | Clocks the transform unit (XF) waited for input: idle, or not fed fast enough |
+| `xf_wait_out` | Clocks XF waited for setup, raster, TEV or PE |
+| `ztop_in`/`ztop_out`, `z_in`/`z_out` | Pixels into and out of the early and late Z tests |
+| `blend_in` | Pixels into the blender |
+| `copy_clks` | EFB copy clocks |
+| `fifo_overflows` | libogc FIFO overflows: each suspends the CPU until the GP reads the FIFO down |
+
+`perfProf_gameBegin` selects the counters with three GX commands
+(`GX_InitXfRasMetric`, `GX_ClearPixMetric`), once per game from `loadROM`.
+After that the probe only reads registers, at the existing 500 ms sample and
+at the game end: no GX commands and no waits. The 32-bit counters wrap after
+17.7 s, so 500 ms deltas are summed into 64 bits, as for the PMCs. The control
+build has the counters too, so it measures the GP without CPU probe slowdown.
+libogc2 documents the XF/RAS meanings with question marks: trust a run only
+when `clks` matches `tb_clks`. Dolphin returns 0 for the XF/RAS counters, and
+the report then says "not valid in this run". `subsystem_report.py` prints
+the GP section for control runs as well, with a first verdict: a GP with
+spare time that never overflows the FIFO means CPU-side graphics limits the
+scene. Use the CPU spans (`gfx_list`, `vertex`, `gfx_state`, `tex_*`,
+`draw_*`) to find which part.
+
+Full-probe glN64 builds also split `gfx_command` by GBI opcode: one
+`gfx_opcode:` line per command seen, with exact calls and the stage's own
+1-in-127 samples, and a `gfx_ucodes:` mask of microcode types. The report
+names the opcodes for the microcode family and ranks them. Results and the
+ranked optimization targets: [GPU survey](gpu-results-2026-10-02.md).
+
+Run the targeted CPU/graphics/VM chain, or the 3D GPU chain, with
+full/control/full probes:
 
 ```bash
 bash .dev/test_subsystems.sh
-bash .dev/profile_subsystems.sh subsystem_gaps HBC_AGENT=1
+bash .dev/profile_subsystems.sh subsystem_gaps
+bash .dev/profile_subsystems.sh gpu_survey
 ```
 
 To measure just self-attribution overhead, use the same inclusive probes in
@@ -356,7 +391,7 @@ mutation/reset checks under AddressSanitizer and UndefinedBehaviorSanitizer.
 For the matched Wii candidate/reference/candidate test:
 
 ```bash
-bash .dev/profile_texture_hash.sh graphics_survey HBC_AGENT=1
+bash .dev/profile_texture_hash.sh graphics_survey
 ```
 
 The candidate uses two hash memos, one per texture unit. Every TMEM load marks
@@ -417,7 +452,7 @@ its sparse estimate was 1.6–4.8% in MP3/SM64/Banjo and lower in TWINE/DK64.
 Tree depth 31 in Banjo is evidence to investigate, not a reason to replace it.
 
 Version 1.6.4 adds the texture and draw boundaries above, compiled out in
-ordinary builds. Run `.dev/profile_subsystems.sh graphics_survey HBC_AGENT=1`
+ordinary builds. Run `.dev/profile_subsystems.sh graphics_survey`
 after building the external agent SDK. This queues SM64/Banjo/Snap with
 full/disabled/full probes and measures their added cost. Use the matching
 chain in muted LLE Dolphin for correctness. Keep GX waits, texture hashes,

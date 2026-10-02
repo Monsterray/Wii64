@@ -7,9 +7,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <aesndlib.h>
-#ifdef PERF_SUBSYSTEM_ENABLED
 #include <ogc/gx.h>
-#endif
 #include <ogc/system.h>
 #include <ogc/machine/processor.h>
 #include <ogc/irq.h>
@@ -141,9 +139,6 @@ static struct {
 	float dspPeak;
 } g;
 static volatile unsigned int g_underruns, g_overruns;
-#ifdef PERF_SUBSYSTEM_ENABLED
-static struct { unsigned int samples, command_busy, fifo_busy, over_high, under_low; } gpu;
-#endif
 
 /* Interrupt context (the VI retrace and power callbacks) must not touch the SD card:
    libfat and IOS sleep, and the interrupted thread may hold the FAT lock. So
@@ -235,6 +230,56 @@ static void pmc_accumulate(void)
 		g.pmc[i] += (u32)(v[i] - g_pmcLast[i]);
 		g_pmcLast[i] = v[i];
 	}
+}
+
+/* --- The GP's own counters ---
+   GX_InitXfRasMetric makes four CP counters count at once: GP clocks,
+   rasterizer-busy clocks, and the clocks the transform unit (XF) waited for
+   input (nothing to do: idle, or the CPU does not feed the FIFO fast enough)
+   or for output (setup, raster, TEV or PE behind it). The PE counts pixels
+   into and out of the early (top) and late (bottom) Z tests, pixels into the
+   blender, and EFB copy clocks. All are 32 bits: the 243 MHz clock wraps
+   every 17.7 s, so they are read at every 500 ms sample, as the PMCs are.
+   They are selected once per game, from loadROM; after that only registers
+   are read: no GX commands and no waits. tbClks is the same span from the
+   time base (GP clock = 4 x time base on Wii and GameCube): clks must match
+   it, else the counter did not count. Dolphin returns 0 for the XF/RAS
+   counters; only a Wii measures them. libogc counts FIFO overflows: each one
+   suspends the GX thread until the GP has read the FIFO down. */
+enum { GP_XF_WAIT_IN, GP_XF_WAIT_OUT, GP_RAS_BUSY, GP_CLKS, GP_ZTOP_IN, GP_ZTOP_OUT,
+       GP_Z_IN, GP_Z_OUT, GP_BLEND_IN, GP_COPY_CLKS, GP_COUNT };
+static struct { u64 total[GP_COUNT], tbClks, lastTb; u32 last[GP_COUNT], rasPeak; } gp;
+
+static void gp_read(u32 v[GP_COUNT])
+{
+	GX_ReadXfRasMetric(&v[GP_XF_WAIT_IN], &v[GP_XF_WAIT_OUT], &v[GP_RAS_BUSY], &v[GP_CLKS]);
+	GX_ReadPixMetric(&v[GP_ZTOP_IN], &v[GP_ZTOP_OUT], &v[GP_Z_IN], &v[GP_Z_OUT],
+		&v[GP_BLEND_IN], &v[GP_COPY_CLKS]);
+}
+
+static void gp_start(void)
+{
+	memset(&gp, 0, sizeof(gp));
+	gp_read(gp.last);
+	gp.lastTb = gettime();
+	GX_ResetOverflowCount();
+}
+
+static void gp_accumulate(void)
+{
+	u32 v[GP_COUNT], d[GP_COUNT];
+	gp_read(v);
+	u64 now = gettime();
+	for (int i = 0; i < GP_COUNT; i++) {
+		d[i] = v[i] - gp.last[i];
+		gp.total[i] += d[i];
+		gp.last[i] = v[i];
+	}
+	// Busiest 500 ms of rasterizer, in 1/1000: an average hides a GP-bound scene.
+	if (d[GP_CLKS] && (u64)d[GP_RAS_BUSY] * 1000 / d[GP_CLKS] > gp.rasPeak)
+		gp.rasPeak = (u64)d[GP_RAS_BUSY] * 1000 / d[GP_CLKS];
+	gp.tbClks += (now - gp.lastTb) * 4;
+	gp.lastTb = now;
 }
 
 void perfProf_visSample(float vis)
@@ -336,17 +381,7 @@ void perfProf_limiterSleep(long us)
 void perfProf_cpuSample(void)
 {
 	pmc_accumulate();
-#ifdef PERF_SUBSYSTEM_ENABLED
-    /* Passive status reads at the existing VI-service sample point. No GX
-       commands, counter resets or added waits; these are NOT utilization %. */
-    u8 high, low, read_idle, command_idle, breakpoint;
-    GX_GetGPStatus(&high, &low, &read_idle, &command_idle, &breakpoint);
-    gpu.samples++;
-    gpu.command_busy += !command_idle;
-    gpu.fifo_busy += !read_idle;
-    gpu.over_high += !!high;
-    gpu.under_low += !!low;
-#endif
+	gp_accumulate();
 	extern unsigned int audioQueuedMilliseconds(void);
 	unsigned int queuedMs = audioQueuedMilliseconds();
 	if (queuedMs > g.queuePeakMs) g.queuePeakMs = queuedMs;
@@ -428,14 +463,15 @@ void perfProf_gameBegin(void)
 	buf_flush();
 	memset(&g, 0, sizeof(g));
 	perfProf_subsystemReset();
-#ifdef PERF_SUBSYSTEM_ENABLED
-    memset(&gpu, 0, sizeof(gpu));
-#endif
+	GX_InitXfRasMetric(); // loadROM, between frames: three GX commands, once per game
+	GX_ClearPixMetric();
+	GX_Flush();
 	for (unsigned int i = 0; i < PERF_AUDIO_STAGE_COUNT; i++) g.audioTimerCountdown[i] = 127;
 	g_underruns = g_overruns = 0;
 	g_padN = 0;
 	g.start = gettime();
 	pmc_start();
+	gp_start(); // again at the first VI, when the GP has run those commands
 }
 
 /* main/timers.c, at the game's first VI: wall time and the PMCs cover gameplay only,
@@ -452,6 +488,7 @@ void perfProf_clockStart(void)
 	buf_printf("first_vi: vi0_retrace=%u\n", g.vi0Retrace); // in a recording run, which never reaches gameEnd
 	memset(g.pmc, 0, sizeof(g.pmc));
 	pmc_start();
+	gp_start();
 }
 
 void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const char* how)
@@ -464,6 +501,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	mark_later_drain(); // this game's stop reasons go before its game: line
 	struct mallinfo mi = mallinfo();
 	pmc_accumulate();
+	gp_accumulate();
 	unsigned int streamRequests, streamFed, inputHz, queuePeakMs, playbackHz;
 	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *);
 	audioOutputStats(&streamRequests, &streamFed, &inputHz, &queuePeakMs, &playbackHz);
@@ -496,8 +534,6 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 #ifdef PERF_SUBSYSTEM_ENABLED
 	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,
         perfProf_subsystemPeriod(PERF_SUB_EXECUTE));
-	buf_printf("gpu_status: samples=%u command_busy=%u fifo_busy=%u over_high=%u under_low=%u\n",
-        gpu.samples, gpu.command_busy, gpu.fifo_busy, gpu.over_high, gpu.under_low);
 #ifdef HW_RVL
 	struct pagefile_stats io = pagefile_stats_read();
 	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u\n",
@@ -521,6 +557,15 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		buf_printf("subsystem_time: stage=%s calls=%u timed_calls=%u period=%u timed_us=%llu\n",
 			subsystemNames[i], s.calls, s.timed_calls, perfProf_subsystemPeriod(i),
 			(unsigned long long)ticks_to_microsecs(s.ticks));
+        if (i == PERF_SUB_GFX_COMMAND) {
+            buf_printf("gfx_ucodes: mask=%08x\n", perfProf_subsystemUcodes());
+            for (unsigned int op = 0; op < 256; op++) {
+                struct perf_subsystem_stats o = perfProf_subsystemOpcodeRead(op);
+                if (o.calls)
+                    buf_printf("gfx_opcode: op=%02x calls=%u timed_calls=%u timed_us=%llu\n", op,
+                        o.calls, o.timed_calls, (unsigned long long)ticks_to_microsecs(o.ticks));
+            }
+        }
         if (perfProf_subsystemHasSelf(i))
             buf_printf("subsystem_self: stage=%s calls=%u timed_calls=%u self_us=%llu dropped=%u\n",
                 subsystemNames[i], s.calls, s.self_calls,
@@ -531,6 +576,13 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		buf_printf("audio_time: stage=%s sampled_calls=%u sampled_samples=%u sampled_us=%llu\n",
 			audioStageNames[i], g.audioTimedCalls[i], g.audioTimedSamples[i],
 			(unsigned long long)ticks_to_microsecs(g.audioTimedTicks[i]));
+	buf_printf("gpu_counters: clks=%llu tb_clks=%llu ras_busy=%llu xf_wait_in=%llu xf_wait_out=%llu"
+		" ras_peak_permille=%u ztop_in=%llu ztop_out=%llu z_in=%llu z_out=%llu blend_in=%llu"
+		" copy_clks=%llu fifo_overflows=%u\n",
+		gp.total[GP_CLKS], gp.tbClks, gp.total[GP_RAS_BUSY], gp.total[GP_XF_WAIT_IN],
+		gp.total[GP_XF_WAIT_OUT], gp.rasPeak, gp.total[GP_ZTOP_IN], gp.total[GP_ZTOP_OUT],
+		gp.total[GP_Z_IN], gp.total[GP_Z_OUT], gp.total[GP_BLEND_IN], gp.total[GP_COPY_CLKS],
+		GX_GetOverflowCount());
 	buf_printf("game: n=%d/%d how=%s vis=%u vi_rate=%.0f vi0_retrace=%u wall_us=%llu sleep_us=%llu avg_vis=%.2f avg_fps=%.2f"
 		" exceptions=%u cacheResets=%u recompiles=%u batches=%u verts=%u texStalls=%u"
 		" treeDepthMax=%u underruns=%u overruns=%u queue_peak_ms=%u dsp_avg=%.2f dsp_peak=%.2f dsp_samples=%u"

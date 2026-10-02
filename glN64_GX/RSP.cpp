@@ -318,8 +318,12 @@ void RSP_ProcessDList()
 		}
 
 		{
-			PERF_SUBSYSTEM_SCOPE(PERF_SUB_GFX_COMMAND);
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			// Not a scope: the opcode split needs the command after the call.
+			const u32 cmd = RSP.cmd;
+			unsigned long long timer = perfProf_subsystemBegin(PERF_SUB_GFX_COMMAND);
+			GBI.cmd[cmd]( w0, w1 );
+			perfProf_subsystemEndOpcode(PERF_SUB_GFX_COMMAND, timer, cmd,
+				GBI.current ? GBI.current->type : 32);
 		}
 
 		if (RSP.count != 0xFFFFFFFF)

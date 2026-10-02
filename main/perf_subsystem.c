@@ -14,6 +14,8 @@
 static struct perf_subsystem_stats stats[PERF_SUB_COUNT];
 static unsigned int countdown[PERF_SUB_COUNT];
 static unsigned long long epoch;
+static struct perf_subsystem_stats opcode[256];
+static unsigned int ucodes;
 
 #if PERF_SUBSYSTEM_SELF
 /* Only six roots need self attribution. No stack or clocks on skipped calls
@@ -88,6 +90,8 @@ void perfProf_subsystemReset(void)
 {
     unsigned int level = IRQ_Disable();
     memset(stats, 0, sizeof(stats));
+    memset(opcode, 0, sizeof(opcode));
+    ucodes = 0;
 #if PERF_SUBSYSTEM_SELF
     memset(self, 0, sizeof(self));
     active = 0;
@@ -179,6 +183,34 @@ void perfProf_subsystemEnd(unsigned int stage, unsigned long long start)
 #if PERF_SUBSYSTEM_SELF
     IRQ_Restore(level);
 #endif
+}
+
+void perfProf_subsystemEndOpcode(unsigned int stage, unsigned long long start,
+                                 unsigned int op, unsigned int ucode)
+{
+    /* Main thread only: the RSP display-list loop. */
+    struct perf_subsystem_stats *s = &opcode[op & 0xff];
+    s->calls++;
+    if (ucode < 32) ucodes |= 1u << ucode;
+#if PERF_SUBSYSTEM_SELF
+    if (start && !(start & FORCED_SAMPLE) && start >= epoch) {
+#else
+    if (start && start >= epoch) {
+#endif
+        s->ticks += gettime() - start;
+        s->timed_calls++;
+    }
+    perfProf_subsystemEnd(stage, start);
+}
+
+struct perf_subsystem_stats perfProf_subsystemOpcodeRead(unsigned int op)
+{
+    return opcode[op & 0xff];
+}
+
+unsigned int perfProf_subsystemUcodes(void)
+{
+    return ucodes;
 }
 
 struct perf_subsystem_stats perfProf_subsystemRead(unsigned int stage)

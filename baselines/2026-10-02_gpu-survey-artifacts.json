@@ -1,0 +1,41 @@
+{
+  "survey": {
+    "head": "2590d8beb974c74fa8f3105df49ec5e029c5c47e",
+    "hbc_sdk": {
+      "head": "cb66a5b521f51f06ff230fdcea9a9a753d97b741",
+      "status": "",
+      "archive": ".dev\\hbc_agent\\libhbcagent.a",
+      "archive_sha256": "11c85aa7fbb5b5fcda8e8b305e973986b651e2bed881c3c92acf7f5a356ef9ac"
+    },
+    "chain_sha256": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES",
+      "control": "-DPERF_PROF"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "aad3a84542367959e119f16741a369de9a9f8b4f7bf4695da1e6782a15750e4d",
+      "control.elf": "5f2fafffdd2b147a02e995ed09499216affb3a808bd8ff4417ffffde939c00e2",
+      "full.dol": "07cd693c01ad54e373fd5730192a20070161020a30216f978484cb2a09c2389f",
+      "full.elf": "cc4d5fb07914a1ccce9772896e160c8c414b85dd93cdee2208b27ef543fdfd3c"
+    },
+    "jobs": {
+      "full1": "20261001-235626-da55d8",
+      "control": "20261001-235626-7e2a37",
+      "full2": "20261001-235627-27ce93"
+    },
+    "note": "Old launcher: each job's script copy reached bash cut at ~8 KB; results and PASS checks completed before the cut."
+  },
+  "opcodes": {
+    "head": "2590d8beb974c74fa8f3105df49ec5e029c5c47e",
+    "flags": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES",
+    "artifacts": {
+      "full.dol": "c7046907b100d380f3d798e11812b986ea0d16e93bab983b039db459dc59b9c8",
+      "full.elf": "03429dc2e921de3a717fad5b874952d5858cd8758009e73cf0078336c873bb3d",
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436"
+    },
+    "source_diff_sha256": "e4a45d095738f94b34b1b3dd10e6d4462c933634837d0ef617a9023597c4d702",
+    "job": "20261002-001128-c3ffb8"
+  },
+  "environment": "Wii 192.168.8.213, HBC-Reborn 1.9.3, central lease server, glN64"
+}

@@ -19,7 +19,15 @@ ROM/scene/input, VI count, DOL/ELF, toolchain, and probe flags for comparisons.
 and overruns. Its `queue_peak_ms` is the sampled game summary; the producer
 duration peak is reported separately by `scripts/audio_report.py`.
 
-## Next candidate: large-ROM paging
+## Next candidate: graphics display-list translation (2026-10-02)
+
+The [GPU survey](gpu-results-2026-10-02.md) measured the GP's own counters on
+the Wii: the GP is idle more than 85% of the time in nine 3D scenes. Graphics
+cost is CPU-side glN64 work. Start with Mario Kart's `SETCIMG` billboard hack
+(36% of race wall time), then the triangle and vertex commands. Paging is now
+on by default; the section below is its history.
+
+## Earlier candidate: large-ROM paging
 
 The [six-game subsystem survey](subsystem-profile-2026-09-30.md) found 2.6–3.3
 seconds inside ROM copies for three 32 MB titles, versus 14–25 ms for the 8–16 MB

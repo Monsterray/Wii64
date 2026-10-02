@@ -2,6 +2,7 @@
 # Build, launch through Homebrew Channel, and collect one Wii hardware run.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
+source .dev/env.sh  # toolchain; python3 on Windows, also for the queue step
 
 # Every workstation must hold the central lease before it contacts the Wii.
 if [ -z "${WII_BENCH_JOB:-}" ]; then
@@ -20,8 +21,14 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	if [ -n "${WII64_CHAIN_FILE:-}" ]; then job_env+=("WII64_CHAIN_FILE=$WII64_CHAIN_FILE"); fi
 	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
 	if [ -n "${WII64_HBC_ROOT:-}" ]; then job_env+=("WII64_HBC_ROOT=$WII64_HBC_ROOT"); fi
+	# The job runs a frozen copy, so edits while it waits do not change it. The copy goes
+	# as a file: on Windows an 8 KB command argument reaches bash cut short. $0 stays
+	# the real path, which the script uses to find the repo.
+	mkdir -p .dev/runs
+	snapshot="$(mktemp "$PWD/.dev/runs/hardware_run-XXXXXX.sh")"
+	cp .dev/hardware_run.sh "$snapshot"
 	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --agent "$WII_BENCH_AGENT" --timeout "$WII64_JOB_TIMEOUT" --cwd "$PWD" -- \
-		env "${job_env[@]}" bash -c "$(< "$PWD/.dev/hardware_run.sh")" "$PWD/.dev/hardware_run.sh" "$@")"
+		env "${job_env[@]}" bash -c 'source="$(< "$1")"; shift; eval "$source"' "$PWD/.dev/hardware_run.sh" "$snapshot" "$@")"
 	if [ "${WII64_QUEUE_ONLY:-0}" = 1 ]; then
 		echo "Queued Wii64 hardware run: $job." >&2
 		printf '%s\n' "$job"
@@ -30,7 +37,6 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	echo "Queued Wii64 hardware run: $job. Waiting for the central lease and Homebrew Channel."
 	exec python3 "$bench_client" wait "$job"
 fi
-source .dev/env.sh
 
 config=.dev/hardware.env
 [ -f "$config" ] || { echo "Run .dev/hardware_setup.sh first." >&2; exit 1; }
