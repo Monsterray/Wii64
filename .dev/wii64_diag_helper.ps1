@@ -28,6 +28,8 @@ public class Wii64DiagWin {
     [DllImport("user32.dll")] public static extern int GetWindowTextLength(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint procId);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     public static List<IntPtr> Windows = new List<IntPtr>();
     public static bool Report(IntPtr hWnd, IntPtr lParam) {
         if (IsWindowVisible(hWnd)) Windows.Add(hWnd);
@@ -65,14 +67,16 @@ function Get-RenderWindow($targetPid) {
 
 switch ($Action) {
     "start" {
-        # A chain (-Batch) also reads the XFB back with the CPU for its per-game snapshot,
-        # which only works with XFB copies written to emulated RAM (as on a Wii) --
-        # Dolphin's default keeps them as host textures and RAM holds stale bytes.
-        $batchArg = @(); if ($Batch) { $batchArg = @('-b', '-C', 'Graphics.Hacks.XFBToTextureEnable=False') }
+        # XFB copies go to emulated RAM, as on a Wii. Dolphin's default keeps them as host
+        # textures: then a framebuffer the CPU draws -- the HOME overlay -- never shows,
+        # and a chain's (-Batch) per-game snapshot reads stale RAM.
+        $batchArg = @('-C', 'Graphics.Hacks.XFBToTextureEnable=False'); if ($Batch) { $batchArg += '-b' }
         $bootArg = @('-e', $Dol); if ($Record) { $bootArg = @('-C', "Dolphin.Core.DefaultISO=$Dol") }
         $p = Start-Process -FilePath $DolphinExe -ArgumentList ($batchArg + $bootArg + @(
             '-u', $Profile,
-            '-C', 'Graphics.Hacks.ImmediateXFBEnable=True',
+            # Off with RAM XFB: frames are presented at VI scan, as on a Wii, so the CPU-drawn
+            # HOME overlay shows (immediate presentation only follows GX copies).
+            '-C', 'Graphics.Hacks.ImmediateXFBEnable=False',
             '-C', 'Dolphin.Interface.UsePanicHandlers=False',
             '-C', 'Dolphin.Interface.ConfirmStop=False',
             '-C', 'Dolphin.Core.CPUThread=True',
@@ -98,7 +102,10 @@ switch ($Action) {
         $lines = Get-Content $State
         $hwndVal = [int64](($lines | Where-Object { $_ -like 'HWND=*' }) -replace 'HWND=','')
         $hwnd = [IntPtr]$hwndVal
-        $bmp = New-Object System.Drawing.Bitmap 900,650
+        # The whole window, whatever its size (a fixed 900x650 cut off the HOME bar).
+        $rect = New-Object Wii64DiagWin+RECT
+        [void][Wii64DiagWin]::GetWindowRect($hwnd, [ref]$rect)
+        $bmp = New-Object System.Drawing.Bitmap ([Math]::Max(1, $rect.Right - $rect.Left)), ([Math]::Max(1, $rect.Bottom - $rect.Top))
         $g = [System.Drawing.Graphics]::FromImage($bmp)
         $hdc = $g.GetHdc()
         [Wii64DiagWin]::PrintWindow($hwnd, $hdc, 2) | Out-Null   # PW_RENDERFULLCONTENT

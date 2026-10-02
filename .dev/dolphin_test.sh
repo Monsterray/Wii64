@@ -16,7 +16,9 @@ PROFILE_POSIX="${WII64_DOLPHIN_PROFILE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" &&
 folder_sync="${WII64_DOLPHIN_FOLDER_SYNC:-True}"
 # AESND homebrew microcode is tested with DSP LLE, not Dolphin's game HLE.
 dsp_hle="${WII64_DOLPHIN_DSP_HLE:-False}"
-xfb_texture="${WII64_DOLPHIN_XFB_TEXTURE:-True}"
+# False, as on a Wii: XFB copies in emulated RAM, so the CPU-drawn HOME overlay shows and
+# xfb_NN.bin snapshots hold the real frame (True left them a stale solid purple).
+xfb_texture="${WII64_DOLPHIN_XFB_TEXTURE:-False}"
 case "$xfb_texture" in True|False) ;; *) echo 'WII64_DOLPHIN_XFB_TEXTURE must be True or False.' >&2; exit 2 ;; esac
 
 case "$(uname -s)" in
@@ -172,7 +174,7 @@ args=(-b -e "$DOL_ARG" -u "$PROFILE_ARG" \
 	-C Dolphin.Movie.DumpFrames="$dump_frames" \
 	-C Graphics.Settings.DumpFramesAsImages="$dump_frames" \
 	-C Graphics.Settings.PNGCompressionLevel=1 \
-	-C Graphics.Hacks.ImmediateXFBEnable=True \
+	-C Graphics.Hacks.ImmediateXFBEnable="$xfb_texture" \
 	-C Graphics.Hacks.XFBToTextureEnable="$xfb_texture" \
 	-C Dolphin.Core.CPUThread=True \
 	-C Dolphin.Core.MMU=True \
