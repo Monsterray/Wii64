@@ -1001,7 +1001,10 @@ int main(int argc, const char* argv[]) {
 		perfProf_mark("test_saveload: done");
 		nativeSaveDevice = savedDevice;
 	}
-	while (!devAgent_exitRequested() && menu->isRunning()) devAgent_alive(); // a menu frame is progress
+	while (!devAgent_exitRequested() && menu->isRunning()) {
+		devAgent_alive(); // a menu frame is progress
+		devAgent_menuHome(); // HOME opens the agent overlay over the menu
+	}
 
 	delete menu;
 

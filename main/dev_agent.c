@@ -14,6 +14,115 @@ _Static_assert(HBC_LASTLOG_ADDR + sizeof(hbc_lastlog_block) <= (unsigned long)TE
                "HBC last-output block must fit the reserved MEM2 gap");
 #endif
 
+/* --- The HOME menu: the agent's overlay --------------------------------------------
+   HOME on a Wii Remote or Classic Controller (or `hbc.py key h`) opens it, in a game
+   and in Wii64's menus. In a game it stops emulation first, like the exit combo, so the
+   overlay runs from the menu thread with emulation, audio and GX idle, over the game's
+   last frame; closing it resumes the game. It draws into whichever of Wii64's two MEM2
+   framebuffers is not on screen and reads the frame in place, so it allocates nothing
+   (HBC-Reborn >= 29e19e0; Wii64 has ~0.4 MB of MEM1 free, the overlay's own path needs
+   1.8 MB). The bar's left button (slot 0) is a Wii64 menu: live info and Wii64 Menu.
+   Its right button keeps the agent's Shot (sd:/screenshots). */
+#include <stdio.h>
+#include <wiiuse/wpad.h>
+#include <ogc/gx.h>
+#include <ogc/video.h>
+#include "rom.h"
+#include "timers.h"
+#include "wii64config.h"
+#include "../r4300/r4300.h"
+
+extern GXRModeObj *vmode;
+extern char shutdown;
+extern unsigned int hasLoadedROM;
+extern timers Timers;
+
+static volatile int homeWanted; // HOME stopped the game: open the overlay after go()
+static int toWii64Menu;         // the overlay's Wii64 Menu button was pressed
+static int inGame;              // the overlay was opened from a stopped game
+
+static char infoGame[48], infoSpeed[40];
+static void pressWii64Menu(void *user) { (void)user; toWii64Menu = 1; }
+static hbc_agent_item wii64Items[] = {
+    { "Version", WII64_VERSION, NULL, NULL, 0 },
+    { "Game", infoGame, NULL, NULL, 0 },
+    { "Speed", infoSpeed, NULL, NULL, 0 },
+#ifdef GLN64_GX
+    { "Video", "glN64", NULL, NULL, 0 },
+#else
+    { "Video", "Rice", NULL, NULL, 0 },
+#endif
+    { "CPU core", "", NULL, NULL, 0 },
+    { "Wii64 Menu", NULL, pressWii64Menu, NULL, HBC_AGENT_ITEM_CLOSE },
+};
+#define WII64_ITEM_CORE 4
+#define WII64_ITEM_MENU 5
+
+static void refreshInfo(void)
+{
+    const char *name = ROM_SETTINGS.goodname[0] ? ROM_SETTINGS.goodname : (const char *)ROM_HEADER.Name;
+    snprintf(infoGame, sizeof(infoGame), "%.*s", hasLoadedROM ? 40 : 4, hasLoadedROM ? name : "none");
+    snprintf(infoSpeed, sizeof(infoSpeed), "%.1f VI/s, %.1f fps", Timers.vis, Timers.fps);
+    wii64Items[WII64_ITEM_CORE].value = dynacore == DYNACORE_DYNAREC ? "Dynarec" :
+        dynacore == DYNACORE_PURE_INTERP ? "Pure interpreter" : "Interpreter";
+    wii64Items[WII64_ITEM_MENU].flags = inGame ? HBC_AGENT_ITEM_CLOSE : HBC_AGENT_ITEM_DISABLED;
+}
+
+/* Exit's choices: Wii64's own shutdown (Gui::draw fades out, restores a Wii U's aspect
+   ratio, then exits or powers off) for HBC and Power off; the agent does the rest. */
+static bool exitChoice(int choice, void *user)
+{
+    (void)user;
+    if (choice == HBC_AGENT_EXIT_HBC) shutdown = 2;
+    else if (choice == HBC_AGENT_EXIT_POWER_OFF) shutdown = 1;
+    else return false;
+    return true;
+}
+
+static int homePressed(void)
+{
+    static u32 previous;
+    u32 held = 0;
+    for (int chan = 0; chan < 4; chan++) {
+        WPADData *d = WPAD_Data(chan);
+        if (d && d->err == WPAD_ERR_NONE) held |= d->btns_h;
+    }
+    u32 down = held & ~previous;
+    previous = held;
+    return (down & (WPAD_BUTTON_HOME | WPAD_CLASSIC_BUTTON_HOME)) || hbc_agent_home_pending();
+}
+
+static void openOverlay(void)
+{
+    GX_DrawDone(); // no pending draw-sync callback may flip the display under it
+    refreshInfo();
+    u32 shown = (u32)VIDEO_GetCurrentFramebuffer() & 0x1fffffff;
+    void *lend = shown == ((u32)XFB0_LO & 0x1fffffff) ? XFB1_LO : XFB0_LO;
+    if (hbc_agent_home_fb(vmode, lend, NULL) < 0)
+        hbc_agent_home(vmode); // an older SDK: its own buffers, or over ours
+}
+
+void devAgent_pollHome(void)
+{
+    if (homePressed()) { homeWanted = 1; r4300.stop = 1; }
+}
+
+int devAgent_homeAfterStop(void)
+{
+    if (!homeWanted) return 0;
+    homeWanted = 0;
+    toWii64Menu = 0;
+    inGame = 1;
+    openOverlay();
+    inGame = 0;
+    return !toWii64Menu && !shutdown && !devAgent_exitRequested();
+}
+
+void devAgent_menuHome(void)
+{
+    if (homePressed()) openOverlay();
+}
+
 void devAgent_init(void)
 {
     /* SDK starts networking asynchronously; uploads wait before net_init(). */
@@ -25,9 +134,12 @@ void devAgent_init(void)
     cfg.exit_grace_ms = 10000;
     cfg.crash_reload_s = 3;
     cfg.gc_pads = true;
-    /* Leave HOME closed: it needs ~1.8 MiB transient MEM1, not spare MEM2. */
+    cfg.on_exit_choice = exitChoice;
     int result = hbc_agent_init(&cfg);
+    hbc_agent_set_slot_menu(0, "Wii64", "Wii64 " WII64_VERSION, wii64Items,
+                            sizeof(wii64Items) / sizeof(wii64Items[0]));
     perfProf_mark(result == 0 ? "HBC agent ready" : "HBC agent init failed");
+    (void)result; // release builds compile perfProf_mark away
 }
 
 int devAgent_exitRequested(void)

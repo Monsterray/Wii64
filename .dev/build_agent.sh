@@ -31,9 +31,12 @@ if ! printf '#include <ogc/message.h>\nint check(void) { return MQ_ERROR_SUCCESS
 fi
 out="$REPO_ROOT/.dev/hbc_agent"
 # SDK objects have no compiler/flag fingerprint: rebuild its small archive.
-make -B -C "$hbc_root/sdk/hbc_agent" -j4 OGC=libogc2 \
-    DEVKITPRO="$DEVKITPRO" DEVKITPPC="$DEVKITPPC" TMP="$WII64_BUILD_TMP" TEMP="$WII64_BUILD_TMP" \
+# The SDK makefile adds -I$(DEVKITPRO)/$(OGC)/include: name this libogc2's own include
+# directory that way, so no other libogc2 (WiiStation's) is ever on the path.
+ogc_name="${ogc_include#"$(dirname "$libogc2")"/}"
+make -B -C "$hbc_root/sdk/hbc_agent" -j4 OGC="${ogc_name%/include}" \
+    DEVKITPRO="$(dirname "$libogc2")" DEVKITPPC="$DEVKITPPC" TMP="$WII64_BUILD_TMP" TEMP="$WII64_BUILD_TMP" \
     OUT="$out/libhbcagent.a" BUILD="$out/build" \
     "EXTRA_CFLAGS=-I\"$ogc_include\" -I\"$DEVKITPRO/portlibs/ppc/include\" $compat"
 echo "Agent library: $out/libhbcagent.a ($(git -C "$hbc_root" rev-parse --short=7 HEAD))."
-echo "Clean Wii64, then build with HBC_AGENT=1 (.dev/build_profiling.sh <target> HBC_AGENT=1)."
+echo "Every Wii build links it; clean Wii64 and rebuild (.dev/build.sh <target>) to pick up a new one."

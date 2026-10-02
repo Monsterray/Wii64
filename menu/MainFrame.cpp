@@ -19,6 +19,7 @@
 **/
 
 #include "MenuContext.h"
+#include "../main/dev_agent.h"
 #include "MainFrame.h"
 #include "SettingsFrame.h"
 #include "../libgui/Button.h"
@@ -269,6 +270,8 @@ void Func_PlayGame()
 
 	menu::Gui::getInstance().gfx->clearEFB((GXColor){0, 0, 0, 0xFF}, 0x000000);
 
+// HOME during the game opens the agent overlay after go(); closing it resumes here.
+resume_after_home:
 	resumeAudio();
 	resumeInput();
 	menuActive = 0;
@@ -334,6 +337,9 @@ void Func_PlayGame()
       
     }
   }
+	// HOME stopped the game: the HOME menu (main/dev_agent.c), then resume unless
+	// the user chose Wii64 Menu or an exit.
+	if (devAgent_homeAfterStop()) goto resume_after_home;
 	FRAME_BUTTONS[5].buttonString = FRAME_STRINGS[6];
 	menu::Cursor::getInstance().clearCursorFocus();
 	menu::Focus::getInstance().clearPrimaryFocus();

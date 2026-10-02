@@ -77,13 +77,18 @@ metadata = {
     'receiver_timeout': int(os.environ['WII64_RECEIVER_TIMEOUT']),
     'job_timeout': int(os.environ['WII64_JOB_TIMEOUT']),
     'same_probes': os.environ.get('WII64_SURVEY_SAME_PROBES') == '1'}
-if 'HBC_AGENT=1' in sys.argv[2:]:
-    sdk = pathlib.Path(next((arg.split('=', 1)[1] for arg in sys.argv[2:]
-                             if arg.startswith('HBC_AGENT_ROOT=')), '../hbc-reborn'))
+# Every Wii build links the HBC agent: record the archive Makefile.wii picks
+# (.dev/hbc_agent first, as .dev/build_agent.sh makes it, else HBC-Reborn's own).
+sdk = pathlib.Path(next((arg.split('=', 1)[1] for arg in sys.argv[2:]
+                         if arg.startswith('HBC_AGENT_ROOT=')), '../hbc-reborn'))
+archive = next((p for p in (pathlib.Path('.dev/hbc_agent/libhbcagent.a'),
+                            sdk / 'sdk/hbc_agent/libogc2/libhbcagent.a') if p.is_file()), None)
+if archive:
     metadata['hbc_sdk'] = {
         'head': subprocess.check_output(['git', '-C', str(sdk), 'rev-parse', 'HEAD']).decode().strip(),
         'status': subprocess.check_output(['git', '-C', str(sdk), 'status', '--short']).decode(),
-        'archive_sha256': hashlib.sha256((sdk / 'sdk/hbc_agent/libogc2/libhbcagent.a').read_bytes()).hexdigest()}
+        'archive': str(archive),
+        'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest()}
 pathlib.Path(sys.argv[1], 'source.json').write_text(json.dumps(metadata, indent=2) + '\n')
 PY
 for mode in full control; do

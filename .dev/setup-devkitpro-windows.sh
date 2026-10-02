@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of the libogc2 and libfat that Wii64 builds against on Windows.
+# One-time setup of the libogc2, libfat and HBC agent that Wii64 builds against on Windows.
 #
 # Wii64 needs current libogc2 (Extrems' fork) and a libfat built with the same
 # devkitPPC. This script builds both from source checkouts with the current
@@ -8,7 +8,8 @@
 # It installs them into their own devkitPro-shaped root, C:\devkitPro\wii64-sdk
 # (so C:\devkitPro\wii64-sdk\libogc2\wii\{include,lib}), side by side with any
 # other libogc2. C:\devkitPro\libogc2 -- the prebuilt r41-2 copy WiiStation uses --
-# is never touched. .dev/env.sh points the build there.
+# is never touched. .dev/env.sh points the build there. Last, it builds HBC-Reborn's
+# agent library -- Wii64's HOME menu, in every Wii build -- with .dev/build_agent.sh.
 #
 # Prerequisites, once, by hand (the installer needs admin rights):
 #   1. Install devkitPro with "Wii Development" checked, at C:\devkitPro:
@@ -16,7 +17,7 @@
 #   2. Git for Windows.
 #
 # Source checkouts live beside this repo (AGENTS.md: separate checkouts) and are
-# cloned when missing. Override with LIBOGC2_SRC, LIBFAT_SRC or WII64_SDK.
+# cloned when missing. Override with LIBOGC2_SRC, LIBFAT_SRC, WII64_HBC_ROOT or WII64_SDK.
 # Safe to re-run: run it again after pulling either checkout.
 set -euo pipefail
 
@@ -26,10 +27,14 @@ DEVKITPPC="$DEVKITPRO/devkitPPC"
 SDK="${WII64_SDK:-$DEVKITPRO/wii64-sdk}"
 LIBOGC2_SRC="${LIBOGC2_SRC:-$(dirname "$REPO_ROOT")/libogc2-src}"
 LIBFAT_SRC="${LIBFAT_SRC:-$(dirname "$REPO_ROOT")/libfat-src}"
+HBC_SRC="${WII64_HBC_ROOT:-$(dirname "$REPO_ROOT")/hbc-reborn}"
 # The libogc2 and libfat this setup was last tested with. Newer ones usually work;
 # a mismatch is reported, not refused.
 TESTED_LIBOGC2=0866d8b
 TESTED_LIBFAT=c756e1e
+# HBC-Reborn from 29e19e0 lends the HOME overlay Wii64's MEM2 framebuffers; older
+# ones cannot open it in Wii64 (no 600 KB free for their frame copy).
+TESTED_HBC=29e19e0
 
 log() { printf '\n==> %s\n' "$1"; }
 die() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
@@ -52,6 +57,7 @@ checkout() { # <dir> <url> <tested commit>
 }
 checkout "$LIBOGC2_SRC" https://github.com/extremscorner/libogc2.git "$TESTED_LIBOGC2"
 checkout "$LIBFAT_SRC" https://github.com/extremscorner/libfat.git "$TESTED_LIBFAT"
+checkout "$HBC_SRC" https://github.com/Monsterray/hbc-reborn.git "$TESTED_HBC"
 
 # Build with the real devkitPro root; install with DEVKITPRO pointed at the SDK
 # root, which is where both upstream install rules put libogc2/.
@@ -76,6 +82,10 @@ mk -C "$LIBFAT_SRC" DEVKITPRO="$SDK" ogc-install >/dev/null
 for f in wii/include/ogc/video.h wii/include/fat.h wii/lib/libogc.a wii/lib/libfat.a; do
 	[ -f "$SDK/libogc2/$f" ] || die "install incomplete: $SDK/libogc2/$f is missing."
 done
+echo "hbc-reborn $(git -C "$HBC_SRC" rev-parse --short=7 HEAD) $HBC_SRC" >> "$SDK/VERSIONS"
+log "Building the HBC agent library (.dev/build_agent.sh)"
+WII64_HBC_ROOT="$HBC_SRC" "$REPO_ROOT/.dev/build_agent.sh"
+
 log "Done. Installed:"
 cat "$SDK/VERSIONS"
 echo "Build with: .dev/build.sh glN64_wii"

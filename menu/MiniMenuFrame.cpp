@@ -19,6 +19,7 @@
 **/
 #if !(defined(GC_BASIC))
 #include "MenuContext.h"
+#include "../main/dev_agent.h"
 #include "MiniMenuFrame.h"
 #include "SettingsFrame.h"
 #include "../libgui/Button.h"
@@ -74,7 +75,7 @@ char FRAME_STRINGS[9][50] = //[16] =
 	  "Quit",
 	  "New ROM",
 	  "Advanced",
-	  "(Home) Quit",
+	  "(Home) Menu",
 	  "(B) Resume Game",
 	  "Slot 0"};
 
@@ -522,6 +523,8 @@ void Func_MMPlayGame()
 	menu::Gui::getInstance().gfx->clearEFB((GXColor){0, 0, 0, 0xFF}, 0x000000);
 	BOXART_DeInit();
 	
+// HOME during the game opens the agent overlay after go(); closing it resumes here.
+resume_after_home:
 	resumeAudio();
 	resumeInput();
 	menuActive = 0;
@@ -581,6 +584,9 @@ void Func_MMPlayGame()
       
     }
   }
+	// HOME stopped the game: the HOME menu (main/dev_agent.c), then resume unless
+	// the user chose Wii64 Menu or an exit.
+	if (devAgent_homeAfterStop()) goto resume_after_home;
 //	FRAME_BUTTONS[5].buttonString = FRAME_STRINGS[6];
 	menu::Cursor::getInstance().clearCursorFocus();
 }
