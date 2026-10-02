@@ -1,0 +1,50 @@
+{
+  "color_image": {
+    "head": "84b3df6e19313a17fd1a983efe68bb1ce20747c3",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FAST_COLOR_IMAGE=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FAST_COLOR_IMAGE=0"
+    },
+    "artifacts": {
+      "chain.txt": "4d33b9a18a0be881996c3f41d52899871e9a5dc118b02edafa5db95914dba3a0",
+      "control.dol": "c7046907b100d380f3d798e11812b986ea0d16e93bab983b039db459dc59b9c8",
+      "control.elf": "ac91beb51d30b244fc4248be13e97c3ed3a9550244bb49917cca2e6fdadbe2d4",
+      "full.dol": "0cd74cc80880cd3f47a9df953328ad7acfa7c5e1d7ca5661d543220ef79bf89d",
+      "full.elf": "107593f605108c10f71022eb36c08275c6f5cea3354b13102c1551685bcf7023"
+    },
+    "jobs": {
+      "full1": "20261002-003851-5ec794",
+      "control": "20261002-003851-f6b8e7",
+      "full2": "20261002-003852-583254"
+    },
+    "untracked_sha256": {
+      "glN64_GX/YUYVConvert.h": "5bb31f70c58b0342ad8b52b58a2ff5950135cf0335bc604b3d4fdfa295171344",
+      "glN64_GX/texture_hash.h": "3a7d1aa82889cf99e576019e8fe73cc393d86d11649d98201f87d724431679ff"
+    }
+  },
+  "memo_dcbz_rejected": {
+    "head": "84b3df6e19313a17fd1a983efe68bb1ce20747c3",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FAST_COLOR_IMAGE=1 -DGLN64_TMEM_HASH_CACHE=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_FAST_COLOR_IMAGE=0 -DGLN64_TMEM_HASH_CACHE=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "2069e631a2a7664f41c1cc355e0985ab9e388fac6101a52615bd7512c86ee88c",
+      "control.elf": "c101c51c5ec618b7a050fe658248542a7d51104ac8d5ea7ee426ed251845ec27",
+      "full.dol": "5fedd19a379554b6b5ac3a842151a1223bb932e06621f4332654a5ab5bd60498",
+      "full.elf": "f628c3cbef4d709cec91ca9d24410a611e252aa0de9bb39217fc9973ea2e4380"
+    },
+    "jobs": {
+      "full1": "20261002-005407-b539ff",
+      "control": "20261002-005407-f54657",
+      "full2": "20261002-005408-ebf999"
+    },
+    "untracked_sha256": {
+      "glN64_GX/YUYVConvert.h": "93d4e2264856433e82991055c633966be69b0f52295cc5a7c179df5e8e5f5006",
+      "glN64_GX/texture_hash.h": "724bf070c2e95d0690424f59476c5d38b3ae59a5ab37deb7fa5562d07b95f9a9"
+    },
+    "note": "Third run cancelled: another workstation's job left the Wii outside HBC."
+  },
+  "environment": "Wii 192.168.8.213, HBC-Reborn 1.9.3, central lease server, glN64, chains subsystem_gaps and gpu_survey"
+}

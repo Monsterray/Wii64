@@ -6,7 +6,7 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 case "$(uname -s)" in
-	Darwin)
+	Darwin|Linux)
 	export DEVKITPRO="${DEVKITPRO:-/opt/devkitpro}"
 	export DEVKITPPC="${DEVKITPPC:-$DEVKITPRO/devkitPPC}"
 	export PATH="$DEVKITPRO/tools/bin:$DEVKITPPC/bin:$PATH"

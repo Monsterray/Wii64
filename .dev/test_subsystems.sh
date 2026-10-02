@@ -32,4 +32,5 @@ python3 tests/zelda_check_test.py
 python3 tests/library_report_test.py
 python3 tests/library_workflow_test.py
 python3 tests/graphics_reset_test.py
+python3 tests/yuyv_convert_test.py
 bash .dev/test_texture_hash.sh

@@ -115,3 +115,54 @@ exact; times are estimates from the 1-in-127 samples.
   as a file under `.dev/runs/`; the fourth job used it and exited 0.
 - `.dev/profile_subsystems.sh` and `.dev/hardware_run.sh` used `python3`
   before they sourced `.dev/env.sh`, which supplies it on Windows.
+
+## Changes from this survey (2026-10-02)
+
+Each change was measured as candidate/reference/candidate on the Wii with the
+same probes (`WII64_SURVEY_SAME_PROBES=1`). Results and hashes:
+`baselines/2026-10-02_hw_color_image_*`, `baselines/2026-10-02_hw_memo_dcbz_*`
+and `baselines/2026-10-02_cpu-opt-artifacts.json`.
+
+### Kept: Mario Kart's color-image copy (`glN64_GX/YUYVConvert.h`)
+
+`gDPUpdateColorImage` now computes the column positions once per call (the
+same float arithmetic as before) and clamps with a table instead of branches.
+The output is bit-identical: `tests/yuyv_convert_test.py` compares it with the
+original for every Y/U/V value and for whole frames at several scales.
+
+| `subsystem_gaps`, Mario Kart race (3,600 VIs) | Reference | Candidate (both runs) |
+|---|---:|---:|
+| `SETCIMG` per call | 5.24 ms | 2.55 ms |
+| CPU cycles | | −25.7% |
+| Speed | 0.978x | 0.993x |
+| Limiter sleep | 23.0% | 41.8% |
+| Audio underruns | 106 | 19 |
+
+SM64, Snap and DK64 do not run this code and stayed within 1.2% of cycles.
+The copy still costs 10.9 s of the race (18% of wall time); the next step is
+to let the GP convert and scale (an EFB-to-texture copy), or to convert only
+when the game reads the image.
+
+### Rejected
+
+- **`dcbz`/`dcbt` in the copy loop.** Prefetching the XFB and claiming output
+  lines made each copy slower: 2.85 ms against 2.55 ms.
+- **A TMEM hash memo stamped by the loads.** Loads built their words in a
+  scratch buffer and copied only changed 64-byte blocks to TMEM; up to 16
+  remembered hashes stayed valid while their blocks were unchanged. It
+  matched the original hash in 200,000 random load/lookup steps and drew
+  identical frames in Dolphin. On the Wii it cut Snap's hash time by 38%
+  (1,420 to 876 ms) with no net cycle change (+0.13%), and cost 0.2–4.2% more
+  cycles in the other eight scenes. The extra compare in every load costs
+  more than the hashes it saves. This is the third memo design to fail; the
+  next attempt must make loads cheaper too, not only lookups.
+
+### Pending Wii timing: paired-single vertex loads (`gSPVertex`)
+
+`GLN64_PS_VERTEX` (default 1) loads x, y, z, s, t and the colors or normals
+through the quantized paired-single loads (GQR7, GQR6, GQR2), which convert
+in hardware instead of through memory. Unaligned vertex addresses keep the C
+path. In Dolphin, SM64, Snap and Banjo drew byte-identical final frames with
+identical exception, batch and vertex counts, on and off. The matched Wii
+survey is queued in `.dev/runs/subsystem-survey-20261002-013643-Uk48`; collect
+it with `bash .dev/profile_subsystems.sh --collect <that directory>`.

@@ -23,8 +23,9 @@ duration peak is reported separately by `scripts/audio_report.py`.
 
 The [GPU survey](gpu-results-2026-10-02.md) measured the GP's own counters on
 the Wii: the GP is idle more than 85% of the time in nine 3D scenes. Graphics
-cost is CPU-side glN64 work. Start with Mario Kart's `SETCIMG` billboard hack
-(36% of race wall time), then the triangle and vertex commands. Paging is now
+cost is CPU-side glN64 work. Mario Kart's `SETCIMG` billboard copy is now twice as fast
+(race 0.978x to 0.993x); the triangle and vertex commands are next. See
+[the changes and rejected experiments](gpu-results-2026-10-02.md#changes-from-this-survey-2026-10-02). Paging is now
 on by default; the section below is its history.
 
 ## Earlier candidate: large-ROM paging

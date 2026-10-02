@@ -679,6 +679,68 @@ void gSPLookAt( u32 l, u32 n )
 #endif
 }
 
+#if defined(__GX__) && defined(_BIG_ENDIAN)
+#ifndef GLN64_PS_VERTEX
+#define GLN64_PS_VERTEX 1 // 0: the C conversions below, for A/B runs
+#endif
+#else
+#undef GLN64_PS_VERTEX
+#define GLN64_PS_VERTEX 0
+#endif
+#if GLN64_PS_VERTEX
+#include <stddef.h>
+/* One N64 vertex through the paired-single unit. The quantized loads convert
+   in hardware (GQR7 s16, GQR6 s8 and GQR2 u8/256, set in main_gc-menu2.cpp),
+   where the C path pays a convert through memory per field. The same values:
+   integer to float is exact, and s, t * 1/32 is _FIXED2FLOAT( v, 5 ). */
+static inline void _gSPLoadVertexPS( SPVertex *out, const Vertex *in, bool lighting )
+{
+	__asm__ volatile(
+		"psq_l    0, %[x](%[in]), 0, 7   \n" // x, y
+		"psq_l    1, %[z](%[in]), 1, 7   \n" // z, 1
+		"psq_l    2, %[s](%[in]), 0, 7   \n" // s, t
+		"ps_muls0 2, 2, %[k]             \n"
+		"psq_st   0, %[ox](%[out]), 0, 0 \n"
+		"psq_st   1, %[oz](%[out]), 1, 0 \n"
+		"psq_st   2, %[os](%[out]), 0, 0 \n"
+		: : [in] "b"(in), [out] "b"(out), [k] "f"(FIXED2FLOATRECIP5),
+		    [x] "i"(offsetof( Vertex, x )), [z] "i"(offsetof( Vertex, z )), [s] "i"(offsetof( Vertex, s )),
+		    [ox] "i"(offsetof( SPVertex, x )), [oz] "i"(offsetof( SPVertex, z )), [os] "i"(offsetof( SPVertex, s ))
+		: "fr0", "fr1", "fr2", "memory" );
+	if (lighting)
+		__asm__ volatile(
+			"psq_l    0, %[n](%[in]), 0, 6    \n" // nx, ny
+			"psq_l    1, %[nz](%[in]), 1, 6   \n" // nz, 1
+			"psq_l    2, %[a](%[in]), 1, 2    \n" // a, 1
+			"psq_st   0, %[on](%[out]), 0, 0  \n"
+			"psq_st   1, %[onz](%[out]), 1, 0 \n"
+			"psq_st   2, %[oa](%[out]), 1, 0  \n"
+			: : [in] "b"(in), [out] "b"(out),
+			    [n] "i"(offsetof( Vertex, normal.x )), [nz] "i"(offsetof( Vertex, normal.z )),
+			    [a] "i"(offsetof( Vertex, color.a )),
+			    [on] "i"(offsetof( SPVertex, nx )), [onz] "i"(offsetof( SPVertex, nz )), [oa] "i"(offsetof( SPVertex, a ))
+			: "fr0", "fr1", "fr2", "memory" );
+	else
+		__asm__ volatile(
+			"psq_l    0, %[r](%[in]), 0, 2    \n" // r, g
+			"psq_l    1, %[b](%[in]), 0, 2    \n" // b, a
+			"psq_st   0, %[ored](%[out]), 0, 0  \n"
+			"psq_st   1, %[ob](%[out]), 0, 0  \n"
+			: : [in] "b"(in), [out] "b"(out),
+			    [r] "i"(offsetof( Vertex, color.r )), [b] "i"(offsetof( Vertex, color.b )),
+			    [ored] "i"(offsetof( SPVertex, r )), [ob] "i"(offsetof( SPVertex, b ))
+			: "fr0", "fr1", "memory" );
+}
+// The pairs those loads and stores assume.
+static_assert( offsetof( Vertex, y ) == offsetof( Vertex, x ) + 2 && offsetof( Vertex, t ) == offsetof( Vertex, s ) + 2 &&
+               offsetof( Vertex, color.g ) == offsetof( Vertex, color.r ) + 1 &&
+               offsetof( Vertex, color.a ) == offsetof( Vertex, color.b ) + 1 &&
+               offsetof( Vertex, normal.y ) == offsetof( Vertex, normal.x ) + 1, "N64 vertex pairs" );
+static_assert( offsetof( SPVertex, y ) == offsetof( SPVertex, x ) + 4 && offsetof( SPVertex, t ) == offsetof( SPVertex, s ) + 4 &&
+               offsetof( SPVertex, g ) == offsetof( SPVertex, r ) + 4 && offsetof( SPVertex, a ) == offsetof( SPVertex, b ) + 4 &&
+               offsetof( SPVertex, ny ) == offsetof( SPVertex, nx ) + 4, "SPVertex pairs" );
+#endif
+
 void gSPVertex( u32 v, u32 n, u32 v0 )
 {
 	u32 address = RSP_SegmentToPhysical( v );
@@ -694,11 +756,23 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 	}
 
 	Vertex *vertex = (Vertex*)&RDRAM[address];
+#if GLN64_PS_VERTEX
+	const bool psLoad = (address & 3) == 0; // quantized loads want aligned pairs
+#endif
 
 	if ((n + v0) < SP_VERTEX_COUNT)
 	{
 		for (unsigned int i = v0; i < n + v0; i++)
 		{
+#if GLN64_PS_VERTEX
+			if (psLoad)
+			{
+				_gSPLoadVertexPS( &gSP.vertices[i], vertex, (gSP.geometryMode & G_LIGHTING) != 0 );
+				gSP.vertices[i].flag = vertex->flag;
+			}
+			else
+#endif
+			{
 			gSP.vertices[i].x = vertex->x;
 			gSP.vertices[i].y = vertex->y;
 			gSP.vertices[i].z = vertex->z;
@@ -719,6 +793,7 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 				gSP.vertices[i].g = GXcastu8f32( vertex->color.g );
 				gSP.vertices[i].b = GXcastu8f32( vertex->color.b );
 				gSP.vertices[i].a = GXcastu8f32( vertex->color.a );
+			}
 			}
 
 #ifdef DEBUG

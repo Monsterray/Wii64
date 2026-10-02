@@ -14,6 +14,7 @@ with tempfile.TemporaryDirectory(prefix='wii64 library ') as directory:
     for name in ('library_report.py', 'subsystem_report.py', 'chain_table.py'):
         shutil.copy2(root / 'scripts' / name, work / 'scripts' / name)
     shutil.copy2(root / '.dev/library_check.sh', work / '.dev/library_check.sh')
+    shutil.copy2(root / '.dev/env.sh', work / '.dev/env.sh')
     dol = work / 'frozen build.dol'
     dol.write_bytes(b'dol fixture'); dol.with_suffix('.elf').write_bytes(b'elf fixture')
     roms = work / 'owned ROMs'; roms.mkdir()
