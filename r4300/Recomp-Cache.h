@@ -43,6 +43,8 @@
 #include "ppc/Recompile.h"
 
 void RecompCache_Init(void);
+// Set when recompiled code is freed: the dispatcher's target table (Wrappers.c) forgets it.
+extern int dispatchCacheStale;
 // Allocate and free memory to be used for recompiled code
 //   Any memory allocated this way can be freed at any time
 //   you must check invalid_code before you can access it

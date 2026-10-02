@@ -33,6 +33,26 @@
 #include "Wrappers.h"
 #include "../../main/dynarec_trace.h"
 #include "../../main/perf_prof.h"
+#include <string.h>
+
+#ifndef DYNAREC_DISPATCH_CACHE
+#define DYNAREC_DISPATCH_CACHE 1 // 0: find every target in the block's func tree, for A/B runs
+#endif
+#if DYNAREC_DISPATCH_CACHE
+/* Recently dispatched targets, so a repeat skips the invalid-address update
+   (and its TLB lookup) and the func tree walk. An entry is used only while
+   its page and the pages update_invalid_addr checks are not marked invalid:
+   the kseg alias, or for a TLB-mapped address its physical page and that
+   page's alias (a TLB write marks the virtual pages it unmaps). Otherwise the
+   slow path invalidates as before. Freeing or recompiling code empties it. */
+#define DISPATCH_CACHE_SIZE 1024
+static struct dispatch_entry {
+	unsigned int address, page1, page2;
+	PowerPC_func* func;
+	PowerPC_instr* code;
+} dispatchCache[DISPATCH_CACHE_SIZE];
+#endif
+int dispatchCacheStale = 1;
 
 #include <stdio.h>
 
@@ -132,6 +152,7 @@ extern void wii64_watchdogMessage(const char* text); // libgui/GraphicsGX.cpp
 #define DYNAREC_WATCHDOG_CYCLE_LIMIT 300000
 
 void dynarec(unsigned int address){
+	dispatchCacheStale = 1;
 	unsigned int watchdogRing[DYNAREC_WATCHDOG_RING_SIZE];
 	unsigned int watchdogRingPos = 0;
 	unsigned int watchdogCycleCount = 0;
@@ -177,6 +198,24 @@ void dynarec(unsigned int address){
 		start_section(TRAMP_SECTION);
 #endif
 		unsigned long long dispatchTimer = perfProf_subsystemBegin(PERF_SUB_DISPATCH);
+		PowerPC_func* func;
+		PowerPC_instr *code;
+#if DYNAREC_DISPATCH_CACHE
+		if(dispatchCacheStale){
+			memset(dispatchCache, 0, sizeof(dispatchCache));
+			dispatchCacheStale = 0;
+		}
+		struct dispatch_entry *hit = &dispatchCache[(address >> 2) & (DISPATCH_CACHE_SIZE - 1)];
+		if(hit->address == address && hit->func && !invalid_code_get(address>>12) &&
+		   !invalid_code_get(hit->page1) && !invalid_code_get(hit->page2)){
+			func = hit->func;
+			code = hit->code;
+#ifdef USE_RECOMP_CACHE
+			RecompCache_Update(func);
+#endif
+		} else
+#endif
+		{
 		unsigned long paddr = update_invalid_addr(address);
 		/*
 		sprintf(txtbuffer, "trampolining to 0x%08x\n", address);
@@ -204,9 +243,11 @@ void dynarec(unsigned int address){
 			invalidate_block(blocks[address>>12], 0);
 		}
 
-		PowerPC_func* func = find_func(&blocks[address>>12]->funcs, address);
+		func = find_func(&blocks[address>>12]->funcs, address);
+		int compiled = 0;
 
 		if(!func || !func->code_addr[(address-func->start_addr)>>2]){
+			compiled = 1;
 			blocks[address>>12]->mips_code = (MIPS_instr*)fast_mem_access(paddr & ~0xFFF);
 #ifdef PROFILE
 			start_section(COMPILER_SECTION);
@@ -227,8 +268,29 @@ void dynarec(unsigned int address){
 		int index = (address - func->start_addr)>>2;
 
 		// Recompute the block offset
-		PowerPC_instr *code = (PowerPC_instr *)func->code_addr[index];
-		
+		code = (PowerPC_instr *)func->code_addr[index];
+#if DYNAREC_DISPATCH_CACHE
+		// A compile can rebuild an existing func's code in place, so it empties
+		// the table; a target found without compiling is remembered.
+		if(compiled)
+			dispatchCacheStale = 1;
+		else if(address >= 0x80000000 && address < 0xC0000000){
+			hit->address = address;
+			hit->page1 = hit->page2 = (address^0x20000000)>>12;
+			hit->func = func;
+			hit->code = code;
+		} else if(paddr >= 0x80000000 && paddr < 0xC0000000){
+			hit->address = address;
+			hit->page1 = paddr>>12;
+			hit->page2 = (paddr^0x20000000)>>12;
+			hit->func = func;
+			hit->code = code;
+		}
+#else
+		(void)compiled;
+#endif
+		}
+
 		// Create a link if possible
 		if(link_branch && !func_was_freed(last_func))
 			RecompCache_Link(last_func, link_branch, func, code);

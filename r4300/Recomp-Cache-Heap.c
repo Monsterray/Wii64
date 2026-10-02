@@ -169,6 +169,7 @@ static void unlink_func(PowerPC_func* func){
 }
 
 static void free_func(PowerPC_func* func, unsigned int addr){
+	dispatchCacheStale = 1;
 	// Free the code associated with the func
 	__lwp_heap_free(cache, func->code);
 	MetaCache_Free(func->code_addr);

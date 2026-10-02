@@ -46,5 +46,82 @@
     },
     "note": "Third run cancelled: another workstation's job left the Wii outside HBC."
   },
-  "environment": "Wii 192.168.8.213, HBC-Reborn 1.9.3, central lease server, glN64, chains subsystem_gaps and gpu_survey"
+  "environment": "Wii 192.168.8.213, HBC-Reborn 1.9.3, central lease server, glN64, chains subsystem_gaps and gpu_survey",
+  "ps_vertex": {
+    "head": "84b3df6e19313a17fd1a983efe68bb1ce20747c3",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_PS_VERTEX=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_PS_VERTEX=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "0cd74cc80880cd3f47a9df953328ad7acfa7c5e1d7ca5661d543220ef79bf89d",
+      "control.elf": "9b01b42cee316c978121b3c63616d676c67df7578a33ac786879f55e9cf18b96",
+      "full.dol": "a49a5430e00456670b5b4794b3e4c39e290ab00728c699b09609c6cb9f1c93c8",
+      "full.elf": "11ceef611441d2298ec5443eaa4d523be3347fc91563643fd73235fa2835de66"
+    },
+    "jobs": {
+      "full1": "20261002-013809-1ece41",
+      "control": "20261002-013809-9f9c88",
+      "full2": "20261002-013810-e50cb3"
+    }
+  },
+  "batch_vtx_rejected": {
+    "head": "8dba042102148f657ecafa99965774025f54f017",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_BATCH_ACROSS_VTX=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DGLN64_BATCH_ACROSS_VTX=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "1f45b202a3a16fb2424ec0cc68660e0d7125a4c6ceb72197cdcaeea66a87dd1b",
+      "control.elf": "747d4f8bc01e8edbbd31dca1c4456c3f5eb2cacc5bad43ae12e357439ea0f65d",
+      "full.dol": "4a600444760fff09b4a7d7ab2512472d17dba33b413e88bd99e0497f882b32c6",
+      "full.elf": "f3c6360b83e4af73e2e746475e49834571fcd4a84eed33c6d5bcb9f1be3042bf"
+    },
+    "jobs": {
+      "full1": "20261002-090741-3bee16",
+      "control": "20261002-090742-cd83b8",
+      "full2": "20261002-090742-72c1e9"
+    }
+  },
+  "dispatch_table_kseg_only": {
+    "head": "8dba042102148f657ecafa99965774025f54f017",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DDYNAREC_DISPATCH_CACHE=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DDYNAREC_DISPATCH_CACHE=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "fcb4709da32ee447d456a57a44ea6c5bc6d7a546c68dda4f78f4464b8e594317",
+      "control.elf": "5e4d4ca3c3c57f6c6dcd97bf07417d57dced294607449737b67ecbcc0e740ea7",
+      "full.dol": "4d4a064d009a2e496c64fd64c630adaf4093f232879bf2c3c7882ec9b27e56a9",
+      "full.elf": "cc9a961431830a2ffd10aba2f0be8e04fa54b1d686021425111ca975a82999e5"
+    },
+    "jobs": {
+      "full1": "20261002-091938-ca488f",
+      "control": "20261002-091939-e367f8",
+      "full2": "20261002-091939-382c50"
+    },
+    "note": "First version, unmapped targets only: GoldenEye +1.33% cycles; superseded."
+  },
+  "dispatch_table": {
+    "head": "8dba042102148f657ecafa99965774025f54f017",
+    "flags": {
+      "full": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DDYNAREC_DISPATCH_CACHE=1",
+      "control": "-DPERF_PROF -DPERF_SUBSYSTEM_PROBES -DDYNAREC_DISPATCH_CACHE=0"
+    },
+    "artifacts": {
+      "chain.txt": "cdf497e41bceea878240cb1d819b5bf31772c66676e6eeca9832943260a97436",
+      "control.dol": "2befa5c8524a74275a8b2cdc4d0ff384043b4aba70fec8ce5f91fde60a66ece8",
+      "control.elf": "6cd08af394b1a4679871b67ce77a8c3e0c84da2eae18725c49d8535cbb40307e",
+      "full.dol": "1f45d7670fdafbcfc6b80e0caf6d3031a7c429feeabcb659771c149c07db4c60",
+      "full.elf": "34d1781baba96b90cdbbe702da59714c2a0c4cbce85d3b134206cbb298151214"
+    },
+    "jobs": {
+      "full1": "20261002-094849-1b5b89",
+      "control": "20261002-094850-d1ca72",
+      "full2": "20261002-094850-ee73dc"
+    }
+  }
 }

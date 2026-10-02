@@ -156,13 +156,78 @@ when the game reads the image.
   cycles in the other eight scenes. The extra compare in every load costs
   more than the hashes it saves. This is the third memo design to fail; the
   next attempt must make loads cheaper too, not only lookups.
+- **Triangle batches across vertex loads.** glN64 draws its triangle batch
+  whenever the next command is not a triangle, so SM64 sends about 182 small
+  batches per frame. Letting a batch continue across `VTX` (flushing before
+  any state change) halved SM64's batches in Dolphin with identical frames.
+  On the Wii, `draw_triangles` fell 11% in SM64 and 29% in GoldenEye but rose
+  21% in Banjo and 12–20% in Smash, the two scenes that overflow the GX FIFO
+  (with about the same overflow counts: longer bursts appear to wait longer).
+  Net CPU cycles: −1.8% in GoldenEye, −0.6% to +0.3% elsewhere. Not worth
+  the extra code; `baselines/2026-10-02_hw_batch_vtx_rejected_*`.
 
-### Pending Wii timing: paired-single vertex loads (`gSPVertex`)
+### Kept: paired-single vertex loads (`gSPVertex`)
 
 `GLN64_PS_VERTEX` (default 1) loads x, y, z, s, t and the colors or normals
 through the quantized paired-single loads (GQR7, GQR6, GQR2), which convert
 in hardware instead of through memory. Unaligned vertex addresses keep the C
 path. In Dolphin, SM64, Snap and Banjo drew byte-identical final frames with
-identical exception, batch and vertex counts, on and off. The matched Wii
-survey is queued in `.dev/runs/subsystem-survey-20261002-013643-Uk48`; collect
-it with `bash .dev/profile_subsystems.sh --collect <that directory>`.
+identical exception, batch and vertex counts, on and off.
+
+Wii, `gpu_survey`, candidate/reference/candidate (`baselines/2026-10-02_hw_ps_vertex_*`):
+
+| Scene | `VTX` per call, reference / candidate | CPU cycles |
+|---|---:|---:|
+| Super Mario 64 | 5.47 / 3.72 us | −2.02% |
+| Pokémon Snap | 3.46 / 2.27 us | −3.53% |
+| GoldenEye 007 | 8.81 / 6.22 us | −3.17% |
+| Wave Race 64 | 5.44 / 3.68 us | −2.00% |
+
+Snap also went from 0.971x to 0.979x with 11 against 1 audio underruns.
+Mario Kart and Diddy Kong Racing barely use this loader and did not change.
+Other vertex loaders (DMA, CI, NI, F3DAM) still use the C conversions.
+
+### Kept: a dispatch target table in the dynarec (`r4300/ppc/Wrappers.c`)
+
+Every return from compiled code to the C dispatcher ran `update_invalid_addr`
+(a TLB lookup for mapped code) and walked the 4 KB page's func tree, which
+reaches depth 31 in Banjo. `DYNAREC_DISPATCH_CACHE` (default 1) keeps 1,024
+recent targets (20 KB): guest PC, func, host code, and the pages the slow path
+checks. An entry is used only while the target's page and those pages are not
+marked invalid (the kseg alias; for a TLB-mapped address its physical page and
+that page's alias; a TLB write marks the virtual pages it unmaps). Otherwise
+the slow path invalidates as before. Freeing code (`free_func`) or compiling
+empties the table, because a compile can rebuild an existing func in place.
+The LRU update, linking and freed-func handling still run on every dispatch.
+
+Dolphin: SM64, Banjo, Mario Party and Zelda OoT MQ (code overlays) completed
+with the same exception and recompile counts as without it, within the usual
+run-to-run spread, and identical SM64/Banjo frames. Wii, `gpu_survey`,
+candidate/reference/candidate (`baselines/2026-10-02_hw_dispatch_table_*`):
+
+| Scene | CPU cycles |
+|---|---:|
+| GoldenEye 007 | −6.59% |
+| Banjo-Kazooie | −5.18% |
+| Super Mario 64 | −5.15% |
+| Diddy Kong Racing | −4.12% |
+| Pokémon Snap | −3.68% |
+| Donkey Kong 64 | −3.03% |
+| Mario Kart 64 | −2.83% |
+| Wave Race 64 | −2.20% |
+| Super Smash Bros. | −1.00% |
+
+A first version that covered only unmapped targets cost GoldenEye 1.33%:
+its game code runs from TLB-mapped addresses, so it paid the check and never
+hit. There is no host test for this path; the Dolphin chains and the Wii
+triple are its checks.
+
+## The frame limiter's sleep
+
+WiiStation found that its own limiter asked `usleep` for ten times the wait
+(a 10 us tick documented as 100 us); libogc2 was not at fault. Wii64's limiter
+works in microseconds from `gettime()` through `ticks_to_microsecs` and calls
+`usleep(us)`; libogc2's `nanosleep` converts that to time-base ticks. On the
+Wii the limiter probe confirms it: in all nine `gpu_survey` scenes the
+measured sleep is within 0.04% of the requested sleep (0.11% in Snap), about
+3 us late per sleep.
