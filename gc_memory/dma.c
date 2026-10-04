@@ -190,19 +190,8 @@ void dma_pi_read()
 	
 	if(!interpcore)
 	{
-#if DYNAREC_INVALIDATE_PAGE_SKIP
 		invalidate_func_range(pi_register.pi_cart_addr_reg + 0x80000000, dma_length);
 		invalidate_func_range(pi_register.pi_cart_addr_reg + 0xa0000000, dma_length);
-#else
-		for (i=0; i<dma_length; i+=4)
-		{
-			unsigned long rom_address1 = pi_register.pi_cart_addr_reg+i+0x80000000;
-			unsigned long rom_address2 = pi_register.pi_cart_addr_reg+i+0xa0000000;
-
-			invalidate_func(rom_address1);
-			invalidate_func(rom_address2);
-		}
-#endif
 	}
 
 	pi_register.read_pi_status_reg |= 3;
@@ -289,18 +278,8 @@ void dma_pi_write()
 	// Dynarec, invalidate any code we wrote over.
 	if(!interpcore)
 	{
-#if DYNAREC_INVALIDATE_PAGE_SKIP
 		invalidate_func_range(pi_register.pi_dram_addr_reg + 0x80000000, dma_length);
 		invalidate_func_range(pi_register.pi_dram_addr_reg + 0xa0000000, dma_length);
-#else
-		for (i=0; i<dma_length; i+=4)
-		{
-			unsigned long rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
-			unsigned long rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
-			invalidate_func(rdram_address1);
-			invalidate_func(rdram_address2);
-		}
-#endif
 	}
 
     // Set the RDRAM memory size when copying main ROM code

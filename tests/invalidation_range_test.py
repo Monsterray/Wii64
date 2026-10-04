@@ -1,5 +1,6 @@
 """Compile the actual range walker with a modeled func tree; no PowerPC asm needed."""
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -9,6 +10,7 @@ source = (root / "r4300/ppc/Wrappers.c").read_text()
 body = source[source.index("void invalidate_func_range("):source.index("unsigned int dyna_mem(", source.index("void invalidate_func_range("))]
 tree = (root / "r4300/ppc/FuncTree.c").read_text()
 overlap = tree[tree.index("PowerPC_func* find_func_overlap("):tree.index("void insert_func(")]
+word_count = re.search(r"unsigned int words = ([^;]+);", body)[1]
 fixture = r'''
 #include <assert.h>
 #include <stdint.h>
@@ -71,7 +73,7 @@ static __attribute__((unused)) void invalidate_func(unsigned addr) {
         if (f) RecompCache_Free(f->start_addr);
     }
 }
-''' + overlap + body + r'''
+''' + overlap + body + '\nstatic unsigned word_count(unsigned addr, unsigned bytes) { return bytes ? ' + word_count + ' : 0; }\n' + r'''
 /* Disjoint funcs, word aligned, each inside one page, in random tree order. */
 static void make_funcs(uint32_t addr) {
     memset(nodes, 0, sizeof(nodes));
@@ -106,7 +108,8 @@ static void check(uint32_t addr, unsigned bytes) {
     if (!keep_funcs) make_funcs(addr);
     unsigned count = 0;
     for (unsigned i = 0; i < nfuncs; i++) funcs[i].alive = 2; /* reference pass: 2 = alive */
-    for (unsigned i = 0; i < bytes; i += 4) {
+    /* Byte coverage is the invariant, not the legacy four-byte probe stride. */
+    for (unsigned i = 0; i < bytes; i++) {
         uint32_t at = addr + i;
         unsigned p = ((at >> 12) - base_page) & 0xfffff;
         if (invalid_code_get(at >> 12) || p >= 18) continue;
@@ -119,13 +122,28 @@ static void check(uint32_t addr, unsigned bytes) {
     for (unsigned i = 0; i < nfuncs; i++) funcs[i].alive = 1;
     used = 0;
     invalidate_func_range(addr, bytes);
+    if (used != count || memcmp(actual, expected, count * sizeof(uint32_t)))
+        fprintf(stderr, "write %08x + %u bytes: invalidated %u funcs, expected %u\n", addr, bytes, used, count);
     assert(used == count && memcmp(actual, expected, count * sizeof(uint32_t)) == 0);
 }
 int main(void) {
+    unsigned sizes[] = {0, 1, 2, 3, 4, 7, 8, 9, 0xfffffffc, 0xfffffffd, 0xfffffffe, 0xffffffff};
+    for (unsigned offset = 0; offset < 4; offset++)
+        for (unsigned i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++)
+            assert(word_count(offset, sizes[i]) == (sizes[i] ? ((uint64_t)sizes[i] + offset + 3) / 4 : 0));
     for (unsigned i = 0; i < (1u << 20); i++) block_ptrs[i] = &page_blocks[i];
     memset(invalid_code, 1, sizeof(invalid_code));
     invalid_code[0] = invalid_code[1] = invalid_code[(1 << 20) - 1] = 0;
     invalid_code[0x80000] = invalid_code[0xa0001] = 0; /* aliases are distinct */
+    base_page = 0x80000;
+    nfuncs = 1;
+    funcs[0] = (PowerPC_func){0x80000004, 0x80000008, 1};
+    nodes[0].function = &funcs[0];
+    page_blocks[base_page].funcs = &nodes[0];
+    for (unsigned i = 1; i < 19; i++) page_first[i] = 1;
+    keep_funcs = 1;
+    check(funcs[0].start_addr - 2, 3); /* PI DMA / grouped byte stores cross an instruction boundary */
+    keep_funcs = 0;
     uint32_t edges[] = {0, 1, 3, 4093, 4095, 4096, 0xfffffffdu, 0xffffffffu,
                         0x80000ffdu, 0xa0000fffu};
     for (unsigned a = 0; a < sizeof(edges)/sizeof(edges[0]); a++)
@@ -145,7 +163,7 @@ int main(void) {
         for (unsigned j = 0; j < 17; j++) invalid_code[(addr + j * 4096) >> 12] = random32() >> 31;
         check(addr, random32() % 65536);
     }
-    puts("invalidation range: legacy freed-func order, unaligned/wrap/aliases/many funcs per page: ok");
+    puts("invalidation range: byte coverage, unaligned/wrap/aliases/many funcs per page: ok");
 }
 '''
 with tempfile.TemporaryDirectory(prefix="wii64-invalidation-") as directory:

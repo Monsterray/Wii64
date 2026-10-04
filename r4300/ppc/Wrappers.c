@@ -394,17 +394,19 @@ void invalidate_func(unsigned int addr){
 
 void invalidate_func_range(unsigned int addr, unsigned int bytes){
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_CPU_HELPER);
+	if(!bytes) return;
+	/* Every instruction touched by the write, including an unaligned tail.
+	   Divide before adding the byte offset so a large range cannot overflow. */
+	unsigned int words = bytes / 4 + (bytes % 4 + (addr & 3) + 3) / 4;
+	addr &= ~3u;
 #if DYNAREC_INVALIDATE_PAGE_SKIP
-	/* Free the funcs that hold any of the original four-byte points (also for
-	   unaligned/wrapped ranges): per page, one tree query per func, not one
-	   per point. Skip pages already marked invalid. Compiled stores call this
-	   for every store, so one or two points take the short path. */
-	if(bytes <= 8){
-		if(bytes) invalidate_func(addr);
-		if(bytes > 4) invalidate_func(addr + 4);
+	/* Per page, one tree query per func, not per instruction. Skip pages
+	   already invalid. Compiled stores usually touch one or two instructions. */
+	if(words <= 2){
+		invalidate_func(addr);
+		if(words > 1) invalidate_func(addr + 4);
 		return;
 	}
-	unsigned int words = bytes / 4 + (bytes % 4 != 0);
 	while(words){
 		unsigned int step = (0x1000 - (addr & 0xfff) + 3) / 4;
 		if(step > words) step = words;
@@ -421,8 +423,10 @@ void invalidate_func_range(unsigned int addr, unsigned int bytes){
 		words -= step;
 	}
 #else
-	unsigned int i;
-	for(i = 0; i < bytes; i += 4) invalidate_func(addr + i);
+	while(words--){
+		invalidate_func(addr);
+		addr += 4;
+	}
 #endif
 }
 
