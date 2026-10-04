@@ -21,6 +21,7 @@ for mode in control probes interval no-self; do
     "$task_sub_tmp/scope"
 done
 python3 tests/hardware_queue_test.py
+python3 tests/build_agent_test.py
 python3 tests/subsystem_report_test.py
 python3 tests/subsystem_workflow_test.py
 python3 tests/wii_input_staging_test.py

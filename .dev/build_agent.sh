@@ -30,13 +30,19 @@ if ! printf '#include <ogc/message.h>\nint check(void) { return MQ_ERROR_SUCCESS
     compat+=' -DMQ_ERROR_SUCCESSFUL=0'
 fi
 out="$REPO_ROOT/.dev/hbc_agent"
+# The SDK's make targets do not escape spaces in OUT/BUILD. Keep its generated
+# files in a space-free directory, then publish the archive at the usual path.
+task_agent_build="$(mktemp -d /tmp/wii64-hbc-agent.XXXXXX)"
+trap 'rm -rf -- "$task_agent_build"' EXIT
 # SDK objects have no compiler/flag fingerprint: rebuild its small archive.
 # The SDK makefile adds -I$(DEVKITPRO)/$(OGC)/include: name this libogc2's own include
 # directory that way, so no other libogc2 (WiiStation's) is ever on the path.
 ogc_name="${ogc_include#"$(dirname "$libogc2")"/}"
 make -B -C "$hbc_root/sdk/hbc_agent" -j4 OGC="${ogc_name%/include}" \
     DEVKITPRO="$(dirname "$libogc2")" DEVKITPPC="$DEVKITPPC" TMP="$WII64_BUILD_TMP" TEMP="$WII64_BUILD_TMP" \
-    OUT="$out/libhbcagent.a" BUILD="$out/build" \
+    OUT="$task_agent_build/libhbcagent.a" BUILD="$task_agent_build/build" \
     "EXTRA_CFLAGS=-I\"$ogc_include\" -I\"$DEVKITPRO/portlibs/ppc/include\" $compat"
+mkdir -p "$out"
+cp "$task_agent_build/libhbcagent.a" "$out/libhbcagent.a"
 echo "Agent library: $out/libhbcagent.a ($(git -C "$hbc_root" rev-parse --short=7 HEAD))."
 echo "Every Wii build links it; clean Wii64 and rebuild (.dev/build.sh <target>) to pick up a new one."
