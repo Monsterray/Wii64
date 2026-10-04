@@ -25,7 +25,7 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	# as a file: on Windows an 8 KB command argument reaches bash cut short. $0 stays
 	# the real path, which the script uses to find the repo.
 	mkdir -p .dev/runs
-	snapshot="$(mktemp "$PWD/.dev/runs/hardware_run-XXXXXX.sh")"
+	snapshot="$(mktemp "$PWD/.dev/runs/hardware_run-XXXXXX")"
 	cp .dev/hardware_run.sh "$snapshot"
 	job="$(python3 "$bench_client" add --name "Wii64 ${1:-glN64_wii} ${2:-configured chain}" --agent "$WII_BENCH_AGENT" --timeout "$WII64_JOB_TIMEOUT" --cwd "$PWD" -- \
 		env "${job_env[@]}" bash -c 'source="$(< "$1")"; shift; eval "$source"' "$PWD/.dev/hardware_run.sh" "$snapshot" "$@")"
