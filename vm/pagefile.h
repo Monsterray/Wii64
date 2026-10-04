@@ -9,7 +9,8 @@
 struct pagefile_stats {
     unsigned int reads, cache_hits, read_bytes, writes, write_bytes, errors;
 };
-#ifdef PERF_SUBSYSTEM_ENABLED
+#if defined(PERF_SUBSYSTEM_ENABLED) || (defined(PERF_PROF) && defined(PERF_MEMORY))
+#define PERF_PAGEFILE_STATS
 void pagefile_stats_reset(void);
 struct pagefile_stats pagefile_stats_read(void);
 #else

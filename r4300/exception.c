@@ -115,7 +115,7 @@ void TLB_refill_exception(unsigned long address, int w)
 
 void exception_general()
 {
-  perfProf_exceptionOccurred();
+  perfProf_exceptionOccurred(Cause);
   update_count();
   Status |= 2;
    

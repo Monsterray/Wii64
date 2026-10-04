@@ -48,5 +48,11 @@ int main(void) {
     partial = 1; assert(!pagefile_write(1, page, 0, sizeof(page)));
     partial = 0; read_page(0);
     memset(file, 42, sizeof(file)); pagefile_cache_reset(); read_page(0);
+#ifdef PERF_PAGEFILE_STATS
+    struct pagefile_stats stats = pagefile_stats_read();
+    assert(stats.reads && stats.read_bytes && stats.writes == 2 && stats.errors == 3);
+    pagefile_stats_reset(); stats = pagefile_stats_read();
+    assert(!stats.reads && !stats.cache_hits && !stats.writes && !stats.errors);
+#endif
     puts("Pagefile byte identity, bounds, I/O failure and coherence checks passed");
 }

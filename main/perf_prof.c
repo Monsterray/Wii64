@@ -130,6 +130,7 @@ static struct {
 	u64 start, flushTicks, pmc[4];
 	unsigned long long sleepUs;
 	unsigned int exceptions, cacheResets, batches, verts, texStalls, recompiles;
+	unsigned int exceptionCause[32], irqRcp, irqTimer, irqBoth, irqOther;
 	unsigned int treeDepthMax, flushes, visN, fpsN, dspN, vi0Retrace, queuePeakMs;
 	unsigned int alistResampleCalls, alistResampleSamples, alistZohCalls, alistZohSamples;
 	unsigned int musyxSubframes, musyxVoices, musyxVoicePeak;
@@ -334,7 +335,20 @@ void perfProf_fpsSample(float fps)
 	buf_printf("fps: %.1f\n", fps);
 }
 
-void perfProf_exceptionOccurred(void) { g.exceptions++; }
+void perfProf_exceptionOccurred(unsigned int cause)
+{
+    g.exceptions++;
+    unsigned int code = (cause >> 2) & 31;
+    g.exceptionCause[code]++;
+    if (!code) {
+        switch (cause & 0x8400) { /* RCP IP2 and Count/Compare IP7 */
+        case 0x0400: g.irqRcp++; break;
+        case 0x8000: g.irqTimer++; break;
+        case 0x8400: g.irqBoth++; break;
+        default: g.irqOther++; break;
+        }
+    }
+}
 void perfProf_cacheReset(void)        { g.cacheResets++; }
 void perfProf_recompile(void)         { g.recompiles++; }
 void perfProf_texStall(void)          { g.texStalls++; }
@@ -546,6 +560,11 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	unsigned int streamRequests, streamFed, inputHz, queuePeakMs, playbackHz;
 	extern void audioOutputStats(unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *);
 	audioOutputStats(&streamRequests, &streamFed, &inputHz, &queuePeakMs, &playbackHz);
+	for (unsigned int code = 0; code < 32; code++)
+		if (g.exceptionCause[code])
+			buf_printf("guest_exception: n=%d code=%u count=%u\n", n, code, g.exceptionCause[code]);
+	buf_printf("guest_irq: n=%d rcp=%u timer=%u both=%u other=%u\n",
+		n, g.irqRcp, g.irqTimer, g.irqBoth, g.irqOther);
 	extern float VILimit; // main/timers.c: the VI rate this ROM is paced at (50/60)
 	buf_printf("audio: alist_resample_calls=%u alist_resample_samples=%u alist_zoh_calls=%u alist_zoh_samples=%u musyx_subframes=%u musyx_voices=%u musyx_voice_peak=%u\n",
 		g.alistResampleCalls, g.alistResampleSamples, g.alistZohCalls,
@@ -572,14 +591,14 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		g.audioGapCalls[PERF_AUDIO_GAP_RESAMPLE_FLAG2], g.audioGapCalls[PERF_AUDIO_GAP_MUSYX_PTR10]);
 	buf_printf("audio_output: stream_requests=%u stream_fed=%u input_hz=%u playback_hz=%u queue_peak_ms=%u\n",
 		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
-#ifdef PERF_SUBSYSTEM_ENABLED
-	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,
-        perfProf_subsystemPeriod(PERF_SUB_EXECUTE));
-#ifdef HW_RVL
+#if defined(HW_RVL) && defined(PERF_PAGEFILE_STATS)
 	struct pagefile_stats io = pagefile_stats_read();
 	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u\n",
 		VM_PAGE_READAHEAD, io.reads, io.cache_hits, io.read_bytes, io.writes, io.write_bytes, io.errors);
 #endif
+#ifdef PERF_SUBSYSTEM_ENABLED
+	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,
+        perfProf_subsystemPeriod(PERF_SUB_EXECUTE));
 	static const char *const subsystemNames[] = {
 		"rsp_gfx", "rsp_audio", "rsp_other", "lookup", "compile", "dispatch",
 		"execute_inclusive", "rom_copy", "present", "limiter",

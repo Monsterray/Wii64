@@ -1,5 +1,6 @@
 # Same-layout allocation census and native boxart bound; no PC/subsystem timers.
 dynacore=dynarec
+randomize_interrupt=0
 audio_quality=accurate
 audio_output=dsp
 audio_mixer=accurate

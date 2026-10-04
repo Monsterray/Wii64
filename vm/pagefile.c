@@ -6,7 +6,7 @@
 #include "../main/perf_subsystem.h"
 #include "pagefile.h"
 
-#ifdef PERF_SUBSYSTEM_ENABLED
+#ifdef PERF_PAGEFILE_STATS
 static struct pagefile_stats io_stats;
 #define IO_COUNT(field, n) (io_stats.field += (n))
 void pagefile_stats_reset(void) { memset(&io_stats, 0, sizeof(io_stats)); }

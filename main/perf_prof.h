@@ -45,7 +45,7 @@ void perfProf_mark(const char* label);
 void perfProf_markLater(const char* label); // interrupt-safe; label must be a literal
 void perfProf_visSample(float vis);
 void perfProf_fpsSample(float fps);
-void perfProf_exceptionOccurred(void);
+void perfProf_exceptionOccurred(unsigned int cause);
 void perfProf_cacheReset(void);
 void perfProf_drawBatch(unsigned int verts);
 void perfProf_texStall(void);
@@ -81,7 +81,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 #define perfProf_markLater(label) ((void)0)
 #define perfProf_visSample(vis) ((void)0)
 #define perfProf_fpsSample(fps) ((void)0)
-#define perfProf_exceptionOccurred() ((void)0)
+#define perfProf_exceptionOccurred(cause) ((void)0)
 #define perfProf_cacheReset() ((void)0)
 #define perfProf_drawBatch(verts) ((void)0)
 #define perfProf_texStall() ((void)0)

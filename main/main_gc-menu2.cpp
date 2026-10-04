@@ -572,11 +572,26 @@ static void chainSnapshot(int n) {
 
 /* A chained game has come back from go(): file its results and boot the next.
    Network runs return through the loader stub; offline runs keep their old behavior. */
+static void diagStressBrowser(void) {
+#if !(defined(GC_BASIC))
+	for(int stress = 0; stress < g_diagStressSelectRom; stress++) {
+		perfProf_mark("stress_selectrom: enter");
+		Func_SR_SD();
+		menu::Gui::getInstance().draw(); // swapBuffers waits for GX before freeing
+		Func_ReturnFromSelectRomFrame();
+		menu::Gui::getInstance().draw();
+		perfProf_mark("stress_selectrom: back out");
+		perfMem_snapshot("browser_closed");
+	}
+#endif
+}
+
 static bool chainNext(void) {
 	if (!g_chainN || g_chainI >= g_chainN) return false;
 	const char* how = !diag_vi_count ? "load_failed" : g_chainTimedOut ? "timeout" : "vis";
 	if (diag_vi_count) chainSnapshot(g_chainI + 1);
 	perfProf_gameEnd(g_chainI + 1, g_chainN, diag_vi_count, g_chain[g_chainI].rom, how);
+	diagStressBrowser(); // outside gameplay clocks, before loading or unmounting
 	if (++g_chainI < g_chainN) {
 		chainArm(g_chainI);
 		autobootROM(g_chain[g_chainI].rom);
@@ -990,15 +1005,7 @@ int main(int argc, const char* argv[]) {
 		DiagNav_LoadFromSD();
 	else if(g_diagAutonavLoadFromSD == 2)
 		DiagNav_LoadFromSD_SelectFirst();
-	for(int stress = 0; stress < g_diagStressSelectRom; stress++) {
-		perfProf_mark("stress_selectrom: enter");
-		Func_SR_SD();
-		menu::Gui::getInstance().draw();
-		Func_ReturnFromSelectRomFrame();
-		menu::Gui::getInstance().draw();
-		perfProf_mark("stress_selectrom: back out");
-		perfMem_snapshot("browser_closed");
-	}
+	diagStressBrowser();
 	if(g_diagTestSelectLoad) {
 		perfProf_mark("test_selectload: Func_SR_SD");
 		Func_SR_SD();

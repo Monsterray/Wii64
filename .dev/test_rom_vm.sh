@@ -23,9 +23,10 @@ done
 done
 python3 tests/hbc_watch_test.py
 python3 tests/vm_flush_test.py
-for ahead in default 0 1; do
+for ahead in default 0 1 memory; do
     flags=(-UVM_PAGE_READAHEAD)
-    if [ "$ahead" != default ]; then flags=(-DVM_PAGE_READAHEAD="$ahead"); fi
+    if [ "$ahead" = memory ]; then flags=(-DPERF_PROF -DPERF_MEMORY);
+    elif [ "$ahead" != default ]; then flags=(-DVM_PAGE_READAHEAD="$ahead"); fi
     "${CC:-cc}" -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined \
         -fno-sanitize-recover=all "${flags[@]}" -Itests/rom_stubs \
         tests/pagefile_test.c -o "$task_rom_tmp/pagefile"
