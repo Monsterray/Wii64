@@ -210,9 +210,12 @@ SelectRomFrame::SelectRomFrame()
 #ifdef HW_RVL
 	if(boxartTexCache == NULL) {
 		boxartTexCache = (heap_cntrl*)malloc(sizeof(heap_cntrl));
-		perfMem_init(PERF_MEM_BOXART, boxartTexCache, BOXART_ICON_LO,BOXART_ICON_SIZE, 32);
+		if (boxartTexCache && !perfMem_init(PERF_MEM_BOXART, boxartTexCache, BOXART_ICON_LO,BOXART_ICON_SIZE, 32)) {
+			free(boxartTexCache);
+			boxartTexCache = NULL;
+		}
 #ifdef WII64_PERF_MEMORY
-		if (perfMem_boxartTest) {
+		if (boxartTexCache && perfMem_boxartTest) {
 			// Use the real native heap before any UI textures own this region.
 			// Restore the full reservation even on failure. No MEM1 test buffer.
 			void *probe[NUM_FILE_SLOTS] = {};
@@ -234,7 +237,7 @@ SelectRomFrame::SelectRomFrame()
 		}
 #endif
 #ifdef SHOW_DEBUG
-		DEBUG_registerHeap(boxartTexCache, "ART");
+		if (boxartTexCache) DEBUG_registerHeap(boxartTexCache, "ART");
 #endif
 	}
 #endif
@@ -291,10 +294,15 @@ void SelectRomFrame::activateSubmenu(int submenu)
 		if(!fileTextures[i])
 		{
 #ifdef HW_RVL
-			fileTextures[i] = (u8*)perfMem_allocate(PERF_MEM_BOXART, boxartTexCache,BOXART_TEX_SIZE);
+			fileTextures[i] = boxartTexCache ? (u8*)perfMem_allocate(PERF_MEM_BOXART, boxartTexCache,BOXART_TEX_SIZE) : NULL;
 #else
 			fileTextures[i] = (u8*) memalign(32, BOXART_TEX_SIZE);
 #endif
+			if (!fileTextures[i]) {
+				Func_ReturnFromSelectRomFrame();
+				menu::MessageBox::getInstance().fadeMessage("Not enough memory for boxart. Use Load ROM instead.");
+				return;
+			}
 			memset(fileTextures[i], 0xFF, BOXART_TEX_SIZE);
 			DCFlushRange(fileTextures[i], BOXART_TEX_SIZE);
 			FRAME_BUTTONS[btn_ind].button->setBoxTexture(fileTextures[i]);
@@ -587,6 +595,7 @@ void Func_ReturnFromSelectRomFrame()
 			free(fileTextures[i]);
 #endif
 		fileTextures[i] = NULL;
+		FRAME_BUTTONS[i+5].button->setBoxTexture(NULL);
 	}
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
 	if(rom_headers){ free(rom_headers); rom_headers = NULL; }
