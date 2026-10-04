@@ -130,6 +130,11 @@ unaligned and wrapped ranges) with one tree query per freed func, so
 `jit_invalidate` counts pages, not points. Run
 `python3 tests/invalidation_range_test.py` for differential checks.
 
+Since 1.6.11, ranges cover every instruction touched by written bytes, including
+an unaligned tail, in both walker modes and PI DMA. The earlier four-byte-point
+oracle shared a coverage bug; the test now uses written-byte coverage. See
+[the targeted audit](optimization-audit-2026-10-03.md).
+
 These are inclusive wall-clock spans, not CPU partitions. Dispatch overlaps
 lookup and compilation. Execution can include RSP work, sleep, and exceptions.
 The memory slow path includes mapped-device handlers and RSP execution; its

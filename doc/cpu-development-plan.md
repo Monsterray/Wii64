@@ -276,9 +276,16 @@ baseline or hardware recovery test was run in this session.
 
 ## Resume point
 
-Finish phase 0's Mac SDK refresh and recovery validation before new hardware
-CPU experiments; preserve the integration already merged into the fork. In
-parallel, complete phase 1's source map and comparison-harness audit. Phase 2
+Update 2026-10-03: [the targeted optimization audit](optimization-audit-2026-10-03.md)
+fixes written-byte invalidation coverage and two Mac build/queue blockers.
+The isolated current SDK builds and layout tests pass; shared-source/client
+refresh and real-Wii recovery validation remain pending. A current-runtime
+full/control/full survey is queued; collect it before choosing another hot path.
+
+Finish phase 0's default shared-source/client refresh and recovery validation
+before new hardware CPU changes; preserve the integration already merged into
+the fork. In parallel, complete phase 1's source map and comparison-harness
+audit. Phase 2
 must rerank the CPU after the existing dispatch/JR changes. In phase 3, audit
 those paths before choosing any additional speed change. No new-agent build
 has been sent to the Wii in this work.
