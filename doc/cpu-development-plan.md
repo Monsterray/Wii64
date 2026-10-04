@@ -228,10 +228,11 @@ bash .dev/code_graph.sh cli trace_path --project wii64 --function-name dynarec -
 
 Run indexing between test jobs, not during benchmarks. Refresh after source
 changes. Check `index_status` and `check_index_coverage` before relying on a
-query; inspect parser errors in the specific file. At the first current-source
-index, 27,827 nodes and 78,881 edges were recorded; 77 files had partial parses
-and one Rice filter header had an unusable parse. These counts are not coverage
-percentages. C/C++ call edges can be heuristic; macros, function pointers,
+query; inspect parser errors in the specific file. After rebasing, the refreshed
+index recorded 33,345 nodes and 85,556 edges; 77 files had partial parses.
+`Rice_GX/TextureFilters_hq4x.h` and `main/perf_subsystem.c` had unusable parses;
+read those files directly, particularly the probe definitions. These counts
+are not coverage percentages. C/C++ call edges can be heuristic; macros, function pointers,
 conditional compilation, assembly and generated PPC require source validation.
 An edge to a `PROFILE` function is not proof that the release executes it.
 
