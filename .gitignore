@@ -33,6 +33,8 @@ CLAUDE.md
 # codebase-memory's local index artifact -- regenerate with index_repository,
 # no need to carry a 6MB binary graph.db in the repo.
 .codebase-memory/
+# Host-specific MCP registration; the launcher and setup notes are shared.
+.codex/config.toml
 # Other AI coding assistants, in case any get used here later
 .cursor/
 .cursorrules
