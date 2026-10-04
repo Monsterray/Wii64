@@ -306,7 +306,8 @@ if [ "$folder_sync" = False ] || { [ "$chain_count" -gt 0 ] && [ ! -s "$LOCAL_WI
 	done
 	frame_count="$chain_count"
 	[ "$frame_count" -gt 0 ] || frame_count=9
-	for n in $(seq -w 1 "$frame_count"); do
+	for n in $(seq 1 "$frame_count"); do
+		printf -v n '%02d' "$n"
 		for name in "xfb_$n.bin" "padtrace_$n.csv" "hprof_$n.bin"; do
 			rm -f "$LOCAL_WII64/$name"
 			python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/sdimage_read.py" "$raw" "wii64/$name" "$LOCAL_WII64/$name" >/dev/null 2>&1 || rm -f "$LOCAL_WII64/$name"
