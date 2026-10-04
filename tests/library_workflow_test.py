@@ -28,6 +28,8 @@ assert os.environ['WII64_DOLPHIN_MUTE_AUDIO'] == 'True'
 assert os.environ['WII64_DOLPHIN_DUMP_AUDIO'] == 'True'
 args = sys.argv[1:]
 assert 'audio_quality=accurate' in args and 'audio_sync=native' in args
+if os.environ.get('WII64_LIBRARY_MEMORY') == '1':
+    assert all(x in args for x in ('memory=1','memory_boxart_probe=1','randomize_interrupt=0','stress_selectrom=1'))
 line = args[-1]
 rom = line.split(' ',1)[1]
 assert pathlib.Path(os.environ['WII64_ROM_DIR'], pathlib.Path(rom).name).is_file()
@@ -45,6 +47,7 @@ if os.environ.get('FIXTURE_FAIL') and rom.endswith('Game B.V64'): sys.exit(3)
     command = ['bash', str(work / '.dev/library_check.sh'), str(dol), 'dolphin']
     for fail in (False, True):
         if fail: env['FIXTURE_FAIL'] = '1'
+        env['WII64_LIBRARY_MEMORY'] = str(int(fail))
         result = subprocess.run(command, env=env, text=True, capture_output=True, cwd=work)
         assert result.returncode == int(fail), result.stderr + result.stdout
         out = Path(result.stdout.split('Library results: ')[-1].strip())
@@ -53,6 +56,8 @@ if os.environ.get('FIXTURE_FAIL') and rom.endswith('Game B.V64'): sys.exit(3)
         assert (out / 'build.dol').read_bytes() == dol.read_bytes()
         assert (out / 'roms/Game A.z64').read_bytes() == (roms / 'Game A.z64').read_bytes()
         assert 'audio_latency=stable' in (out / 'part_01.txt').read_text()
+        assert manifest['diag'] == (['memory=1','memory_boxart_probe=1','randomize_interrupt=0','stress_selectrom=1'] if fail else [])
+        assert all(x in (out / 'part_01.txt').read_text() for x in manifest['diag'])
         coverage = json.loads((out / 'coverage.json').read_text())
         assert not coverage['dolphin']['missing'] and coverage['dolphin']['recorded'] == 2
         assert coverage['dolphin']['launcher_failures'] == (['2'] if fail else [])

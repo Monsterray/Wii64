@@ -9,11 +9,16 @@ case "$mode" in both|dolphin|hardware) ;; *) echo 'Use both, dolphin or hardware
 case "$dol" in *Rice*) target=Rice_wii ;; *) target=glN64_wii ;; esac
 [[ -f "$dol" && -f "${dol%.dol}.elf" ]] || { echo 'Keep the matching DOL and ELF together.' >&2; exit 2; }
 roms="${WII64_ROM_DIR:-$PWD/.dev/dolphin_profile/Load/WiiSDSync/wii64/roms}"
+library_diag=()
+if [ "${WII64_LIBRARY_MEMORY:-0}" = 1 ]; then
+    library_diag=(memory=1 memory_boxart_probe=1 randomize_interrupt=0 stress_selectrom=1)
+fi
 out="$(mktemp -d "$PWD/.dev/runs/library-${target}-$(date +%Y%m%d-%H%M%S)-XXXX")"
-python3 - "$dol" "$roms" "$out" "$mode" "$target" <<'PY'
+python3 - "$dol" "$roms" "$out" "$mode" "$target" ${library_diag[@]+"${library_diag[@]}"} <<'PY'
 import hashlib, json, pathlib, shutil, subprocess, sys
 dol, source, out = map(pathlib.Path, sys.argv[1:4])
-mode, target = sys.argv[4:]
+mode, target = sys.argv[4:6]
+diag = sys.argv[6:]
 if not source.is_dir():
     sys.exit(f'ROM folder not found: {source}; set WII64_ROM_DIR to your owned ROM folder.')
 if shutil.disk_usage(out).free < 2 * 1024**3:
@@ -44,7 +49,7 @@ for suffix in ('.dol', '.elf'):
 manifest = dict(entries=entries, source=str(dol.resolve()),
                 build_sha256=hashlib.sha256((out / 'build.dol').read_bytes()).hexdigest(),
                 elf_sha256=hashlib.sha256((out / 'build.elf').read_bytes()).hexdigest(),
-                target=target, platforms=['dolphin', 'hardware'] if mode == 'both' else [mode],
+                target=target, diag=diag, platforms=['dolphin', 'hardware'] if mode == 'both' else [mode],
                 launcher_git=subprocess.run(['git', 'rev-parse', 'HEAD'], text=True,
                                             capture_output=True).stdout.strip() or None)
 (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
@@ -53,6 +58,7 @@ for i in range(0, len(entries), 6):
     (out / f'part_{i//6+1:02d}.txt').write_text(
         'dynacore=dynarec\naudio_quality=accurate\naudio_output=dsp\n'
         'audio_mixer=accurate\naudio_latency=stable\naudio_sync=native\n' +
+        ''.join(line + '\n' for line in diag) +
         '\n'.join(e['chain'] for e in entries[i:i+6]) + '\n')
 print(f"Frozen {len(entries)} ROMs and matching build in {out}")
 PY
@@ -95,7 +101,7 @@ if [ "$mode" != hardware ]; then
         WII64_ROM_DIR="$out/roms" WII64_DOLPHIN_DSP_HLE=False WII64_DOLPHIN_DUMP_AUDIO=True \
             WII64_DOLPHIN_MUTE_AUDIO=True bash .dev/dolphin_test.sh "$out/build.dol" "$((vis / 25 + 240))" \
             dynacore=dynarec audio_quality=accurate audio_output=dsp audio_mixer=accurate \
-            audio_latency=stable audio_sync=native "$line" > "$log" 2>&1 || status=$?
+            audio_latency=stable audio_sync=native ${library_diag[@]+"${library_diag[@]}"} "$line" > "$log" 2>&1 || status=$?
         sed -n 's/^Dolphin chain results: //p' "$log" >> "$out/dolphin_runs.txt"
         printf '%s %s\n' "$n" "$status" >> "$out/dolphin_exits.txt"
         if [ "$status" -ne 0 ]; then failed=1; fi
