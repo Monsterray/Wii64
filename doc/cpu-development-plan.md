@@ -49,14 +49,14 @@ and [whole-system results](subsystem-results-2026-10-01.md).
 
 | Phase | Work | Evidence required to advance | Status |
 |---|---|---|---|
-| 0. Safe diagnostics | Pin the newest HBC SDK/client, validate memory layout, crash recovery, retained logs, and hang handling. Freeze an environment manifest. | Layout tests, matched ELF symbolication, expected exception/fatal/hang checks, clean HBC return. | Active: source integration exists; Mac SDK refresh and recovery validation remain |
+| 0. Safe diagnostics | Pin the newest HBC SDK/client, validate memory layout, crash recovery, retained logs, and hang handling. Freeze an environment manifest. | Layout tests, matched ELF symbolication, expected exception/fatal/hang checks, clean HBC return. | Active: isolated SDK 1.9.4 build/layout and VM-active DSI recovery pass; shared client, fatal/hang and retained-output checks remain |
 | 1. CPU map and correctness harness | Use the local graph to map active Wii branches and manual generated-code edges. Audit interpreter/comparison facilities and add bounded instruction tests. | Source-backed map and passing state comparisons for each tested instruction family. | Active: graph built; harness not implemented |
-| 2. Reliable CPU baseline | Calibrate existing probes, add only the counters needed for the next decision, and repeat representative scenes. | Valid scene/replay, stable counters, measured probe cost, explicit uncertainty and CPU priority table. | Pending |
+| 2. Reliable CPU baseline | Calibrate existing probes, add only the counters needed for the next decision, and repeat representative scenes. | Valid scene/replay, stable counters, measured probe cost, explicit uncertainty and CPU priority table. | Active: current four-scene survey collected; execute/helper aliasing and probe cost limit ranking |
 | 3. Dispatch, lookup and code cache | Audit the existing target cache/JR lookup; measure misses, allocation, linking, eviction and recompilation. | Host stress tests, correct unlinking/invalidation, muted Dolphin checks, repeat Wii A/B/A gain. | Existing speed paths integrated; systematic correctness audit pending |
 | 4. Generated PPC and register cache | Examine hot blocks, spills, helper calls, branch sequences, 64-bit arithmetic and FPU conversions. | Instruction-state comparisons and smaller/faster hot sequences without ABI, flags or FP regressions. | Pending |
 | 5. Memory and translation | Separate direct RAM, TLB, slow MMIO, DMA invalidation, ROM copies and host VM faults. Measure MEM1/MEM2/cache pressure. | Alignment/alias/bounds/SMC tests, intact VM recovery, no paging errors, repeat scene gain. | Pending |
 | 6. Scheduling and exceptions | Check CP0 Count/Compare, interrupt queues, delay slots, exception state, idle loops and interpreter fallback. | Correct PC/EPC/Cause/Status and event ordering in focused tests; no new timing/audio regressions. | Pending |
-| 7. Library and release checks | Run all owned ROMs with fixed routes, longer sessions and ROM switching; both renderers where relevant. | No new compatibility failures, credible per-scene speed/stutter/audio results, probe-off release checks. | Pending |
+| 7. Library and release checks | Run all owned ROMs with fixed routes, longer sessions and ROM switching; both renderers where relevant. | No new compatibility failures, credible per-scene speed/stutter/audio results, probe-off release checks. | Active: 18-ROM glN64 Wii sweep and two-ROM Rice smoke complete; strict speed/audio warnings, Master Quest visual check and broader gameplay coverage remain |
 
 Correctness checks apply in every phase. Phase 6 is a deeper audit, not permission
 to postpone exception correctness. Reorder phases 3–6 only when phase 2 gives
@@ -282,13 +282,25 @@ The isolated current SDK builds and layout tests pass; shared-source/client
 refresh and real-Wii recovery validation remain pending. A current-runtime
 full/control/full survey is queued; collect it before choosing another hot path.
 
+Update 2026-10-04: [hardware validation](hardware-validation-2026-10-04.md)
+collects that survey and passes the SDK 1.9.4 VM-active DSI recovery test.
+Dispatch is much smaller; graphics is a stable observed cost in Kart and Snap.
+Execute/helper estimates still alias, and full probes add 12.9–16.2% cycles.
+Do not select another CPU speed change from those estimates.
+
+The user's WiiStation comparison now selects a [hardware PC sampler and
+targeted probe tiers](performance-methods-2026-10-04.md) as phase 2's next
+measurement experiment. This design is not yet implemented or calibrated.
+Retain light controls; sample shares do not replace wall, PMC or GP metrics.
+
 Finish phase 0's default shared-source/client refresh and recovery validation
 before new hardware CPU changes; preserve the integration already merged into
 the fork. In parallel, complete phase 1's source map and comparison-harness
 audit. Phase 2
 must rerank the CPU after the existing dispatch/JR changes. In phase 3, audit
-those paths before choosing any additional speed change. No new-agent build
-has been sent to the Wii in this work.
+those paths before choosing any additional speed change. The isolated SDK
+1.9.4 build has passed VM-active DSI recovery on the Wii; do not treat that as
+completion of the separate fatal/hang/retained-output checks.
 
 Local review used Muse Glimmer and Gemma4 concurrently with 10,000-token caps
 and 300-second timeouts; both answered in about 78 seconds wall time. Suggestions

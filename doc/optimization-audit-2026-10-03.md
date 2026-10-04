@@ -145,7 +145,12 @@ review by attaching exact source/commit and executable arithmetic checks.
 
 ## Next experiment
 
-Collect the queued four-scene full/control/full survey. Verify VI/replay/guest
-work, output and errors; measure probe cost, then rerank CPU/graphics/audio self
-spans after the existing JR gains. Confirm aliased spans before selecting one
-new hot-path mechanism. No cache rewrite before those results.
+Update 2026-10-04: [the queued survey and crash recovery now pass on hardware](hardware-validation-2026-10-04.md).
+Use that refreshed ranking and its probe/alias limits, not the older dispatch
+ranking. This does not add a speedup claim for the invalidation fix or replace
+a targeted guest-instruction regression test.
+
+The four-scene full/control/full survey is now collected. The user's follow-up
+selects a [WiiStation-informed PC sampler experiment](performance-methods-2026-10-04.md)
+to resolve the ranking. It is not yet implemented. No cache rewrite from the
+aliased estimates.
