@@ -41,6 +41,7 @@
 #include "2xSAI.h"
 #include "FrameBuffer.h"
 #include "../main/perf_subsystem.h"
+#include "../main/perf_memory.h"
 #include "texture_hash.h"
 
 #ifndef GLN64_TMEM_HASH_CACHE
@@ -717,7 +718,7 @@ void TextureCache_Init()
 #else //HW_RVL
 		GXtexCacheBase = memalign(32,GX_TEXTURE_CACHE_SIZE);
 #endif //!HW_RVL
-		__lwp_heap_init(GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
+		perfMem_init(PERF_MEM_TEXTURE, GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(GXtexCache, "TEX");
 #endif
@@ -725,7 +726,7 @@ void TextureCache_Init()
 	else if (GXtexCacheBase != NULL)
 	{
 		_texHeapDropRetired(); // the heap is about to be re-initialised under them
-		__lwp_heap_init(GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
+		perfMem_init(PERF_MEM_TEXTURE, GXtexCache, GXtexCacheBase, GX_TEXTURE_CACHE_SIZE, 32);
 	}
 #endif //__GX__
 
@@ -789,7 +790,7 @@ void TextureCache_Init()
 #else // !__GX__
 	//Dummy texture doesn't seem to be needed, so don't load into GX for now.
 //	cache.dummy->GXtexture = (u16*) memalign(32,cache.dummy->textureBytes);
-	cache.dummy->GXtexture = (u16*) __lwp_heap_allocate(GXtexCache,cache.dummy->textureBytes);
+	cache.dummy->GXtexture = (u16*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,cache.dummy->textureBytes);
 	cache.dummy->GXtexfmt = GX_TF_RGBA8;
 	DCZeroRange(cache.dummy->GXtexture, cache.dummy->textureBytes);
 	DCFlushRange(cache.dummy->GXtexture, cache.dummy->textureBytes);
@@ -860,7 +861,11 @@ void TextureCache_ReleaseRetired()
 {
 	u32 level = IRQ_Disable();
 	while (texRetireCount > 0)
-		__lwp_heap_free( GXtexCache, texRetire[--texRetireCount] );
+	{
+		void *ptr = texRetire[--texRetireCount];
+		perfMem_retired(GXtexCache, ptr, 0);
+		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, ptr);
+	}
 	IRQ_Restore(level);
 }
 
@@ -874,6 +879,7 @@ static void _texHeapRetire( void *ptr )
 
 	u32 level = IRQ_Disable();
 	texRetire[texRetireCount++] = ptr;
+	perfMem_retired(GXtexCache, ptr, 1);
 	IRQ_Restore(level);
 }
 
@@ -891,7 +897,7 @@ static void _texHeapFree(CachedTexture *texture)
 	if (texture->frameBufferTexture)
 		_texHeapRetire( texture->GXtexture );
 	else
-		__lwp_heap_free(GXtexCache, texture->GXtexture);
+		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, texture->GXtexture);
 
 	texture->GXtexture = NULL;
 }
@@ -1234,9 +1240,9 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 
 	if (texInfo->textureBytes > 0)
 	{
-		dest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+		dest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 		while (!dest && TextureCache_FreeOneTexture())
-			dest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+			dest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 	}
 #ifdef SHOW_DEBUG
 	else
@@ -1369,13 +1375,13 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 		
 		texInfo->textureBytes <<= 2;
 
-		scaledDest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+		scaledDest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 		while (!scaledDest && TextureCache_FreeOneTexture())
-			scaledDest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+			scaledDest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 
 		if (!scaledDest)
 		{
-			__lwp_heap_free(GXtexCache, dest);
+			perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 			texInfo->GXtexture = NULL;
 			texInfo->textureBytes = 0;
 			return;
@@ -1397,7 +1403,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 		        interpolator );
 
 		texInfo->GXtexture = (u16*) scaledDest;
-		__lwp_heap_free(GXtexCache, dest);
+		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 		DCFlushRange(scaledDest, texInfo->textureBytes);
 	}	//	cache.enable2xSaI
 #endif // __GX__
@@ -1536,9 +1542,9 @@ void TextureCache_Load( CachedTexture *texInfo )
 	texInfo->textureBytes = (texInfo->GXrealWidth * texInfo->GXrealHeight) * GXsize;
 	if (texInfo->textureBytes > 0)
 	{
-		dest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+		dest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 		while (!dest && TextureCache_FreeOneTexture())
-			dest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+			dest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 	}
 #ifdef SHOW_DEBUG
 	else
@@ -1772,13 +1778,13 @@ void TextureCache_Load( CachedTexture *texInfo )
 		
 		texInfo->textureBytes <<= 2;
 
-		scaledDest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+		scaledDest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 		while (!scaledDest && TextureCache_FreeOneTexture())
-			scaledDest = (u8*) __lwp_heap_allocate(GXtexCache,texInfo->textureBytes);
+			scaledDest = (u8*) perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache,texInfo->textureBytes);
 
 		if (!scaledDest)
 		{
-			__lwp_heap_free(GXtexCache, dest);
+			perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 			texInfo->GXtexture = NULL;
 			texInfo->textureBytes = 0;
 			return;
@@ -1800,7 +1806,7 @@ void TextureCache_Load( CachedTexture *texInfo )
 		        interpolator );
 
 		texInfo->GXtexture = (u16*) scaledDest;
-		__lwp_heap_free(GXtexCache, dest);
+		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 		DCFlushRange(scaledDest, texInfo->textureBytes);
 	} 	//	cache.enable2xSaI
 #else // __GX__
@@ -2195,7 +2201,7 @@ static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 		{
 			for (u32 j = 0; j < i; j++)
 				if (level[j].GXtexture != NULL)
-					__lwp_heap_free( GXtexCache, level[j].GXtexture );
+					perfMem_free(PERF_MEM_TEXTURE, GXtexCache, level[j].GXtexture );
 
 			texInfo->max_level = 0;
 			TextureCache_Load( texInfo );
@@ -2206,15 +2212,15 @@ static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 		totalBytes += levelBytes[i];
 	}
 
-	u8 *chain = (u8*)__lwp_heap_allocate( GXtexCache, totalBytes );
+	u8 *chain = (u8*)perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache, totalBytes );
 	while (!chain && TextureCache_FreeOneTexture())
-		chain = (u8*)__lwp_heap_allocate( GXtexCache, totalBytes );
+		chain = (u8*)perfMem_allocate(PERF_MEM_TEXTURE, GXtexCache, totalBytes );
 
 	if (chain == NULL)
 	{
 		for (i = 0; i < levels; i++)
 			if (level[i].GXtexture != NULL)
-				__lwp_heap_free( GXtexCache, level[i].GXtexture );
+				perfMem_free(PERF_MEM_TEXTURE, GXtexCache, level[i].GXtexture );
 
 		texInfo->max_level = 0;
 		TextureCache_Load( texInfo );
@@ -2226,7 +2232,7 @@ static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 	{
 		memcpy( chain + offset, level[i].GXtexture, levelBytes[i] );
 		offset += levelBytes[i];
-		__lwp_heap_free( GXtexCache, level[i].GXtexture );
+		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, level[i].GXtexture );
 	}
 
 	DCFlushRange( chain, totalBytes );

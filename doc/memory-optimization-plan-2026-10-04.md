@@ -110,7 +110,7 @@ and commit; do not combine a guard with a performance change.
 
 | Rank | Candidate | Type | Evidence | Expected gain | Risk / scope | Smallest test |
 |---|---|---|---|---|---|---|
-| P0 | Separate memory accounting and peak measurements | CLEANUP | Outer counters omit private heap occupancy | Reliable capacity decisions; no speed claim | Low; opt-in counters at allocation boundaries | Same-layout two-ROM census, then transition stress |
+| P0 | Separate memory accounting and peak measurements | CLEANUP | Implemented; native accounting passes, timing calibration fails guest parity/audio gate | Capacity observations only; no speed claim | Low; opt-in counters at allocation boundaries | Stabilize replay/control work before hot-pool sizing |
 | P1 | Right-size boxart reservation | PERF | Only 16 buffers of 46,080 bytes use this heap | A 768 KiB trial would recover 256 KiB MEM2, if allocator overhead fits | Low/medium; one constant plus capacity test | Allocate all 16 with the real heap implementation; page/change source/reopen menu |
 | P1 | Allocation-failure fallback where a failure is demonstrated | GUARD | Boxart allocation is followed by unchecked memset; low outer headroom | Avoid a crash, not higher FPS | Low if outside gameplay; allocation sites only | Inject controller/buffer failure and show placeholder/error safely |
 | P1 | Reduce one measured copy/conversion working set | PERF | Native Kart sampler suggests YUYV work; reference shows copy penalties | Unknown until matched Wii data | Medium; one conversion and exact fallback | Compare output bytes and cached baseline against one bounded tiled variant |
@@ -256,11 +256,12 @@ an untested optimization.
 
 ## Next bounded experiment
 
-Add opt-in allocation-boundary census counters and lifecycle snapshots to the
-existing report, without changing placement. Queue a same-layout SM64/Kart
-transition chain with census off/on/off and freeze the artifacts. The output
-must distinguish each allocator and show peak/fragmentation/failed-request
-data plus probe overhead. Then test the independently derived boxart bound.
+Phase 1 instrumentation and the native boxart-bound probe are implemented;
+see [census commands and evidence](memory-census-2026-10-04.md). Reservations
+remain unchanged. The queued same-layout off/on/off calibration must pass
+guest-work and overhead gates before these probes guide hot-pool sizing.
+The next bounded experiment is replay/control stabilization with the current
+layout, not speculative relocation or LC enablement.
 
 ## Local-model review
 

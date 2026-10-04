@@ -42,6 +42,7 @@ OBJ		+= \
 		main/boxart.o \
 		main/boxart_resource.o \
 		main/perf_prof.o \
+		main/perf_memory.o \
 		main/perf_subsystem.o \
 		main/dynarec_trace.o \
 		menu/MenuContext.o \

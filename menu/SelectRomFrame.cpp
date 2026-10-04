@@ -22,6 +22,7 @@
 #if !(defined(GC_BASIC))
 #include <math.h>
 #include <cstdlib>
+#include "../main/perf_memory.h"
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
 #include <ogc/lwp_heap.h>
@@ -209,7 +210,29 @@ SelectRomFrame::SelectRomFrame()
 #ifdef HW_RVL
 	if(boxartTexCache == NULL) {
 		boxartTexCache = (heap_cntrl*)malloc(sizeof(heap_cntrl));
-		__lwp_heap_init(boxartTexCache, BOXART_ICON_LO,BOXART_ICON_SIZE, 32);
+		perfMem_init(PERF_MEM_BOXART, boxartTexCache, BOXART_ICON_LO,BOXART_ICON_SIZE, 32);
+#ifdef WII64_PERF_MEMORY
+		if (perfMem_boxartTest) {
+			// Use the real native heap before any UI textures own this region.
+			// Restore the full reservation even on failure. No MEM1 test buffer.
+			void *probe[NUM_FILE_SLOTS] = {};
+			bool ok = __lwp_heap_init(boxartTexCache, BOXART_ICON_LO, 768*1024, 32) != 0;
+			for (int i = 0; ok && i < NUM_FILE_SLOTS; i++) {
+				probe[i] = __lwp_heap_allocate(boxartTexCache, BOXART_TEX_SIZE);
+				ok = probe[i] && !((uintptr_t)probe[i] & 31);
+				if (ok) memset(probe[i], i + 1, BOXART_TEX_SIZE);
+			}
+			for (int i = 0; i < NUM_FILE_SLOTS; i++) if (probe[i]) {
+				const u8 *bytes = (const u8*)probe[i];
+				for (unsigned j = 0; j < BOXART_TEX_SIZE; j++)
+					if (bytes[j] != i + 1) ok = false;
+			}
+			for (int i = NUM_FILE_SLOTS - 1; i >= 0; i--)
+				if (probe[i] && !__lwp_heap_free(boxartTexCache, probe[i])) ok = false;
+			perfProf_mark(ok ? "boxart_probe: 16 buffers in 768 KiB PASS" : "boxart_probe: FAIL");
+			__lwp_heap_init(boxartTexCache, BOXART_ICON_LO, BOXART_ICON_SIZE, 32);
+		}
+#endif
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(boxartTexCache, "ART");
 #endif
@@ -219,7 +242,7 @@ SelectRomFrame::SelectRomFrame()
 	for (int i = 0; i<NUM_FILE_SLOTS; i++) {
 		if (fileTextures[i])
 #ifdef HW_RVL
-			__lwp_heap_free(boxartTexCache, fileTextures[i]);
+			perfMem_free(PERF_MEM_BOXART, boxartTexCache, fileTextures[i]);
 #else
 			free(fileTextures[i]);
 #endif
@@ -268,7 +291,7 @@ void SelectRomFrame::activateSubmenu(int submenu)
 		if(!fileTextures[i])
 		{
 #ifdef HW_RVL
-			fileTextures[i] = (u8*)__lwp_heap_allocate(boxartTexCache,BOXART_TEX_SIZE);
+			fileTextures[i] = (u8*)perfMem_allocate(PERF_MEM_BOXART, boxartTexCache,BOXART_TEX_SIZE);
 #else
 			fileTextures[i] = (u8*) memalign(32, BOXART_TEX_SIZE);
 #endif
@@ -559,7 +582,7 @@ void Func_ReturnFromSelectRomFrame()
 	{
 		if (fileTextures[i])
 #ifdef HW_RVL
-			__lwp_heap_free(boxartTexCache, fileTextures[i]);
+			perfMem_free(PERF_MEM_BOXART, boxartTexCache, fileTextures[i]);
 #else
 			free(fileTextures[i]);
 #endif

@@ -22,13 +22,14 @@ with tempfile.TemporaryDirectory(prefix='wii64 hprof ') as temporary:
     (root/'sdk/bin').mkdir(parents=True)
     (root/'scripts/chains').mkdir(parents=True)
     shutil.copyfile(repo/'.dev/profile_pc.sh', root/'.dev/profile_pc.sh')
+    shutil.copyfile(repo/'.dev/profile_memory.sh', root/'.dev/profile_memory.sh')
     (root/'.dev/env.sh').write_text('export DEVKITPPC="$PWD/sdk"\n')
     (root/'scripts/chains/pc_sampler.txt').write_text('chain=900 sd:/wii64/roms/example.z64\n')
     (root/'build.dol').write_bytes(b'dol')
     (root/'build.elf').write_bytes(b'elf')
     (root/'queue.py').write_text('')
     for name, text in {
-        'sdk/bin/powerpc-eabi-nm':'#!/bin/sh\nprintf "80000000 T hprof_entry\\n"\n',
+        'sdk/bin/powerpc-eabi-nm':'#!/bin/sh\nprintf "80000000 T hprof_entry\\n80002000 T perfMem_allocate\\n"\n',
         'sdk/bin/powerpc-eabi-gcc':'#!/bin/sh\necho compiler\n',
         '.dev/hardware_run.sh':'#!/bin/sh\nprintf "%s|%s|%s\\n" "$WII64_SKIP_BUILD" "$WII64_DOL" "$WII64_CHAIN_FILE" >> queued\necho job\n',
     }.items():
@@ -50,6 +51,14 @@ with tempfile.TemporaryDirectory(prefix='wii64 hprof ') as temporary:
     frozen = json.loads((survey/'artifacts.json').read_text())
     assert all(hashlib.sha256((survey/name).read_bytes()).hexdigest() == digest
                for name,digest in frozen.items())
+    subprocess.run(['bash','.dev/profile_memory.sh','build.dol','pc_sampler'],
+                   cwd=root,env=env,check=True,stdout=subprocess.DEVNULL)
+    memory_survey = next(p for p in (root/'.dev/runs').glob('pc-survey-*')
+                         if (p/'probe').read_text().strip() == 'memory')
+    assert [int((memory_survey/(label+'.txt')).read_text().split('memory=')[1])
+            for label in ('control1','sampler','control2')] == [0,1,0]
+    assert not any('hprof=' in (memory_survey/(label+'.txt')).read_text()
+                   for label in ('control1','sampler','control2'))
     (survey/'build.dol').write_bytes(b'changed')
     bad = subprocess.run(['bash','.dev/profile_pc.sh','--collect',str(survey)],cwd=root,env=env,
                          stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)

@@ -55,6 +55,7 @@ extern "C" {
 #include "rom.h"
 #include "plugin.h"
 #include "perf_prof.h"
+#include "perf_memory.h"
 #include "dev_agent.h"
 #include "dynarec_trace.h"
 #include "../gc_input/controller.h"
@@ -601,6 +602,17 @@ static void apply_diag_line(char* line) {
 	if (sscanf(line, "agent_crash_vi=%u", &devAgent_crashVi) == 1) return;
 #endif
 	line[strcspn(line, "\r\n")] = 0;
+#ifdef WII64_PERF_MEMORY
+	if (!strcmp(line, "memory=1") || !strcmp(line, "memory=0")) {
+		perfMem_configure(line[7] == '1');
+		perfProf_mark(line);
+		return;
+	}
+	if (!strcmp(line, "memory_boxart_probe=1") || !strcmp(line, "memory_boxart_probe=0")) {
+		perfMem_boxartTest = line[20] == '1';
+		return;
+	}
+#endif
 #ifdef WII64_HPROF
 	if (!strcmp(line, "hprof=1") || !strcmp(line, "hprof=0")) {
 		hprof_configure(line[6] == '1');
@@ -948,6 +960,7 @@ int main(int argc, const char* argv[]) {
 	load_config("sd");
 #endif
 	devAgent_init();
+	perfMem_snapshot("boot");
 	MenuContext *menu = new MenuContext(vmode); // runs an autoboot ROM, chain game 1 included
 	while (!devAgent_exitRequested() && chainNext()) {}
 	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
@@ -984,6 +997,7 @@ int main(int argc, const char* argv[]) {
 		Func_ReturnFromSelectRomFrame();
 		menu::Gui::getInstance().draw();
 		perfProf_mark("stress_selectrom: back out");
+		perfMem_snapshot("browser_closed");
 	}
 	if(g_diagTestSelectLoad) {
 		perfProf_mark("test_selectload: Func_SR_SD");
@@ -1078,6 +1092,7 @@ int loadROM(fileBrowser_file* rom){
 
 static int loadROM_unheld(fileBrowser_file* rom){
   int ret = 0;
+	perfMem_snapshot("load_enter");
 	perfProf_mark("loadROM: enter");
 	// First, if there's already a loaded ROM
 	if(hasLoadedROM){
@@ -1097,6 +1112,7 @@ static int loadROM_unheld(fileBrowser_file* rom){
 		closeDLL_gfx();
 		ROMCache_deinit();
 		free_memory();
+		perfMem_snapshot("teardown");
 	}
 	format_mempacks();
 	reset_flashram();

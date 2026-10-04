@@ -1,5 +1,9 @@
 /* perf_prof.c - see perf_prof.h */
 #include "perf_prof.h"
+#include "perf_memory.h"
+#ifdef HW_RVL
+#include "../gc_memory/MEM2.h"
+#endif
 
 #ifdef PERF_PROF
 #include <stdio.h>
@@ -195,6 +199,38 @@ static void buf_printf(const char* fmt, ...)
 	va_end(ap);
 	if (n > 0) g_bufLen += n < PERF_BUF_SIZE - g_bufLen ? n : PERF_BUF_SIZE - g_bufLen - 1;
 }
+
+#ifdef WII64_PERF_MEMORY
+void perfMem_snapshot(const char *stage)
+{
+    if (!perfMem_enabled) return;
+    static unsigned sequence;
+    static const char *const names[] = {"code", "meta", "node", "texture", "boxart"};
+    unsigned n = ++sequence;
+    struct mallinfo mi = mallinfo();
+    buf_printf("memory: n=%u stage=%s malloc_used=%d malloc_free=%d arena1_free=%u arena2_free=%u\n",
+        n, stage, mi.uordblks, mi.fordblks,
+        (unsigned)((uintptr_t)SYS_GetArena1Hi() - (uintptr_t)SYS_GetArena1Lo()),
+        (unsigned)((uintptr_t)SYS_GetArena2Hi() - (uintptr_t)SYS_GetArena2Lo()));
+#ifdef HW_RVL
+    buf_printf("memory_layout: n=%u fixed=%u nominal_unclaimed=%u arena2_lo=%08lx arena2_hi=%08lx\n",
+        n, (unsigned)MEM2_USED_SIZE, (unsigned)UNCLAIMED_SIZE,
+        (unsigned long)SYS_GetArena2Lo(), (unsigned long)SYS_GetArena2Hi());
+#endif
+    for (unsigned id = 0; id < PERF_MEM_COUNT; id++) {
+        struct perf_memory_stats s;
+        if (!perfMem_read(id, &s)) continue;
+        buf_printf("memory_heap: n=%u pool=%s base=%08lx capacity=%u live=%u peak=%u blocks=%u peak_blocks=%u min_free=%u free=%u largest=%u free_blocks=%u retired=%u peak_retired=%u\n",
+            n, names[id], (unsigned long)s.base, s.capacity, s.live, s.peak, s.blocks,
+            s.peak_blocks, s.min_free, s.free_bytes, s.largest_free, s.free_blocks,
+            s.retired, s.peak_retired);
+        buf_printf("memory_ops: n=%u pool=%s allocs=%u frees=%u failures=%u max_request=%u failed_request=%u resets=%u errors=%u evictions=%u evicted_payload=%llu\n",
+            n, names[id], s.allocs, s.frees, s.failures, s.max_request, s.failed_request,
+            s.resets, s.errors, s.evictions, (unsigned long long)s.evicted_payload);
+    }
+    buf_flush(); /* lifecycle checkpoint, never from the allocation hooks */
+}
+#endif
 
 /* --- Broadway's performance counters ---
    PMC1..4 count the events MMCR0/MMCR1 select. They are 32 bits wide: at
@@ -460,6 +496,7 @@ static void pad_dump(int n)
 void perfProf_gameBegin(void)
 {
 	hprof_prepare(); // identical reservation/reset in sampler and matched controls
+	perfMem_snapshot("loaded");
 #ifdef HW_RVL
 	pagefile_stats_reset();
 #endif
@@ -606,6 +643,7 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("=== chain %d/%d end vis=%u how=%s rom=%s ===\n", n, total, vis, how, rom);
 	buf_flush();
 	pad_dump(n);
+	perfMem_snapshot("game_end");
 #ifdef WII64_HPROF
 	int savedProfile = hprof_dump(n);
 	buf_printf("hprof: n=%d requested=%d saved=%d aggregate_pmc_valid=%d\n", n,

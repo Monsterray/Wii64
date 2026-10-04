@@ -31,6 +31,7 @@
 #include "Recomp-Cache.h"
 #include "../gui/DEBUG.h"
 #include "../main/hprof.h"
+#include "../main/perf_memory.h"
 
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
@@ -172,7 +173,7 @@ static void unlink_func(PowerPC_func* func){
 static void free_func(PowerPC_func* func, unsigned int addr){
 	dispatchCacheStale = 1;
 	// Free the code associated with the func
-	__lwp_heap_free(cache, func->code);
+	perfMem_free(PERF_MEM_CODE, cache, func->code);
 	MetaCache_Free(func->code_addr);
 	// Remove any holes into this func
 	PowerPC_func_hole_node* hole, * next_hole;
@@ -234,16 +235,17 @@ void release(int minNeeded){
 		// Pop the LRU to be freed
 		CacheMetaNode* n = heapPop();
 		// Free the function it contains
+		perfMem_evict(n->size);
 		free_func(n->func, n->addr);
 		toFree    -= n->size;
 		cacheSize -= n->size;
 		// And the cache node itself
-		__lwp_heap_free(node_heap, n);
+		perfMem_free(PERF_MEM_NODE, node_heap, n);
 	}
 }
 
 void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* func){
-	CacheMetaNode* newBlock = __lwp_heap_allocate(node_heap, sizeof(CacheMetaNode));
+	CacheMetaNode* newBlock = perfMem_allocate(PERF_MEM_NODE, node_heap, sizeof(CacheMetaNode));
 
 	// Retry until it succeeds, matching every other allocation in this file
 	// (cache/MetaCache_Alloc below, RecompCache_Realloc) -- this one used to
@@ -252,17 +254,17 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 	// wrote through it.
 	while (!newBlock) {
 		release(size);
-		newBlock = __lwp_heap_allocate(node_heap, sizeof(CacheMetaNode));
+		newBlock = perfMem_allocate(PERF_MEM_NODE, node_heap, sizeof(CacheMetaNode));
 	}
 	newBlock->addr = address;
 	newBlock->size = size;
 	newBlock->func = func;
 
 	// Allocate new memory for this code
-	void* code = __lwp_heap_allocate(cache, size);
+	void* code = perfMem_allocate(PERF_MEM_CODE, cache, size);
 	while(!code){
 		release(size);
-		code = __lwp_heap_allocate(cache, size);
+		code = perfMem_allocate(PERF_MEM_CODE, cache, size);
 	}
 	int num_instrs = (func->end_addr - func->start_addr) >> 2;
 	void* code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
@@ -278,11 +280,11 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 
 void RecompCache_Realloc(PowerPC_func* func, unsigned int new_size){
 	// There should be no need for the code to be preserved
-	__lwp_heap_free(cache, func->code);
-	func->code = __lwp_heap_allocate(cache, new_size);
+	perfMem_free(PERF_MEM_CODE, cache, func->code);
+	func->code = perfMem_allocate(PERF_MEM_CODE, cache, new_size);
 	while(!func->code){
 		release(new_size);
-		func->code = __lwp_heap_allocate(cache, new_size);
+		func->code = perfMem_allocate(PERF_MEM_CODE, cache, new_size);
 	}
 	
 	// Update the size for the cache
@@ -312,7 +314,7 @@ void RecompCache_Free(unsigned int addr){
 			free_func(n->func, addr);
 			cacheSize -= n->size;
 			// Free the cache node
-			__lwp_heap_free(node_heap, n);
+			perfMem_free(PERF_MEM_NODE, node_heap, n);
 			return;
 		}
 	}
@@ -352,7 +354,7 @@ void RecompCache_Init(void){
 		cache = memalign(32,sizeof(heap_cntrl));
 		void *codeHeap = memalign(32,RECOMP_CACHE_SIZE);
 		hprof_jitRange(codeHeap, RECOMP_CACHE_SIZE);
-		__lwp_heap_init(cache, codeHeap,
+		perfMem_init(PERF_MEM_CODE, cache, codeHeap,
 		                RECOMP_CACHE_SIZE, 32);
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(cache, "RC");
@@ -360,7 +362,7 @@ void RecompCache_Init(void){
 	}
 	if(!meta_cache){
 		meta_cache = memalign(32,sizeof(heap_cntrl));
-		__lwp_heap_init(meta_cache, (void*)RECOMPMETA_LO,
+		perfMem_init(PERF_MEM_META, meta_cache, (void*)RECOMPMETA_LO,
 		                RECOMPMETA_SIZE, 32);
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(meta_cache, "M");
@@ -368,7 +370,7 @@ void RecompCache_Init(void){
 	}
 	if (!node_heap) {
         node_heap = memalign(32, sizeof(heap_cntrl));
-        __lwp_heap_init(node_heap,
+        perfMem_init(PERF_MEM_NODE, node_heap,
                         memalign(32, NODE_HEAP_SIZE),
                         NODE_HEAP_SIZE,
                         32);
@@ -378,7 +380,7 @@ void RecompCache_Init(void){
     }
 
     if (!cacheHeap) {
-        cacheHeap = __lwp_heap_allocate(node_heap,
+        cacheHeap = perfMem_allocate(PERF_MEM_NODE, node_heap,
                                         MAX_HEAP_ENTRIES * sizeof(void*));
         maxHeapSize = MAX_HEAP_ENTRIES;
     }
@@ -388,23 +390,23 @@ void RecompCache_Init(void){
 		CacheMetaNode* n = heapPop();
 		if (n) {
 			free_func(n->func, n->addr);
-			__lwp_heap_free(node_heap, n);
+			perfMem_free(PERF_MEM_NODE, node_heap, n);
 		}
 	}
 	cacheSize = 0;
 }
 
 void* MetaCache_Alloc(unsigned int size){
-	void* ptr = __lwp_heap_allocate(meta_cache, size);
+	void* ptr = perfMem_allocate(PERF_MEM_META, meta_cache, size);
 	// While there's no room to allocate, call release
 	while(!ptr){
 		release(size);
-		ptr = __lwp_heap_allocate(meta_cache, size);
+		ptr = perfMem_allocate(PERF_MEM_META, meta_cache, size);
 	}
 	
 	return ptr;
 }
 
 void MetaCache_Free(void* ptr){
-	__lwp_heap_free(meta_cache, ptr);
+	perfMem_free(PERF_MEM_META, meta_cache, ptr);
 }
