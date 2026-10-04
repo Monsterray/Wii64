@@ -30,6 +30,7 @@
 #include "Invalid_Code.h"
 #include "Recomp-Cache.h"
 #include "../gui/DEBUG.h"
+#include "../main/hprof.h"
 
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
@@ -349,7 +350,9 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 void RecompCache_Init(void){
 	if(!cache){
 		cache = memalign(32,sizeof(heap_cntrl));
-		__lwp_heap_init(cache, memalign(32,RECOMP_CACHE_SIZE),
+		void *codeHeap = memalign(32,RECOMP_CACHE_SIZE);
+		hprof_jitRange(codeHeap, RECOMP_CACHE_SIZE);
+		__lwp_heap_init(cache, codeHeap,
 		                RECOMP_CACHE_SIZE, 32);
 #ifdef SHOW_DEBUG
 		DEBUG_registerHeap(cache, "RC");

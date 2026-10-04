@@ -10,7 +10,7 @@ import urllib.parse
 from hbc_watch import RunWatch, load_client
 
 MAX_FILE = 2 * 1024 * 1024
-FILE_NAME = re.compile(r"/(perf\.log|(?:xfb_\d{2}\.bin|padtrace_\d{2}\.csv))\Z")
+FILE_NAME = re.compile(r"/(perf\.log|(?:xfb_\d{2}\.bin|padtrace_\d{2}\.csv|hprof_\d{2}\.bin))\Z")
 
 
 class Receiver(http.server.BaseHTTPRequestHandler):

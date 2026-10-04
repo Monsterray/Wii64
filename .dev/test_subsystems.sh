@@ -3,7 +3,12 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 task_sub_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-subsystems.XXXXXX")"
-trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o"; rmdir "$task_sub_tmp"' EXIT
+trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o" "$task_sub_tmp/hprof"; rmdir "$task_sub_tmp"' EXIT
+"${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -fno-sanitize-recover=all tests/hprof_test.c -o "$task_sub_tmp/hprof"
+"$task_sub_tmp/hprof"
+python3 tests/hprof_view_test.py
+python3 tests/hprof_workflow_test.py
 for mode in control probes interval no-self; do
     flags=(-UPERF_SUBSYSTEM_PROBES)
     if [ "$mode" != control ]; then flags=(-DPERF_PROF -DPERF_SUBSYSTEM_PROBES); fi

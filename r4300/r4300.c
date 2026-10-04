@@ -212,6 +212,7 @@ void go()
 		}
 		dynarec(r4300.pc);
 	}
+	hprof_stop(); // including HOME/menu exits, not only diagnostic chain completion
 }
 
 void cpu_init(void){

@@ -1,4 +1,4 @@
 #ifndef WII64_VERSION_H
 #define WII64_VERSION_H
-#define WII64_VERSION "1.6.12"
+#define WII64_VERSION "1.6.13"
 #endif

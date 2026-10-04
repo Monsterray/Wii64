@@ -1,6 +1,7 @@
 # Performance statistics: WiiStation comparison
 
-This is a source-backed design, not an implemented profiler or a speedup claim.
+The opt-in profiler is implemented in 1.6.13; its initial calibration is below.
+It is instrumentation, not an emulator speedup.
 Wii64 starts at `b2f16fe`, version 1.6.12. WiiStation's `main` is pinned to
 `d3dc67af50750dc9c771a69cc30a3a0276b47627` for this comparison.
 
@@ -98,8 +99,129 @@ not evidence that its exception entry is ABI-compatible with Wii64's SDK.
    retain unknown/ambiguous attribution. Use `.dev/env.sh` tool paths on both hosts.
    A new binary-format framework or CRC layer is not needed for the first prototype.
 
-These are design gates. No sampler, extraction path or new preset was added in
-this session. Keep queued launchers and frozen artifacts unchanged.
+The first prototype uses only the emulation thread. libogc2 saves/restores its
+MSR on context switches; newly created and idle threads have PM clear. This
+avoids private thread enumeration. Background networking, audio callbacks,
+interrupt-disabled work and idle time are not independently measured. Do not
+label these samples whole-system CPU use.
+
+`main/hprof.c` saves and restores EX_PERF, MMCR0/1, PMC1–4 and the main thread's
+PM bit with interrupts disabled. The binary records restoration checks.
+It allocates one 128 KiB MEM1 histogram through `memalign`, including in controls;
+no fixed MEM2 region or JIT capacity changes. Allocation failure disables
+sampling and the decoder rejects that run. The integer-only exception entry
+follows Wii64's existing `vm/dsihandler.s`, using installed libogc2 offsets.
+It starts at the first VI and stops when `go()` returns, including HOME exits.
+An interactive HOME/resume session is not a full-window calibration chain.
+Files are written only after stopping, then uploaded through the existing runner.
+
+### Run the bounded calibration
+
+```bash
+source .dev/env.sh
+bash .dev/build_profiling.sh glN64_wii 'DEBUG_FLAGS=-DPERF_PROF -DPERF_HPROF'
+WII64_SURVEY_QUEUE_ONLY=1 bash .dev/profile_pc.sh wii64-glN64.dol pc_sampler
+bash .dev/profile_pc.sh --collect /absolute/path/printed/by/the/driver
+python3 scripts/hprof_view.py /path/to/hprof_01.bin /path/to/frozen/build.elf
+```
+
+Pass `HBC_AGENT_ROOT=/path/to/hbc-reborn` to the build and set `WII64_HBC_ROOT`
+for the queued client if the SDK is outside the default sibling checkout.
+The driver freezes one DOL/ELF, chain variants, source hashes and compiler
+version. Controls use `hprof=0`, the sampler `hprof=1`. All reserve the same
+histogram. Detailed subsystem timers stay off. The receiver accepts only
+`hprof_NN.bin` names, alongside its existing narrow allowlist.
+
+The decoder rejects malformed geometry, lifecycle/allocation failures,
+counter overflow, inconsistent totals and wrong lengths. It checks ELF text
+bounds and prints the ELF SHA-256; bounds alone are not proof of an exact match.
+Use the frozen artifact hashes, not a later rebuilt ELF. JIT remains an aggregate.
+Native buckets are approximate. Boundary/overlap bins remain separately marked
+with their address and a maximum-overlap hint; they are not exact function totals.
+
+Dolphin checks handler execution, restoration, chains and file transport, not
+Broadway gating or cost. Dolphin's [performance monitor source](https://github.com/dolphin-emu/dolphin/blob/23e8a3c569a4db3b48b93dd36ef37eef3030c76c/Source/Core/Core/PowerPC/PowerPC.cpp)
+(`UpdatePerformanceMonitor`) increments
+cycle counters without checking FCM0/MSR[PM] in the inspected source. The test
+therefore samples idle too. A 64-byte bucket straddling `__lwp_thread_coreinit`
+and `idle_func` dominated the functional test; treating its maximum-overlap
+hint as a hot emulator function would be wrong. Do not use Dolphin rankings.
+
+### Initial validation, 2026-10-04
+
+Host ASan/UBSan histogram/subsystem/ROM-VM tests and offline queue/decoder gates
+passed. Two-ROM Dolphin sampler and control chains reached their VI targets,
+with host playback muted and no invalid-access/DSP/SD-sync warnings. Assembly
+inspection found `hprof_sample` integer-only and leaf, with ordered SPR writes.
+The exception ABI was checked against libogc2 source
+`43f26d22deaacae287c2f8d96eba00dba1ee0155`, `libogc/exception_handler.S` and
+`libogc/lwp_handler.S`. This does not establish ABI compatibility with older SDKs.
+
+The queue ran control/sampler/control with one frozen glN64 DOL/ELF and HBC
+SDK 1.9.4 (`0b214c7a78d81d87f4a2b24e53feb3c967e26d5c`). Every run reached
+900 SM64 VIs and 3600 Kart VIs, uploaded both histograms and returned to HBC
+1.9.3. No power-off occurred. Sampler restoration checks passed for both games;
+controls had zero samples. All six game rows had 8 underruns and 0 overruns.
+Existing audio gaps remain; this is not an audio correctness/listening test.
+
+| Scene | Control non-sleep ms, mean | Sampler ms | Added estimate | Control drift | Samples |
+|---|---:|---:|---:|---:|---:|
+| SM64 file menu | 4201.592 | 4209.071 | +0.18% | 0.08% | 3849 |
+| Kart race grid | 22915.463 | 22922.870 | +0.03% | 0.02% | 22398 |
+
+Control PMC cycle drift was +0.0048% / -0.0015%, respectively. This is control
+repeatability, **not sampler cycle overhead**. Both scenes pass the initial
+<=3% requested-non-sleep wall-cost target. The strict overall calibration
+**fails guest exception-count parity**, and the driver returns nonzero:
+
+| Scene | Control 1 exceptions | Sampler | Control 2 |
+|---|---:|---:|---:|
+| SM64 | 5594 | 5593 | 5592 |
+| Kart | 25080 | 25100 | 25065 |
+
+The controls themselves differ. `exception_general` counts multiple causes;
+this aggregate does not distinguish interrupt timing variation from a state
+error. Kart's sampler also submitted 76,616 batches versus 76,811 in both
+controls (0.25%); its final grid capture looked equivalent. Keep the strict
+failure visible rather than relaxing the threshold to claim full validation.
+SM64 and Kart final captures were inspected; both had expected scene content.
+
+First-pass sampled leads (not accepted optimization rankings): JIT 53.57% in
+SM64 and 31.86% in Kart; Kart YUYV conversion 23.33%, texture CRC 6.23%.
+Boundary bins accounted for 6.24% / 5.54%. Repeat at another period and resolve
+guest-work stability before acting on these shares. The two-game trial does
+not establish safety across the complete ROM library or both renderers.
+
+Frozen survey: `.dev/runs/pc-survey-20261004-083611-tGLD`. Queue IDs end
+`abc0df`, `5b45ce`, `09f297`. DOL SHA-256:
+`3e7bddab6a9242f8a156784d3eb37599ece99f75ad174e6f80030cc8526c8772`.
+ELF SHA-256: `2c16f056604fc6dceeda2928847c68e96f9f30e7c584b7fae61b6ca4f8e3a941`.
+The run directories retain configs, hashes, health checks and raw histograms;
+ROMs and captures remain untracked.
+
+Next bounded experiment: repeat these scenes with one matched sampler-capable
+binary that adds light per-cause guest-exception counts, to explain Kart's
+mismatch before accepting rankings.
+
+The final clean sampler DOL matched the Wii-tested frozen DOL byte for byte.
+The ordinary release was clean-built afterward with no sampler symbols; a
+muted 25-second Dolphin smoke had no invalid-access/DSP/SD-sync warnings.
+Use the frozen ELF for this survey, not the restored release ELF.
+
+### Local-model checks
+
+Muse Glimmer/Gemma4 reviewed the lifecycle proposal in 52.7 seconds;
+Qwen3-Coder/Devstral reviewed the actual source/diff in 20.6 seconds.
+Each had a 10,000-token cap and 300-second timeout; all four completed without
+truncation through Ollama (vLLM was offline). Review findings were checked
+against source, tests and assembly. Claims that MSR leaked across thread
+contexts, guarded `memset` dereferenced NULL, or 64-bit layout arithmetic
+overflowed at 32 bits were unsupported and rejected.
+
+Local-LLM improvement: require a quoted source line plus a concrete failing
+input or execution trace for each finding. Returning structured evidence and
+verified usage/truncation fields once, rather than duplicated result payloads,
+would reduce review cost. A large token cap prevents truncation, not false claims.
 
 ## Denominators and confidence
 

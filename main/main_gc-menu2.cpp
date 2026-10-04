@@ -522,6 +522,10 @@ static void uploadResults_unheld(void) {
 		ok = uploadFile(name, false);
 		snprintf(name, sizeof(name), "padtrace_%02d.csv", i);
 		if (ok) ok = uploadFile(name, false);
+#ifdef WII64_HPROF
+		snprintf(name, sizeof(name), "hprof_%02d.bin", i);
+		if (ok) ok = uploadFile(name, true);
+#endif
 	}
 	if (ok) ok = uploadFile("done", false);
 	if (!ok) perfProf_mark("hardware upload: failed; results remain on SD");
@@ -597,6 +601,12 @@ static void apply_diag_line(char* line) {
 	if (sscanf(line, "agent_crash_vi=%u", &devAgent_crashVi) == 1) return;
 #endif
 	line[strcspn(line, "\r\n")] = 0;
+#ifdef WII64_HPROF
+	if (!strcmp(line, "hprof=1") || !strcmp(line, "hprof=0")) {
+		hprof_configure(line[6] == '1');
+		return;
+	}
+#endif
 	char romPath[192];
 	char coreName[32];
 	if(!strncmp(line, "dynacore=", 9))

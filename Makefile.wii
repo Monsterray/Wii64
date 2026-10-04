@@ -44,5 +44,9 @@ endif
 LIBPATHS += -L"$(patsubst %/libhbcagent.a,%,$(HBC_AGENT_LIB))"
 LIB := -lhbcagent $(LIB)
 OBJ += main/dev_agent.o
+OBJ += main/hprof.o main/hprof_entry.o
+ifneq ($(filter -DPERF_HPROF,$(DEBUG_FLAGS)),)
+LDFLAGS += '-Wl,--defsym,hprof_text_start=ADDR(.text),--defsym,hprof_text_end=ADDR(.text)+SIZEOF(.text)'
+endif
 # Crashes that skip the agent's hook still reach a report (main/dev_agent.c).
 LDFLAGS += -Wl,--wrap,c_default_exceptionhandler

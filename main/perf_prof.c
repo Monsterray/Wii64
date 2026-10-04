@@ -216,6 +216,7 @@ static u32 g_pmcLast[4];
 
 static void pmc_start(void)
 {
+	if (hprof_requested()) return; // sampler owns PMC1; never report reloaded counts as cycles
 	mtmmcr0(0);
 	mtpmc1(0); mtpmc2(0); mtpmc3(0); mtpmc4(0);
 	mtmmcr1(PMC_MMCR1);
@@ -225,6 +226,7 @@ static void pmc_start(void)
 
 static void pmc_accumulate(void)
 {
+	if (hprof_requested()) return;
 	u32 v[4] = { mfpmc1(), mfpmc2(), mfpmc3(), mfpmc4() };
 	for (int i = 0; i < 4; i++) {
 		g.pmc[i] += (u32)(v[i] - g_pmcLast[i]);
@@ -457,6 +459,7 @@ static void pad_dump(int n)
 /* --- Per game --- */
 void perfProf_gameBegin(void)
 {
+	hprof_prepare(); // identical reservation/reset in sampler and matched controls
 #ifdef HW_RVL
 	pagefile_stats_reset();
 #endif
@@ -489,6 +492,7 @@ void perfProf_clockStart(void)
 	memset(g.pmc, 0, sizeof(g.pmc));
 	pmc_start();
 	gp_start();
+	hprof_start();
 }
 
 void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const char* how)
@@ -602,6 +606,12 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("=== chain %d/%d end vis=%u how=%s rom=%s ===\n", n, total, vis, how, rom);
 	buf_flush();
 	pad_dump(n);
+#ifdef WII64_HPROF
+	int savedProfile = hprof_dump(n);
+	buf_printf("hprof: n=%d requested=%d saved=%d aggregate_pmc_valid=%d\n", n,
+		hprof_requested(), savedProfile, !hprof_requested());
+	buf_flush();
+#endif
 }
 
 /* The part of opening the ROM browser that isn't the already-instrumented

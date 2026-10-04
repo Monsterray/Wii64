@@ -147,6 +147,7 @@ HEADER		+= \
 		gc_memory/pif.h
 
 r4300/Recomp-Cache-Heap.o: CFLAGS += -fno-lto 
+main/hprof.o: CFLAGS += -fno-lto
 r4300/ppc/Recompile.o: CFLAGS += -fno-lto 
 r4300/ppc/Wrappers.o: CFLAGS += -fno-lto 
 r4300/ppc/FuncTree.o: CFLAGS += -fno-lto 
@@ -196,4 +197,7 @@ menu/MenuResources.o:		menu/MenuResources.s
 		$(CC) -x assembler-with-cpp $(CFLAGS) -c -o $@ $<
 
 vm/dsihandler.o:		vm/dsihandler.s
+		$(CC) -x assembler-with-cpp $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -o $@ $<
+
+main/hprof_entry.o: main/hprof_entry.s
 		$(CC) -x assembler-with-cpp $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -o $@ $<

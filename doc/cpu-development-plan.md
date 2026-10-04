@@ -289,8 +289,11 @@ Execute/helper estimates still alias, and full probes add 12.9–16.2% cycles.
 Do not select another CPU speed change from those estimates.
 
 The user's WiiStation comparison now selects a [hardware PC sampler and
-targeted probe tiers](performance-methods-2026-10-04.md) as phase 2's next
-measurement experiment. This design is not yet implemented or calibrated.
+targeted probe tiers](performance-methods-2026-10-04.md) for phase 2. Version
+1.6.13 implements the opt-in sampler. Same-binary Wii control/sampler/control
+added only 0.18%/0.03% estimated non-sleep wall in SM64/Kart, but aggregate
+guest exception counts differ; the strict parity gate remains open. Do not
+promote one sample histogram to an optimization decision.
 Retain light controls; sample shares do not replace wall, PMC or GP metrics.
 
 Finish phase 0's default shared-source/client refresh and recovery validation

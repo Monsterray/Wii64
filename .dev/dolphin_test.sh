@@ -123,7 +123,7 @@ for line in sys.argv[2:]:
 if missing:
     sys.exit('Missing test ROMs (stage them before boot):\n' + '\n'.join(missing))
 PY
-		rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv
+		rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv "$LOCAL_WII64"/hprof_*.bin
 	else
 		rm -f "$LOCAL_WII64/diag.cfg"
 	fi
@@ -132,7 +132,7 @@ else
 	[ "$#" -le 2 ] || { echo "Diagnostic arguments require WII64_DOLPHIN_FOLDER_SYNC=True; raw mode uses the config already in WiiSD.raw." >&2; exit 2; }
 	# These are extracted copies, not live writes. An earlier chain's log
 	# must not make a new raw-image run appear complete before its first VI.
-	rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv
+	rm -f "$LOCAL_WII64/perf.log" "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/padtrace_*.csv "$LOCAL_WII64"/hprof_*.bin
 	if ! python3 scripts/sdimage_read.py "$PROFILE_POSIX/Load/WiiSD.raw" wii64/diag.cfg "$LOCAL_WII64/diag.cfg" >/dev/null 2>&1; then
 		rm -f "$LOCAL_WII64/diag.cfg"
 	fi
@@ -307,7 +307,7 @@ if [ "$folder_sync" = False ] || { [ "$chain_count" -gt 0 ] && [ ! -s "$LOCAL_WI
 	frame_count="$chain_count"
 	[ "$frame_count" -gt 0 ] || frame_count=9
 	for n in $(seq -w 1 "$frame_count"); do
-		for name in "xfb_$n.bin" "padtrace_$n.csv"; do
+		for name in "xfb_$n.bin" "padtrace_$n.csv" "hprof_$n.bin"; do
 			rm -f "$LOCAL_WII64/$name"
 			python3 "$(dirname "${BASH_SOURCE[0]}")/../scripts/sdimage_read.py" "$raw" "wii64/$name" "$LOCAL_WII64/$name" >/dev/null 2>&1 || rm -f "$LOCAL_WII64/$name"
 		done
@@ -320,7 +320,7 @@ if [ "$chain_count" -gt 0 ] && [ -f "$LOCAL_WII64/perf.log" ] && grep -q '^game:
 	mkdir -p .dev/runs
 	out="$(mktemp -d "$PWD/.dev/runs/dolphin-chain-$(date +%Y%m%d-%H%M%S)-XXXX")"
 	for name in diag.cfg perf.log; do cp "$LOCAL_WII64/$name" "$out/$name"; done
-	for file in "$LOCAL_WII64"/padtrace_*.csv "$LOCAL_WII64"/xfb_*.bin; do
+	for file in "$LOCAL_WII64"/padtrace_*.csv "$LOCAL_WII64"/xfb_*.bin "$LOCAL_WII64"/hprof_*.bin; do
 		[ ! -f "$file" ] || cp "$file" "$out/"
 	done
 	python3 - "$DOL" "$out" <<'PY'

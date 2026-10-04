@@ -27,6 +27,7 @@
 
 #include "perf_audio.h"
 #include "perf_subsystem.h"
+#include "hprof.h"
 
 #ifdef PERF_PROF
 #include <ogc/lwp_watchdog.h>
