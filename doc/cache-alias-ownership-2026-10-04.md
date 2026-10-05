@@ -4,6 +4,8 @@ Scope: Wii64 `4ceaadc339bf49a6f728ec5be3ee2eaa61da56de`; libogc2
 `43f26d22deaacae287c2f8d96eba00dba1ee0155`. This is research, not a new
 performance result or an emulator change. The existing
 [memory results](memory-results-2026-10-04.md) remain the Wii64 baseline.
+The subsequent [cache experiment results](cache-results-2026-10-04.md)
+record native ownership checks, bounded library coverage and probe overhead.
 
 The updated reference is WiiXplorer-NG
 [`d1d8d6111241690df3de6dffc16e10f136a3b53f`, MEMORY.md](https://github.com/Monsterray/wiixplorer-ng/blob/d1d8d6111241690df3de6dffc16e10f136a3b53f/MEMORY.md).
@@ -162,9 +164,10 @@ flush/write-gather/invalidate and cached-edge handling
 | P2 | K1 final device-only texture output | Test K0 plus publication against scalar K1 plus sync, including reuse and every format | Existing loaders use cached-only dcbz; filtering/mip packing must not read K1; GX completion governs freeing |
 | REJECT | K1 XFB, guest RDRAM, JIT or audio/read-ahead sources by default | CPU reads are frequent; SDK maintenance already exists | Slow reads or stale/overwritten data |
 
-The next experiment is the bounded XFB producer/reader test, not a blanket
-alias change. If it finds no ownership defect, profile mipmap staging before
-implementing any optimization. Do not revive the rejected YUYV dcbz/dcbt
+The bounded XFB producer/reader test and staging counters are now implemented;
+see the results linked above. No sampled live-reader defect or staging traffic
+was found in the tested scenes, so no production alias change is retained.
+Do not revive the rejected YUYV dcbz/dcbt
 variant or enable LC based on DMA-only bandwidth. LC halves normal L1 data
 capacity; no useful end-to-end kernel win has been established here.
 
