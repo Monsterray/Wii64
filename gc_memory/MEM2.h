@@ -100,8 +100,11 @@
 #define RECOMPMETA_LO   (BLOCKS_HI)
 #define RECOMPMETA_HI   (RECOMPMETA_LO + RECOMPMETA_SIZE)
 
-// We want 1MB for boxart menu images
-#define BOXART_ICON_SIZE (1*MB)
+// 16 boxart textures plus native heap overhead fit in 768KB.
+// The override keeps matched old-layout diagnostic builds possible.
+#ifndef BOXART_ICON_SIZE
+#define BOXART_ICON_SIZE (768*KB)
+#endif
 #define BOXART_ICON_LO   (RECOMPMETA_HI)
 #define BOXART_ICON_HI   (BOXART_ICON_LO + BOXART_ICON_SIZE)
 

@@ -15,10 +15,15 @@ done
 # Rice and glN64 (which adds the depth-copy region), each with and without the agent.
 for plugin in "" -DGLN64_GX; do
 for agent in 0 1; do
+for boxart in default 1048576; do
     flags=(-UWII64_HBC_AGENT $plugin)
     if [ "$agent" = 1 ]; then flags=(-DWII64_HBC_AGENT $plugin); fi
+    expected=786432
+    if [ "$boxart" != default ]; then flags+=(-DBOXART_ICON_SIZE="$boxart"); expected="$boxart"; fi
+    flags+=(-DEXPECT_BOXART_SIZE="$expected")
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror "${flags[@]}" tests/mem2_layout_test.c -o "$task_rom_tmp/layout"
     "$task_rom_tmp/layout"
+done
 done
 done
 python3 tests/hbc_watch_test.py
