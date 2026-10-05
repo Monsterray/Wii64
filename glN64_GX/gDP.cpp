@@ -330,6 +330,7 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 }*/
 
 #include "YUYVConvert.h"
+#include "CacheProbe.h"
 #ifndef GLN64_COLOR_IMAGE_SKIP_DEPTH
 #define GLN64_COLOR_IMAGE_SKIP_DEPTH 1 // 0: copy at every switch, for A/B runs
 #endif
@@ -337,7 +338,11 @@ extern VIInfo VI;
 void gDPUpdateColorImage(void)
 {
 	// This is hacky (uses xfb, makes many assumptions, no depth buffer) so lets only enable it for Mario Kart 64.
-	YUYV_ToRGBA5551((u16*)&RDRAM[gDP.colorImage.address], (const u32*)VI.xfb[VI.which_fb],
+	const u32 *xfb = (const u32*)VI.xfb[VI.which_fb];
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
+	VI_CacheProbeReadback(xfb, 640u * 480u * 2u);
+#endif
+	YUYV_ToRGBA5551((u16*)&RDRAM[gDP.colorImage.address], xfb,
 		gDP.colorImage.width, gDP.colorImage.height, (u32)(gDP.colorImage.width * OGL.scaleX),
 		OGL.scaleX, OGL.scaleY, OGL.GXheight < 480);
 }

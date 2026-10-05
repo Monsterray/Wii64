@@ -31,6 +31,7 @@
 #include "RSP.h"
 #include "RDP.h"
 #include "VI.h"
+#include "CacheProbe.h"
 #include "Config.h"
 #include "../main/perf_subsystem.h"
 #include "Textures.h"
@@ -191,6 +192,9 @@ EXPORT void CALL RomClosed (void)
 
 EXPORT void CALL RomOpen (void)
 {
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
+	VI_CacheProbeGXTest();
+#endif
 	RSP_Init();
 
 	OGL_ResizeWindow();

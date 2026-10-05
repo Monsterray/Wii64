@@ -11,10 +11,12 @@
 
 #ifdef __GX__
 #include <stdio.h>
+#include <string.h>
 #include <gccore.h>
 #include "../main/perf_subsystem.h"
 #include <malloc.h>
 #include <ogc/lwp_heap.h>
+#include <ogc/lwp_watchdog.h>
 #include "../libgui/IPLFont.h"
 #include "../menu/MenuResources.h"
 #include "../gui/DEBUG.h"
@@ -27,6 +29,8 @@
 #include "glN64.h"
 #include "Types.h"
 #include "VI.h"
+#include "CacheProbe.h"
+#include "../main/perf_prof.h"
 #include "OpenGL.h"
 #include "N64.h"
 #include "gSP.h"
@@ -41,6 +45,89 @@
 
 VIInfo VI;
 static u32 widthPrev = 0;
+
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
+int cacheProbeGXTest;
+static struct xfb_cache_probe_stats cacheProbe;
+void VI_CacheProbeReset(void) { memset(&cacheProbe, 0, sizeof(cacheProbe)); }
+struct xfb_cache_probe_stats VI_CacheProbeRead(void) { return cacheProbe; }
+void VI_CacheProbeFramebuffer(uint32_t bytes)
+{
+    cacheProbe.framebuffer_calls++;
+    cacheProbe.framebuffer_bytes += bytes;
+}
+
+/* Called before RSP_Init, with emulation stopped. Copy only into our allocation.
+   Every production GX_CopyTex caller configures its own source/destination. */
+void VI_CacheProbeGXTest(void)
+{
+    if (!cacheProbeGXTest) return;
+    u32 *buffer = (u32*)memalign(32, 64);
+    if (!buffer) { perfProf_mark("cache_gx_test: allocation_failed"); return; }
+    memset(buffer, 0xC3, 64);
+    DCFlushRange(buffer, 64);
+    GX_DrawDone();
+    GX_SetTexCopySrc(0, 0, 4, 4);
+    GX_SetTexCopyDst(4, 4, GX_TF_RGB565, GX_FALSE);
+    GX_CopyTex(buffer, GX_FALSE);
+    GX_PixModeSync();
+    GX_DrawDone();
+    DCInvalidateRange(buffer, 32);
+    u32 expected[8];
+    volatile u32 *cached = buffer;
+    for (unsigned i = 0; i < 8; ++i) {
+        expected[i] = cached[i];
+        cached[i] = ~expected[i];
+    }
+    DCFlushRange(buffer, 32);
+    for (unsigned i = 0; i < 8; ++i) (void)cached[i]; // warm clean lines, no dirty CPU owner
+    GX_CopyTex(buffer, GX_FALSE);
+    GX_PixModeSync();
+    GX_DrawDone();
+    unsigned stale = 0, errors = 0, guard = 0;
+    for (unsigned i = 0; i < 8; ++i) stale += cached[i] != expected[i];
+    DCInvalidateRange(buffer, 64); // refresh the guard as well as the payload
+    for (unsigned i = 0; i < 8; ++i) {
+        errors += cached[i] != expected[i];
+        guard += cached[i + 8] != 0xC3C3C3C3u;
+    }
+    char line[128];
+    snprintf(line, sizeof(line), "cache_gx_test: stale_words=%u fresh_errors=%u guard_errors=%u", stale, errors, guard);
+    perfProf_mark(line);
+    free(buffer); // both GX copies have completed
+}
+
+/* Diagnostic witness, not a speed measurement. No cache invalidation/CPU write
+   to the live XFB. Sample clean CPU reads against RAM only after GX is idle. */
+void VI_CacheProbeReadback(const void *xfb, uint32_t bytes)
+{
+    if (!cacheProbeGXTest || (++cacheProbe.calls % 127) != 1) return;
+    if (!xfb || bytes < 32 || bytes > 640u * 576u * 2u || ((uintptr_t)xfb & 31)) {
+        cacheProbe.invalid_ranges++;
+        return;
+    }
+    const u64 start = gettime();
+    const volatile u32 *cached = (const volatile u32*)xfb;
+    const volatile u32 *physical = (const volatile u32*)MEM_K0_TO_K1(xfb);
+    u32 before[8], offset[8];
+    for (unsigned i = 0; i < 8; ++i) {
+        offset[i] = ((bytes / 32 - 1) * i / 7) * 8;
+        before[i] = cached[offset[i]];
+    }
+    GX_DrawDone();
+    unsigned stale = 0, changed = 0;
+    for (unsigned i = 0; i < 8; ++i) {
+        const u32 after = cached[offset[i]];
+        stale += after != physical[offset[i]];
+        changed += before[i] != after;
+    }
+    cacheProbe.checks++;
+    cacheProbe.stale_checks += !!stale;
+    cacheProbe.stale_words += stale;
+    cacheProbe.wait_changed_checks += !!changed;
+    cacheProbe.ticks += gettime() - start;
+}
+#endif
 
 extern GXRModeObj *vmode, *rmode;
 extern int GX_xfb_offset;
@@ -212,8 +299,6 @@ void VI_UpdateScreen()
 #ifdef __GX__
 extern "C" {
 extern int enableLoadIcon;
-extern long long gettime();
-extern unsigned int diff_sec(long long start,long long end);
 };
 
 void VI_GX_init() {

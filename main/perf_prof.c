@@ -1,6 +1,9 @@
 /* perf_prof.c - see perf_prof.h */
 #include "perf_prof.h"
 #include "perf_memory.h"
+#if defined(GLN64_GX) && defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+#include "../glN64_GX/CacheProbe.h"
+#endif
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
 #endif
@@ -532,6 +535,11 @@ void perfProf_gameBegin(void)
    not loadROM's tail or the autoboot pause before go(). */
 void perfProf_clockStart(void)
 {
+#if defined(GLN64_GX) && defined(PERF_CACHE_PROBES)
+#ifdef HW_RVL
+	VI_CacheProbeReset();
+#endif
+#endif
 #ifdef HW_RVL
 	pagefile_stats_reset();
 #endif
@@ -596,6 +604,15 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u faults=%u zero_fills=%u\n",
 		VM_PAGE_READAHEAD, io.reads, io.cache_hits, io.read_bytes, io.writes, io.write_bytes, io.errors,
 		io.faults, io.zero_fills);
+#endif
+#if defined(GLN64_GX) && defined(PERF_CACHE_PROBES)
+#ifdef HW_RVL
+	struct xfb_cache_probe_stats xfb = VI_CacheProbeRead();
+	buf_printf("cache_xfb: calls=%u checks=%u stale_checks=%u stale_words=%u wait_changed_checks=%u invalid_ranges=%u sampled_us=%llu framebuffer_calls=%u framebuffer_bytes=%llu\n",
+		xfb.calls, xfb.checks, xfb.stale_checks, xfb.stale_words, xfb.wait_changed_checks,
+		xfb.invalid_ranges, (unsigned long long)ticks_to_microsecs(xfb.ticks), xfb.framebuffer_calls,
+		(unsigned long long)xfb.framebuffer_bytes);
+#endif
 #endif
 #ifdef PERF_SUBSYSTEM_ENABLED
 	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,

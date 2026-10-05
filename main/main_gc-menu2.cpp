@@ -48,6 +48,7 @@
 //#include "../gui/menu.h"
 #include "../gui/DEBUG.h"
 #include "timers.h"
+#include "../glN64_GX/CacheProbe.h"
 
 #include "winlnxdefs.h"
 extern "C" {
@@ -617,6 +618,12 @@ static void apply_diag_line(char* line) {
 	if (sscanf(line, "agent_crash_vi=%u", &devAgent_crashVi) == 1) return;
 #endif
 	line[strcspn(line, "\r\n")] = 0;
+#if defined(GLN64_GX) && defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
+	if (!strcmp(line, "cache_probe=1") || !strcmp(line, "cache_probe=0")) {
+		cacheProbeGXTest = line[12] == '1';
+		return;
+	}
+#endif
 #ifdef WII64_PERF_MEMORY
 	if (!strcmp(line, "memory=1") || !strcmp(line, "memory=0")) {
 		perfMem_configure(line[7] == '1');

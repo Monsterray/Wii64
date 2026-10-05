@@ -23,6 +23,7 @@
 #include "RDP.h"
 #include "Textures.h"
 #include "VI.h"
+#include "CacheProbe.h"
 #include "Combiner.h"
 #include "gDP.h"
 #include "Types.h"
@@ -1109,6 +1110,9 @@ void FrameBuffer_CopyToRDRAM( u32 sourceAddress, u32 address, u32 width, u32 hei
 		return;
 
 	const u8 *tex = (const u8*)source->texture->GXtexture;
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
+	VI_CacheProbeFramebuffer(width * height * 2);
+#endif
 	DCInvalidateRange( source->texture->GXtexture, source->texture->textureBytes );
 
 	for (u32 oy = 0; oy < height; oy++)
