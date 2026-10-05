@@ -1,5 +1,6 @@
 # Match these scenes in controls and the sampler. No detailed subsystem timers.
 dynacore=dynarec
+randomize_interrupt=0
 audio_quality=accurate
 audio_output=dsp
 audio_mixer=accurate
