@@ -17,10 +17,9 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	source .dev/bench_session.sh "$queue_chain"
 	job_env=("WII64_SKIP_BUILD=${WII64_SKIP_BUILD:-0}" "WII64_STAGE_INPUTS=${WII64_STAGE_INPUTS:-1}")
 	job_env+=("WII64_RECEIVER_TIMEOUT=$WII64_RECEIVER_TIMEOUT" "WII64_JOB_TIMEOUT=$WII64_JOB_TIMEOUT")
-	if [ -n "${WII64_DOL:-}" ]; then job_env+=("WII64_DOL=$WII64_DOL"); fi
-	if [ -n "${WII64_CHAIN_FILE:-}" ]; then job_env+=("WII64_CHAIN_FILE=$WII64_CHAIN_FILE"); fi
-	if [ -n "${WII64_ROM_DIR:-}" ]; then job_env+=("WII64_ROM_DIR=$WII64_ROM_DIR"); fi
-	if [ -n "${WII64_HBC_ROOT:-}" ]; then job_env+=("WII64_HBC_ROOT=$WII64_HBC_ROOT"); fi
+	# Pin defaults too: the persistent queue worker can inherit another survey's environment.
+	job_env+=("WII64_DOL=${WII64_DOL:-}" "WII64_CHAIN_FILE=${WII64_CHAIN_FILE:-$PWD/scripts/chains/$queue_chain.txt}")
+	job_env+=("WII64_ROM_DIR=${WII64_ROM_DIR:-}" "WII64_HBC_ROOT=${WII64_HBC_ROOT:-}")
 	# The job runs a frozen copy, so edits while it waits do not change it. The copy goes
 	# as a file: on Windows an 8 KB command argument reaches bash cut short. $0 stays
 	# the real path, which the script uses to find the repo.

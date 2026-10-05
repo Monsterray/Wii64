@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
+assert 'WII64_CHAIN_FILE="$PWD/scripts/chains/agent_crash.txt" WII64_ROM_DIR=' in (root / '.dev/test_agent_wii.sh').read_text()
 with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
     state = Path(directory)
     client = state / "wiibench.py"
@@ -20,13 +21,16 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
     result = subprocess.run(command, env=env, capture_output=True, text=True)
     assert result.returncode == 2
     (state / "server").write_text("http://fixture.invalid:4310\n")
-    client.write_text("import sys\n"
+    client.write_text("import sys, os\n"
                       "if sys.argv[1] == 'add':\n"
                       " assert sys.argv[sys.argv.index('--agent') + 1].startswith('wii64-')\n"
                       " assert int(sys.argv[sys.argv.index('--timeout') + 1]) > 180\n"
                       " assert any(x.startswith('WII64_RECEIVER_TIMEOUT=') for x in sys.argv)\n"
                       " assert 'WII64_DOL=/tmp/frozen build.dol' in sys.argv\n"
                       " assert 'WII64_SKIP_BUILD=1' in sys.argv\n"
+                      " assert 'WII64_ROM_DIR=' in sys.argv\n"
+                      " assert 'WII64_HBC_ROOT=' in sys.argv\n"
+                      " assert 'WII64_CHAIN_FILE=' + os.path.join(sys.argv[sys.argv.index('--cwd')+1], 'scripts/chains/audio_reference.txt') in sys.argv\n"
                       " i = sys.argv.index('bash')\n"
                       " assert sys.argv[i + 1] == '-c'\n"
                       " boot, script, frozen = sys.argv[i + 2:i + 5]\n"
@@ -47,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
                       " assert sys.argv[1:] == ['wait', 'fixture-job']\n"
                       " print('waited')\n")
     result = subprocess.run(command, env=env, capture_output=True, text=True)
-    assert result.returncode == 0 and "Queued Wii64" in result.stdout and "waited" in result.stdout
+    assert result.returncode == 0 and "Queued Wii64" in result.stdout and "waited" in result.stdout, (result.stdout, result.stderr)
     env["WII64_QUEUE_ONLY"] = "1"
     result = subprocess.run(command, env=env, capture_output=True, text=True)
     assert result.returncode == 0 and result.stdout.strip() == "fixture-job"

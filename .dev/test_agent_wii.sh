@@ -20,7 +20,8 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 fi
 out="$(mktemp -d "$PWD/.dev/runs/agent-crash-XXXX")"
 result=0
-WII64_SKIP_BUILD=1 WII64_DOL="$dol" bash .dev/hardware_run.sh glN64_wii agent_crash > "$out/run.log" 2>&1 || result=$?
+WII64_SKIP_BUILD=1 WII64_DOL="$dol" WII64_CHAIN_FILE="$PWD/scripts/chains/agent_crash.txt" WII64_ROM_DIR= \
+    bash .dev/hardware_run.sh glN64_wii agent_crash > "$out/run.log" 2>&1 || result=$?
 [[ "$result" != 0 ]] || { echo "Expected crash did not occur; see $out/run.log" >&2; exit 1; }
 run="$(sed -n 's/^Diagnostic config: //p' "$out/run.log" | tail -n 1)"
 [[ -n "$run" ]] || { tail -n 20 "$out/run.log" >&2; exit 1; }
