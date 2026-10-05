@@ -292,7 +292,8 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	code_addr = func->code_addr;
 	ppc_dst = func->code + (ppc_dst - code_buffer);
 	int i;
-	for(i=0; i<src-src_first; ++i)
+	// convert() can consume an end delay slot past the address-map allocation.
+	for(i=0; i<src_last-src_first; ++i)
 		if(code_addr[i])
 			code_addr[i] = func->code + (code_addr[i] - code_buffer);
 	for(i=0; i<current_jump; ++i)
