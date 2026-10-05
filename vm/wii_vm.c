@@ -497,6 +497,7 @@ int vm_dsi_handler(u32 dsisr, u32 dar)
 
 	dar &= ~0xFFF;
 	virt_index = (vm_page*)dar - VM_Base;
+	pagefile_note_fault(!virt_map[virt_index].committed);
 
 	unsigned long long victim_timer = perfProf_subsystemBegin(PERF_SUB_VM_VICTIM);
 	phys_index = locate_oldest();

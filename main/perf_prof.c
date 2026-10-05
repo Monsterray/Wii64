@@ -593,8 +593,9 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		streamRequests, streamFed, inputHz, playbackHz, queuePeakMs);
 #if defined(HW_RVL) && defined(PERF_PAGEFILE_STATS)
 	struct pagefile_stats io = pagefile_stats_read();
-	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u\n",
-		VM_PAGE_READAHEAD, io.reads, io.cache_hits, io.read_bytes, io.writes, io.write_bytes, io.errors);
+	buf_printf("vm_io: read_ahead=%d reads=%u hits=%u read_bytes=%u writes=%u write_bytes=%u errors=%u faults=%u zero_fills=%u\n",
+		VM_PAGE_READAHEAD, io.reads, io.cache_hits, io.read_bytes, io.writes, io.write_bytes, io.errors,
+		io.faults, io.zero_fills);
 #endif
 #ifdef PERF_SUBSYSTEM_ENABLED
 	buf_printf("probe_schema: version=2 self=%u interval=%u\n", PERF_SUBSYSTEM_SELF,

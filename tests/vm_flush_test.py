@@ -7,6 +7,10 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 vm = (root / 'vm/wii_vm.c').read_text()
+fault = vm[vm.index('int vm_dsi_handler('):]
+assert fault.index('if (dar<(u32)VM_Base || dar>=0x80000000)') < fault.index('pagefile_note_fault(')
+assert fault.index('if (!vm_initialized)') < fault.index('pagefile_note_fault(')
+assert fault.index('virt_index =') < fault.index('pagefile_note_fault(') < fault.index('phys_index = locate_oldest()')
 flush = vm[vm.index('int VM_Flush('):vm.index('void VM_Deinit(')]
 ui = (root / 'libgui/LoadingBar.cpp').read_text()
 formatting = ui[ui.index('\tpercentComplete ='):ui.index('\n\tmenu::Gui::getInstance().draw();')]

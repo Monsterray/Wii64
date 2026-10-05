@@ -11,6 +11,11 @@ static struct pagefile_stats io_stats;
 #define IO_COUNT(field, n) (io_stats.field += (n))
 void pagefile_stats_reset(void) { memset(&io_stats, 0, sizeof(io_stats)); }
 struct pagefile_stats pagefile_stats_read(void) { return io_stats; }
+void pagefile_note_fault(int zero_fill)
+{
+    io_stats.faults++;
+    io_stats.zero_fills += !!zero_fill;
+}
 #else
 #define IO_COUNT(field, n) ((void)0)
 #endif

@@ -46,9 +46,7 @@
 #ifdef PERF_PROF
 #include <ogc/lwp_watchdog.h>
 #endif
-#ifdef PERF_SUBSYSTEM_ENABLED
 #include "../vm/pagefile.h"
-#endif
 static char* ROMBase = ROMCACHE_LO;
 static int ROMVMActive;
 #else
@@ -275,12 +273,12 @@ int ROMCache_load(fileBrowser_file* file){
 #ifdef PERF_PROF
 		unsigned long long flush_start = gettime();
 #endif
-#ifdef PERF_SUBSYSTEM_ENABLED
+#ifdef PERF_PAGEFILE_STATS
 		struct pagefile_stats before = pagefile_stats_read();
 #endif
 		if (!VM_Flush(show_prepare_progress)) return ROM_CACHE_ERROR_READ;
 #ifdef PERF_PROF
-#ifdef PERF_SUBSYSTEM_ENABLED
+#ifdef PERF_PAGEFILE_STATS
 		struct pagefile_stats after = pagefile_stats_read();
 		snprintf(txt, sizeof(txt), "ROMCache_load: preflush_us=%llu writes=%u bytes=%u",
 			(unsigned long long)ticks_to_microsecs(gettime() - flush_start),
