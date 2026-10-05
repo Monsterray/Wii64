@@ -1,0 +1,11 @@
+# Functional HOME/lent-XFB check; do not use its pause time as a speed result.
+dynacore=dynarec
+randomize_interrupt=0
+audio_quality=accurate
+audio_output=dsp
+audio_mixer=accurate
+audio_latency=stable
+audio_sync=native
+memory=1
+memory_boxart_probe=1
+chain=1800,input=sm64_start sd:/wii64/roms/Super Mario 64.v64

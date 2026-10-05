@@ -5,6 +5,7 @@
 #include "version.h"
 #include "../gc_memory/MEM2.h"
 #include "perf_prof.h"
+#include "perf_memory.h"
 
 _Static_assert(HBC_CRASH_ADDR >= (unsigned long)TLBLUT_HI &&
                HBC_CRASH_ADDR + sizeof(hbc_crash_block) <= (unsigned long)TEXCACHE_LO,
@@ -40,6 +41,17 @@ extern timers Timers;
 static volatile int homeWanted; // HOME stopped the game: open the overlay after go()
 static int toWii64Menu;         // the overlay's Wii64 Menu button was pressed
 static int inGame;              // the overlay was opened from a stopped game
+#ifdef WII64_PERF_MEMORY
+static int homeFirstFrame;
+static void memoryHomeFrame(void *user)
+{
+    (void)user;
+    if (homeFirstFrame) {
+        homeFirstFrame = 0;
+        perfMem_snapshot("home_active"); // stopped emulation, once per overlay
+    }
+}
+#endif
 
 static char infoGame[48], infoSpeed[40];
 static void pressWii64Menu(void *user) { (void)user; toWii64Menu = 1; }
@@ -95,11 +107,16 @@ static int homePressed(void)
 static void openOverlay(void)
 {
     GX_DrawDone(); // no pending draw-sync callback may flip the display under it
+    perfMem_snapshot("home_enter");
+#ifdef WII64_PERF_MEMORY
+    homeFirstFrame = 1;
+#endif
     refreshInfo();
     u32 shown = (u32)VIDEO_GetCurrentFramebuffer() & 0x1fffffff;
     void *lend = shown == ((u32)XFB0_LO & 0x1fffffff) ? XFB1_LO : XFB0_LO;
     if (hbc_agent_home_fb(vmode, lend, NULL) < 0)
         hbc_agent_home(vmode); // an older SDK: its own buffers, or over ours
+    perfMem_snapshot("home_closed");
 }
 
 void devAgent_pollHome(void)
@@ -134,6 +151,9 @@ void devAgent_init(void)
     cfg.exit_grace_ms = 10000;
     cfg.crash_reload_s = 3;
     cfg.gc_pads = true;
+#ifdef WII64_PERF_MEMORY
+    cfg.on_frame = memoryHomeFrame;
+#endif
     cfg.on_exit_choice = exitChoice;
     int result = hbc_agent_init(&cfg);
     hbc_agent_set_slot_menu(0, "Wii64", "Wii64 " WII64_VERSION, wii64Items,

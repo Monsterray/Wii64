@@ -10,8 +10,10 @@ trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interv
 "$task_sub_tmp/memory"
 python3 tests/memory_report_test.py
 python3 tests/exception_probe_test.py
+python3 tests/recompile_mapping_test.py
 python3 tests/boxart_allocation_test.py
 python3 tests/dolphin_capture_names_test.py
+python3 tests/memory_home_test.py
 "${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
     -fno-sanitize-recover=all tests/hprof_test.c -o "$task_sub_tmp/hprof"
 "$task_sub_tmp/hprof"
