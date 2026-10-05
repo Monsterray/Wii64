@@ -5,6 +5,23 @@ master, version 1.6.13. No emulator or layout change is made by this plan.
 Use measured capacity and workload costs, not a rule that one RAM bank is
 always faster. Keep upstream mergeability and separate Wii, vWii and GameCube.
 
+## Execution status
+
+The measured implementation pass is complete in version 1.6.15; see the
+[ownership, full-library census and candidate decisions](memory-results-2026-10-04.md).
+
+| Phase | Outcome |
+|---|---|
+| 1. Census | All 18 owned ROMs on Wii and Dolphin reconcile; a dynarec map overrun found by the census is fixed. Census timing remains provisional after its strict audio gate failed. |
+| 2. Bounded capacity / failures | Boxart is 768 KiB; two native old/new/old trials, allocation-failure tests, layouts, HOME and Rice checks passed. 256 KiB recovered, no FPS claim. |
+| 3. Traffic | Deterministic guest counters and a lower-rate PC sampler calibrated; existing conversion/copy reductions verified. No additional redundant copy is proved. |
+| 4. Placement / budgets | Evaluated, no change selected: short-scene peaks and PC samples cannot establish long-game cache misses or safe pool bounds. |
+| 5. Structural savings | Not selected: no measured capacity failure justifies additional lookup work or changing global coverage. |
+| 6. LC | Not selected: no eligible kernel has measured end-to-end/cache-stall evidence; retain normal L1 and cached buffers. |
+
+The unselected conditional experiments remain future work, not implemented
+features. Native PAL output and vWii coverage remain separate hardware gaps.
+
 ## Sources and current limits
 
 The reference is WiiXplorer-NG
@@ -104,18 +121,19 @@ libogc2 `libogc/cache_asm.S` already retains MEM2's address bit and LC tag, and
 
 ## Ranked candidates
 
-No new correctness bug or speed improvement is established by this plan.
-Expected gains below are conditional. Each experiment needs its own mechanism
-and commit; do not combine a guard with a performance change.
+The original candidates below now have measured outcomes. The
+[results](memory-results-2026-10-04.md) record the additional dynarec bug and
+all validation. Each mechanism has its own commit. Conditional experiments
+were not implemented without the required evidence.
 
 | Rank | Candidate | Type | Evidence | Expected gain | Risk / scope | Smallest test |
 |---|---|---|---|---|---|---|
-| P0 | Separate memory accounting and peak measurements | CLEANUP | Implemented; native accounting passes, timing calibration fails guest parity/audio gate | Capacity observations only; no speed claim | Low; opt-in counters at allocation boundaries | Stabilize replay/control work before hot-pool sizing |
-| P1 | Right-size boxart reservation | PERF | Only 16 buffers of 46,080 bytes use this heap | A 768 KiB trial would recover 256 KiB MEM2, if allocator overhead fits | Low/medium; one constant plus capacity test | Allocate all 16 with the real heap implementation; page/change source/reopen menu |
-| P1 | Allocation-failure fallback where a failure is demonstrated | GUARD | Boxart allocation is followed by unchecked memset; low outer headroom | Avoid a crash, not higher FPS | Low if outside gameplay; allocation sites only | Inject controller/buffer failure and show placeholder/error safely |
-| P1 | Reduce one measured copy/conversion working set | PERF | Native Kart sampler suggests YUYV work; reference shows copy penalties | Unknown until matched Wii data | Medium; one conversion and exact fallback | Compare output bytes and cached baseline against one bounded tiled variant |
+| P0 | Separate memory accounting and peak measurements | CLEANUP | Implemented; all 18 ROMs reconcile on both platforms; deterministic guest parity restored, census audio gate still fails | Capacity observations only; no speed claim | Low; opt-in stopped census | Keep timing claims provisional |
+| P1 | Right-size boxart reservation | PERF | Implemented; all 16 textures charge 737,920 bytes | Confirmed 256 KiB MEM2 capacity recovered | Low/medium; one constant plus capacity test | Two native old/new/old trials, browser, HOME and Rice passed |
+| P1 | Allocation-failure fallback where a failure is demonstrated | GUARD | Fixed unchecked boxart memset and controller failure | Avoid a crash, not higher FPS | Low; menu allocation sites only | Every failing slot and controller init passed |
+| P1 | Reduce one measured copy/conversion working set | PERF | Existing YUYV optimization already handles invariant columns/clamping; no new copy removal proved | Not selected | Medium; one conversion and exact fallback | Establish producer/reader coherency before another variant |
 | P2 | Move/split one small hot metadata set | PERF | Large texture metadata resides in MEM1; access locality not yet known | Unknown; possibly headroom or fewer misses | Medium; address/lifetime and lookup cost | Record slot peaks and access mix before selecting any fields/bank |
-| P2 | Tune texture or recompilation metadata reservation | PERF | 15/4 MiB are reserved; per-title peaks/largest blocks unknown | Conditional capacity, with possible cache regressions | Medium; one pool, no eviction redesign | Peak/eviction census followed by one bounded size step |
+| P2 | Tune texture or recompilation metadata reservation | PERF | Valid short-scene peaks and largest requests recorded; no capacity failures or evictions | Not selected without long-gameplay bounds | Medium; one pool, no eviction redesign | Long-game peak/eviction census before a size step |
 | P2 | Compact TLB, block or invalidation representation | PERF | 8+4+1 MiB tables cover guest address space, not just RDRAM | Potential capacity; lookup cost could regress | High; separate one-table experiments | Host alias/TLB/store/DMA tests before any native performance trial |
 | P2 | LC staging for a measured reusable tile/audio kernel | PERF | Verified reference DMA works, but normal L1 shrinks | Unknown end-to-end | High; opt-in bounded kernel only | Normal cached vs LC load+compute+store+coherency+restore |
 
@@ -256,12 +274,10 @@ an untested optimization.
 
 ## Next bounded experiment
 
-Phase 1 instrumentation and the native boxart-bound probe are implemented;
-see [census commands and evidence](memory-census-2026-10-04.md). Reservations
-remain unchanged. The queued same-layout off/on/off calibration must pass
-guest-work and overhead gates before these probes guide hot-pool sizing.
-The next bounded experiment is replay/control stabilization with the current
-layout, not speculative relocation or LC enablement.
+Test XFB reader coherency with distinct cached/device patterns and an explicit
+producer-complete boundary. Prove a stale read before changing cache operations;
+retain the existing conversion and rendering output as the reference. This is
+the highest-value bounded follow-up, not permission for a general LC rewrite.
 
 ## Local-model review
 

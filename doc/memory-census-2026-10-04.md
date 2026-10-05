@@ -1,5 +1,9 @@
 # Memory census: unchanged layout
 
+This records the initial unchanged-layout prototype. The
+[completed measured pass](memory-results-2026-10-04.md) has the corrected
+full-library census and the validated 768 KiB boxart reservation.
+
 Phase 1 of the [memory plan](memory-optimization-plan-2026-10-04.md) adds
 optional measurements. It does not reclaim memory or change cache placement.
 
@@ -73,8 +77,22 @@ bash .dev/dolphin_test.sh wii64-glN64.dol 25 \
 `memory_boxart_probe=1` is independent of runtime accounting. Before UI buffers
 exist, it initializes the native boxart heap at 768 KiB, allocates all 16
 46,080-byte textures, checks 32-byte alignment and distinct data patterns,
-then frees them. It restores the original 1 MiB heap on either result. The
+then frees them. It restores the configured boxart heap on either result. The
 temporary test allocations are not included in census peaks.
+
+For the owned-ROM library and HOME checks, keep the frozen census DOL and
+matching ELF together, then run:
+
+```sh
+WII64_LIBRARY_MEMORY=1 WII64_DOLPHIN_MUTE_AUDIO=True \
+bash .dev/library_check.sh /absolute/path/to/build.dol both
+bash .dev/test_memory_home.sh /absolute/path/to/build.dol
+```
+
+The library wrapper freezes ROMs/configs and queues hardware while Dolphin
+runs separately. Set `WII64_ROM_DIR` to the owned-ROM folder if needed.
+The HOME wrapper owns its lease, records stopped enter/active/closed snapshots,
+resumes, and waits for HBC return. Do not use its pause time as a speed result.
 
 ## Initial evidence
 
