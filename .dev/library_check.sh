@@ -13,6 +13,9 @@ library_diag=()
 if [ "${WII64_LIBRARY_MEMORY:-0}" = 1 ]; then
     library_diag=(memory=1 memory_boxart_probe=1 randomize_interrupt=0 stress_selectrom=1)
 fi
+if [ "${WII64_LIBRARY_CACHE:-0}" = 1 ]; then
+    library_diag+=(cache_probe=1 randomize_interrupt=0)
+fi
 out="$(mktemp -d "$PWD/.dev/runs/library-${target}-$(date +%Y%m%d-%H%M%S)-XXXX")"
 python3 - "$dol" "$roms" "$out" "$mode" "$target" ${library_diag[@]+"${library_diag[@]}"} <<'PY'
 import hashlib, json, pathlib, shutil, subprocess, sys
@@ -110,5 +113,18 @@ if [ "$mode" != hardware ]; then
 fi
 if [ "$mode" != dolphin ]; then wait "$hardware_wait" || failed=1; fi
 python3 scripts/library_report.py "$out" | tee "$out/report.txt"
+if [ "${WII64_LIBRARY_CACHE:-0}" = 1 ]; then
+    cache_logs=()
+    for list in "$out/hardware_runs.txt" "$out/dolphin_runs.txt"; do
+        [ -f "$list" ] || continue
+        while IFS= read -r run; do cache_logs+=("$run/perf.log"); done < "$list"
+    done
+    if [ "${#cache_logs[@]}" -eq 0 ]; then
+        echo 'Cache survey has no completed runs.' >&2
+        failed=1
+    else
+        python3 scripts/cache_probe_report.py "${cache_logs[@]}" > "$out/cache-report.txt" || failed=1
+    fi
+fi
 echo "Library results: $out"
 exit "$failed"

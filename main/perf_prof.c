@@ -2,6 +2,7 @@
 #include "perf_prof.h"
 #include "perf_memory.h"
 #if defined(GLN64_GX) && defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+#include "../glN64_GX/TextureProbe.h"
 #include "../glN64_GX/CacheProbe.h"
 #endif
 #ifdef HW_RVL
@@ -536,6 +537,7 @@ void perfProf_gameBegin(void)
 void perfProf_clockStart(void)
 {
 #if defined(GLN64_GX) && defined(PERF_CACHE_PROBES)
+	TextureCache_ProbeReset();
 #ifdef HW_RVL
 	VI_CacheProbeReset();
 #endif
@@ -606,6 +608,12 @@ void perfProf_gameEnd(int n, int total, unsigned int vis, const char* rom, const
 		io.faults, io.zero_fills);
 #endif
 #if defined(GLN64_GX) && defined(PERF_CACHE_PROBES)
+	TextureCacheProbeStats texture = TextureCache_ProbeRead();
+	buf_printf("cache_texture: loads=%llu load_bytes=%llu mip_calls=%llu levels=%llu staged_bytes=%llu packed_bytes=%llu timed_calls=%llu sampled_us=%llu\n",
+		(unsigned long long)texture.texture_loads, (unsigned long long)texture.texture_bytes,
+		(unsigned long long)texture.mip_calls, (unsigned long long)texture.mip_levels,
+		(unsigned long long)texture.mip_temp_bytes, (unsigned long long)texture.mip_pack_bytes,
+		(unsigned long long)texture.mip_timed_calls, (unsigned long long)ticks_to_microsecs(texture.mip_ticks));
 #ifdef HW_RVL
 	struct xfb_cache_probe_stats xfb = VI_CacheProbeRead();
 	buf_printf("cache_xfb: calls=%u checks=%u stale_checks=%u stale_words=%u wait_changed_checks=%u invalid_ranges=%u sampled_us=%llu framebuffer_calls=%u framebuffer_bytes=%llu\n",

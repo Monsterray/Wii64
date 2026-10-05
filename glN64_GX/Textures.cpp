@@ -43,6 +43,50 @@
 #include "../main/perf_subsystem.h"
 #include "../main/perf_memory.h"
 #include "texture_hash.h"
+#include "TextureProbe.h"
+
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+#include <ogc/lwp_watchdog.h>
+
+static TextureCacheProbeStats textureCacheProbeStats = {};
+
+extern "C" void TextureCache_ProbeReset(void)
+{
+	textureCacheProbeStats = {};
+}
+
+extern "C" TextureCacheProbeStats TextureCache_ProbeRead(void)
+{
+	return textureCacheProbeStats;
+}
+
+static void TextureCache_ProbeTextureLoaded( const CachedTexture *texInfo )
+{
+	if (texInfo->GXtexture != NULL)
+		textureCacheProbeStats.texture_bytes += texInfo->textureBytes;
+}
+
+struct TextureCacheMipProbeTimer
+{
+	bool sampled;
+	unsigned long long start;
+
+	explicit TextureCacheMipProbeTimer( bool shouldSample ) : sampled(shouldSample), start(0)
+	{
+		if (sampled)
+			start = gettime();
+	}
+
+	~TextureCacheMipProbeTimer()
+	{
+		if (sampled)
+		{
+			textureCacheProbeStats.mip_ticks += gettime() - start;
+			textureCacheProbeStats.mip_timed_calls++;
+		}
+	}
+};
+#endif
 
 #ifndef GLN64_TMEM_HASH_CACHE
 #define GLN64_TMEM_HASH_CACHE 0
@@ -1109,6 +1153,9 @@ void TextureCache_Destroy()
 void TextureCache_LoadBackground( CachedTexture *texInfo )
 {
 	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_LOAD);
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+	textureCacheProbeStats.texture_loads++;
+#endif
 	u8 *dest = NULL, *scaledDest;
 #ifndef __GX__
 	u8 *swapped;
@@ -1262,6 +1309,9 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 	if (!cache.enable2xSaI)
 	{
 		texInfo->GXtexture = (u16*) dest;
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+		TextureCache_ProbeTextureLoaded( texInfo );
+#endif
 
 		switch(GXsize)
 		{
@@ -1403,6 +1453,9 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 		        interpolator );
 
 		texInfo->GXtexture = (u16*) scaledDest;
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+		TextureCache_ProbeTextureLoaded( texInfo );
+#endif
 		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 		DCFlushRange(scaledDest, texInfo->textureBytes);
 	}	//	cache.enable2xSaI
@@ -1457,6 +1510,9 @@ bool TextureCache_UseMirrorFixes()
 void TextureCache_Load( CachedTexture *texInfo )
 {
 	PERF_SUBSYSTEM_SCOPE(PERF_SUB_TEX_LOAD);
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+	textureCacheProbeStats.texture_loads++;
+#endif
 	u8 *dest = NULL, *scaledDest;
 #ifndef __GX__
 	GLuint			glInternalFormat;
@@ -1635,6 +1691,9 @@ void TextureCache_Load( CachedTexture *texInfo )
 
 	if (!cache.enable2xSaI)
 	{
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+		TextureCache_ProbeTextureLoaded( texInfo );
+#endif
 		switch(GXsize)
 		{
 		case 1:	// 1 byte per GX texel -> GXGetIA31_IA4, GXGetI4_IA4, GXGetIA44_IA4
@@ -1806,6 +1865,9 @@ void TextureCache_Load( CachedTexture *texInfo )
 		        interpolator );
 
 		texInfo->GXtexture = (u16*) scaledDest;
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+		TextureCache_ProbeTextureLoaded( texInfo );
+#endif
 		perfMem_free(PERF_MEM_TEXTURE, GXtexCache, dest);
 		DCFlushRange(scaledDest, texInfo->textureBytes);
 	} 	//	cache.enable2xSaI
@@ -2156,6 +2218,10 @@ static void _TextureCache_DescribeMipLevel( CachedTexture *dst, const CachedText
 
 static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 {
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+	const bool sampleMipCall = (textureCacheProbeStats.mip_calls++ % 127) == 0;
+	TextureCacheMipProbeTimer mipProbeTimer( sampleMipCall );
+#endif
 	const u32 GXsize = imageFormat[gDP.otherMode.textureLUT][texInfo->size][texInfo->format].GXsize;
 	const u32 cap = _TextureCache_MipLevelCap( texInfo, GXsize );
 
@@ -2209,6 +2275,10 @@ static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 		}
 
 		levelBytes[i] = level[i].textureBytes;
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+		textureCacheProbeStats.mip_levels++;
+		textureCacheProbeStats.mip_temp_bytes += levelBytes[i];
+#endif
 		totalBytes += levelBytes[i];
 	}
 
@@ -2227,6 +2297,9 @@ static void TextureCache_LoadMipChain( CachedTexture *texInfo, u32 baseTile )
 		return;
 	}
 
+#if defined(PERF_PROF) && defined(PERF_CACHE_PROBES)
+	textureCacheProbeStats.mip_pack_bytes += totalBytes;
+#endif
 	u32 offset = 0;
 	for (i = 0; i < levels; i++)
 	{
