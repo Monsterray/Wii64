@@ -9,6 +9,8 @@ source = (root / 'menu/SelectRomFrame.cpp').read_text()
 alloc = source[source.index('\t//Init textures'):source.index('\tGX_InvalidateTexAll();', source.index('\t//Init textures'))]
 start = source.index('void Func_ReturnFromSelectRomFrame()\n{')
 cleanup = source[start:source.index('\nvoid Func_SR_Select1()', start)]
+start = source.index('\tif(boxartTexCache == NULL) {')
+controller = source[start:source.index('\n#endif\n\n\tfor (int i = 0; i<NUM_FILE_SLOTS;', start)]
 fixture = r'''
 #include <cassert>
 #include <cstdlib>
@@ -21,6 +23,11 @@ struct GXColor { unsigned char r,g,b,a; };
 static u8 *fileTextures[16];
 static int calls, released, fail = -1, message, frame;
 static void *boxartTexCache = (void*)1;
+struct heap_cntrl { unsigned unused; };
+#define BOXART_ICON_LO nullptr
+#define BOXART_ICON_SIZE 786432
+static bool initFail;
+static int registered;
 static void *dir_entries, *rom_headers, *rom_headers_valid;
 static int num_entries, current_page, max_page;
 struct Button { u8 *texture = nullptr; void setBoxTexture(u8 *p) { texture=p; }
@@ -36,10 +43,22 @@ static void perfMem_free(int,void*,void *p) { released++; free(p); }
 static void *memalign(unsigned,unsigned n) { return allocate(n); }
 static void DCFlushRange(void *p,unsigned) { assert(p); }
 static void countedFree(void *p) { released++; std::free(p); }
+static int perfMem_init(int, void*, void*, unsigned, unsigned) { return !initFail; }
+static void DEBUG_registerHeap(void *p, const char*) { assert(p); registered++; }
 #define free countedFree
-''' + cleanup + '\nstatic void activate() {\n' + alloc + '\n}\n' + r'''
+#define malloc allocate
+''' + cleanup + '\nstatic void activate() {\n' + alloc + '\n}\n' + '\nstatic void initController() {\n' + controller + '\n}\n' + r'''
 int main() {
     for (unsigned i=0;i<21;i++) FRAME_BUTTONS[i].button=&buttons[i];
+    for (unsigned condition=0; condition<3; condition++) {
+        calls=released=registered=0; boxartTexCache=nullptr;
+        fail=condition==0 ? 0 : -1; initFail=condition==1;
+        initController();
+        assert(bool(boxartTexCache)==(condition==2));
+        assert(registered==int(condition==2) && released==int(condition==1));
+        if (boxartTexCache) free(boxartTexCache);
+    }
+    boxartTexCache=(void*)1;
     for (fail=-1;fail<16;fail++) {
         calls=released=message=frame=0;
         activate();
@@ -56,7 +75,7 @@ int main() {
 with tempfile.TemporaryDirectory(prefix='wii64-boxart-') as directory:
     path = Path(directory)
     (path / 'test.cpp').write_text(fixture)
-    for flags in ([], ['-DHW_RVL']):
+    for flags in (['-DSHOW_DEBUG'], ['-DHW_RVL', '-DSHOW_DEBUG']):
         subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++11', '-O2',
                         '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
                         *flags, str(path / 'test.cpp'), '-o', str(path / 'test')], check=True)
