@@ -200,11 +200,13 @@ from persistent failure; black content is not proof of lost HDMI signal.
 `analyze --require-nonblack` is an optional dark-image check, not a Wii correctness
 verdict. Capture FPS measures delivered video, not guest N64 emulation speed.
 
-Audio is off by default. To record HDMI audio, first inspect the audio endpoints,
-run `authorize --audio` explicitly, then use `--audio-device-id ID`. Never use a
-default microphone as a substitute. Routine capture does not request Camera or
-Microphone permission. A new host application may still need one macOS approval;
-no privacy or firewall policy is disabled.
+Audio is off by default. The owner declined Microphone access for Codex; do not
+run `authorize --audio` or launch audio capture from Codex. An exact audio device
+ID does not narrow macOS's app-wide Microphone permission. Use a separately
+trusted recording app or validate a device-only USB capture guest before adding
+audio automation. Never use a default microphone as a substitute. Routine capture
+does not request Camera or Microphone permission; no privacy or firewall policy
+is disabled. See [capture tools and privacy](capture-tools-and-privacy-2026-10-07.md).
 
 Keep video capture off for clean performance comparisons, or enable the same mode
 in all A/B/A runs. USB traffic and host JPEG encoding can change collection timing.
