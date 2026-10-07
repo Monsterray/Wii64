@@ -92,8 +92,10 @@ with tempfile.TemporaryDirectory(prefix='wii64-yuyv-') as directory:
     source = Path(directory) / 'test.cpp'
     source.write_text(fixture)
     binary = Path(directory) / 'test'
-    subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++11', '-O2', '-Wall', '-Wextra', '-Werror',
+    for mode in (0, 1):
+        subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++11', '-O2', '-Wall', '-Wextra', '-Werror',
+                    '-DGLN64_YUYV_PRODUCTS=' + str(mode),
                     '-Wno-unused-function', '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
                     '-I', str(root / 'glN64_GX'), str(source), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
 print('YUYV to RGBA5551: every Y/U/V value and whole frames match the original: ok')
