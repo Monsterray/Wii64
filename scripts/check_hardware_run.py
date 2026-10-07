@@ -21,6 +21,10 @@ def main(run_dir, require_wiiload=True):
         expected.append((int(spec.split(",", 1)[0]), ",input=" in spec, rom))
 
     errors = []
+    tags = [line for line in config if line.startswith("result_tag=")]
+    if tags and (len(tags) != 1 or not re.fullmatch(r"result_tag=[0-9a-f]{32}", tags[0])
+                 or ("mark: " + tags[0]) not in log.splitlines()):
+        errors.append("run did not confirm its unique result tag")
     rows = games(log_path)
     if require_wiiload and "mark: diag config: wiiload arguments" not in log:
         errors.append("run did not confirm it used the selected wiiload configuration")

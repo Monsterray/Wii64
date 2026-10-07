@@ -20,6 +20,7 @@ if [ -z "${WII_BENCH_JOB:-}" ]; then
 	# Pin defaults too: the persistent queue worker can inherit another survey's environment.
 	job_env+=("WII64_DOL=${WII64_DOL:-}" "WII64_CHAIN_FILE=${WII64_CHAIN_FILE:-$PWD/scripts/chains/$queue_chain.txt}")
 	job_env+=("WII64_ROM_DIR=${WII64_ROM_DIR:-}" "WII64_HBC_ROOT=${WII64_HBC_ROOT:-}")
+	job_env+=("WII64_RESULT_MODE=${WII64_RESULT_MODE:-auto}")
 	# The job runs a frozen copy, so edits while it waits do not change it. The copy goes
 	# as a file: on Windows an 8 KB command argument reaches bash cut short. $0 stays
 	# the real path, which the script uses to find the repo.
@@ -42,8 +43,24 @@ config=.dev/hardware.env
 value() { sed -n "s/^$1=//p" "$config" | tail -n 1; }
 wii_ip="${WII_BENCH_IP:-$(value WII64_WII_IP)}"
 mac_ip="$(value WII64_MAC_IP)"
-python3 -c 'import ipaddress,sys; [ipaddress.IPv4Address(x) for x in sys.argv[1:]]' "$wii_ip" "$mac_ip"
-python3 -c 'import socket,sys; s=socket.socket(); s.bind((sys.argv[1],0)); s.close()' "$mac_ip" || { echo "This Mac cannot bind to $mac_ip; check .dev/hardware.env." >&2; exit 1; }
+hbc_root="${WII64_HBC_ROOT:-$PWD/../hbc-reborn}"
+hbc_client="$hbc_root/tools/hbc.py"
+result_mode="${WII64_RESULT_MODE:-auto}"
+if [ "$result_mode" = auto ]; then
+	result_mode=push
+	if [ "$(uname -s)" = Darwin ]; then result_mode=pull; fi
+fi
+case "$result_mode" in
+	pull)
+		[[ -f "$hbc_client" && -z "${WII64_ROM_DIR:-}" ]] || { echo 'Pull mode needs HBC-Reborn and pre-staged ROMs. Use WII64_RESULT_MODE=push for ROM serving.' >&2; exit 2; }
+		;;
+	push)
+		python3 -c 'import ipaddress,sys; ipaddress.IPv4Address(sys.argv[1])' "$mac_ip"
+		python3 -c 'import socket,sys; s=socket.socket(); s.bind((sys.argv[1],0)); s.close()' "$mac_ip" || { echo "This Mac cannot bind to $mac_ip; check .dev/hardware.env." >&2; exit 1; }
+		;;
+	*) echo 'Use WII64_RESULT_MODE=auto, pull or push.' >&2; exit 2 ;;
+esac
+python3 -c 'import ipaddress,sys; ipaddress.IPv4Address(sys.argv[1])' "$wii_ip"
 # A bare connect-and-close can stall older HBC's loader; send a rejected header.
 for attempt in 1 2 3 4 5; do
 	if python3 -c 'import socket,sys; s=socket.create_connection((sys.argv[1],4299),3); s.sendall(b"PING"+bytes(12)); s.close()' "$wii_ip" 2>/dev/null; then break; fi
@@ -80,10 +97,25 @@ if [ "${WII64_SKIP_BUILD:-0}" != 1 ]; then
 fi
 dol="${WII64_DOL:-$dol}"
 [[ -f "$dol" ]] || { echo "Missing $dol; build it or unset WII64_SKIP_BUILD=1." >&2; exit 1; }
+if [ "$result_mode" = pull ]; then
+	python3 - "$dol" <<'PY'
+import pathlib, sys
+if b'result_tag=' not in pathlib.Path(sys.argv[1]).read_bytes():
+    sys.exit('This build cannot tag pull results. Rebuild with PERF_PROF, or explicitly use WII64_RESULT_MODE=push for a legacy artifact.')
+PY
+fi
 mkdir -p .dev/runs
 out="$(mktemp -d ".dev/runs/hardware-${target}-$(date +%Y%m%d-%H%M%S)-XXXX")"
 cp "$chain_file" "$out/diag.cfg"
-printf 'result_host=%s\n' "$mac_ip" >> "$out/diag.cfg"
+if [ "$result_mode" = push ]; then
+	printf 'result_host=%s\n' "$mac_ip" >> "$out/diag.cfg"
+else
+	# A host-generated tag prevents stale SD files from completing a new job.
+	if grep -Eq '^(result_host|result_tag|rom_fetch)=' "$out/diag.cfg"; then
+		echo 'Pull chains must not set result_host, result_tag or rom_fetch.' >&2; exit 2
+	fi
+	python3 -c 'import uuid; print("result_tag=" + uuid.uuid4().hex)' >> "$out/diag.cfg"
+fi
 if [ -n "${WII64_ROM_DIR:-}" ]; then
 	[ -d "$WII64_ROM_DIR" ] || { echo "ROM folder does not exist: $WII64_ROM_DIR" >&2; exit 1; }
 	printf 'rom_fetch=1\n' >> "$out/diag.cfg"
@@ -100,12 +132,21 @@ if [ "$(uname -s)" = Darwin ] && [ -x /usr/bin/python3 ]; then receiver_python=/
 source .dev/bench_session.sh "$chain"
 receiver_timeout="$WII64_RECEIVER_TIMEOUT"
 receiver_cmd=("$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac_ip" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
+if [ "$result_mode" = pull ]; then
+	receiver_cmd=("$receiver_python" scripts/hardware_collect.py "$out" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
+fi
 if [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
-hbc_root="${WII64_HBC_ROOT:-$PWD/../hbc-reborn}"
-hbc_client="$hbc_root/tools/hbc.py"
 if [ -f "$hbc_client" ]; then
 	# Port 4299 also answers inside an app: require HBC itself before uploading.
 	python3 "$hbc_client" --wii "$wii_ip" wait 90
+	if [ "$result_mode" = pull ]; then
+		python3 - "$hbc_client" "$wii_ip" <<'PY'
+import sys
+from scripts.hbc_watch import load_client
+if load_client(sys.argv[1]).proto(sys.argv[2]) < 2:
+    sys.exit('Pull collection needs HBC protocol 2+; use WII64_RESULT_MODE=push for older HBC.')
+PY
+	fi
 	python3 "$hbc_client" --wii "$wii_ip" --json status > "$out/hbc-before.json"
 	if [ "${WII64_STAGE_INPUTS:-1}" = 1 ]; then
 		bash .dev/stage_wii_inputs.sh "$chain"

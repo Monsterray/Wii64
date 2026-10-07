@@ -618,6 +618,13 @@ static void apply_diag_line(char* line) {
 	if (sscanf(line, "agent_crash_vi=%u", &devAgent_crashVi) == 1) return;
 #endif
 	line[strcspn(line, "\r\n")] = 0;
+#ifdef PERF_PROF
+	if (!strncmp(line, "result_tag=", 11)) {
+		if (strlen(line + 11) == 32 && strspn(line + 11, "0123456789abcdef") == 32)
+			perfProf_mark(line); // Host nonce: reject stale SD results after HBC reload.
+		return;
+	}
+#endif
 #if defined(GLN64_GX) && defined(PERF_PROF) && defined(PERF_CACHE_PROBES) && defined(HW_RVL)
 	if (!strcmp(line, "cache_probe=1") || !strcmp(line, "cache_probe=0")) {
 		cacheProbeGXTest = line[12] == '1';

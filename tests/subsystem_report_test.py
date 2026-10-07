@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import sys
 import tempfile
+import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from subsystem_report import load, milliseconds, report, self_milliseconds
@@ -114,4 +115,19 @@ except ValueError:
     pass
 else:
     raise AssertionError("zero-VI successful label accepted")
+# Per-run transport identity must differ; guest settings must not.
+with tempfile.TemporaryDirectory() as directory:
+    roots = [Path(directory) / name for name in ("a", "b", "c")]
+    for index, root in enumerate(roots):
+        root.mkdir()
+        (root / "diag.cfg").write_text(
+            "dynacore=dynarec\nresult_tag=" + str(index) * 32 + "\n")
+        (root / "perf.log").write_text(log.split("gpu_counters: clks=0", 1)[0])
+    command = [sys.executable, str(Path(__file__).resolve().parents[1] /
+               "scripts/subsystem_compare.py"), "--same-probes", *map(str, roots)]
+    accepted = subprocess.run(command, capture_output=True, text=True)
+    assert accepted.returncode == 0, accepted.stderr
+    (roots[1] / "diag.cfg").write_text("dynacore=pure\nresult_tag=" + "1" * 32 + "\n")
+    rejected = subprocess.run(command, capture_output=True, text=True)
+    assert rejected.returncode != 0 and "diagnostic settings/input chains differ" in rejected.stderr
 print("subsystem reports, optional probes, inclusive estimates and A/B/A checks: ok")

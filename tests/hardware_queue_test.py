@@ -30,6 +30,7 @@ with tempfile.TemporaryDirectory(prefix="wii64-queue-") as directory:
                       " assert 'WII64_SKIP_BUILD=1' in sys.argv\n"
                       " assert 'WII64_ROM_DIR=' in sys.argv\n"
                       " assert 'WII64_HBC_ROOT=' in sys.argv\n"
+                      " assert 'WII64_RESULT_MODE=auto' in sys.argv\n"
                       " assert 'WII64_CHAIN_FILE=' + os.path.join(sys.argv[sys.argv.index('--cwd')+1], 'scripts/chains/audio_reference.txt') in sys.argv\n"
                       " i = sys.argv.index('bash')\n"
                       " assert sys.argv[i + 1] == '-c'\n"

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("--same-probes", action="store_true", help="candidate/reference/candidate, not probe overhead")
     args = parser.parse_args()
     configs = [[line.strip() for line in (root / "diag.cfg").read_text().splitlines()
-                if line.strip() and not line.startswith(("#", "result_host="))] for root in args.runs]
+                if line.strip() and not line.startswith(("#", "result_host=", "result_tag="))] for root in args.runs]
     if configs[0] != configs[1] or configs[0] != configs[2]:
         parser.error("diagnostic settings/input chains differ")
     try:
