@@ -149,25 +149,82 @@ workstation client and central lease coordinate all projects' Wii tests.
 ## Direct HDMI capture on macOS
 
 The workstation's UGREEN 15389 dongle is a local video device, not a URL.
-The native helper uses AVFoundation. It has no server, Python dependency or
-audio input. The default device is exact; it will not select the FaceTime camera.
-Xcode Command Line Tools provide the Swift compiler. The wrapper caches its
-binary under ignored `.dev/tools/` and rebuilds it when the source changes.
+The native helper uses AVFoundation, with no server or incoming port. The Python
+standard-library wrapper uses the existing Wii queue. It does not process video.
+The default device is exact; it will not select the FaceTime camera. Xcode Command
+Line Tools provide Swift. The helper has an embedded privacy description and an
+ad-hoc signature. Its content-aware build cache is under ignored `.dev/tools/`.
 
 ```bash
 bash scripts/wii_video_capture.sh list
+bash scripts/wii_video_capture.sh inspect
+bash scripts/wii_video_capture.sh usb-info
 bash scripts/wii_video_capture.sh authorize
 bash scripts/wii_video_capture.sh snapshot .dev/runs/wii-frame.jpg
-bash scripts/wii_video_capture.sh capture .dev/runs/wii-video.mov --seconds 10
+bash scripts/wii_video_capture.sh capture .dev/runs/wii-video.mov --seconds 15 \
+  --frames-dir .dev/runs/wii-video-frames --report .dev/runs/wii-video.json
+python3 ~/.wii-bench/wiibench.py wait JOB_ID --tail 20
+bash scripts/wii_video_capture.sh report .dev/runs/wii-video.json
+bash scripts/wii_video_capture.sh analyze .dev/runs/wii-frame.jpg --require-nonblack
 ```
 
 Run `authorize` once from the intended host application and approve macOS Camera
 access there. This privacy permission is separate from the firewall. Routine
 captures check authorization and fail with instructions rather than request it.
-Use `--device "name from list"` for another dongle. Choose a new output path:
-existing files are preserved. Movies are limited to 1–300 seconds; missing frames
-and unfinished recordings have deadlines. Captures remain local and ignored.
-Capture during your queue job, not another project's turn.
+Captures submitted outside a queue job print a job ID and run when the Wii is
+available. Inside an existing job they use that lease. The native executable and
+its launcher are frozen before submission.
+A local advisory lock rejects overlapping Wii64 captures. Another application
+can still own the device; close that application's capture session, not its
+unrelated processes.
+
+Use `--device-id ID` from `inspect` for explicit selection. `--device NAME` is also
+accepted if the name is unique. Reinspect after reconnecting the USB device.
+`--format INDEX --fps RATE` selects an advertised device mode. `--pixel-format
+FOURCC` selects a supported decoded output type, not necessarily the USB wire
+encoding. Unsupported requests fail; they do not silently choose another mode.
+
+The post-warmup capture window is 1–600 seconds; movies default to a 512 MiB size cap
+(`--max-mib 1...2048`). `--warmup 0...30` defaults to 3 seconds. Periodic JPEGs use
+`--interval 0.1...60`, default 1 second. Choose new paths under `.dev/runs/`;
+existing outputs are preserved.
+Movies include preroll; `--seconds` specifies the capture window after warmup.
+The report gives actual encoded duration, which can differ due to encoder startup.
+Reports include timestamps, frame/drop counts,
+brightness samples and session errors. SIGINT/SIGTERM stop and finalize recording;
+an outer deadline terminates only the process owned by this capture.
+
+The first observed dongle frame was black. WiiXplorer-NG's later frames show the
+console normally. Warm-up and periodic frames help distinguish startup behavior
+from persistent failure; black content is not proof of lost HDMI signal.
+`analyze --require-nonblack` is an optional dark-image check, not a Wii correctness
+verdict. Capture FPS measures delivered video, not guest N64 emulation speed.
+
+Audio is off by default. To record HDMI audio, first inspect the audio endpoints,
+run `authorize --audio` explicitly, then use `--audio-device-id ID`. Never use a
+default microphone as a substitute. Routine capture does not request Camera or
+Microphone permission. A new host application may still need one macOS approval;
+no privacy or firewall policy is disabled.
+
+Keep video capture off for clean performance comparisons, or enable the same mode
+in all A/B/A runs. USB traffic and host JPEG encoding can change collection timing.
+For API sources, supported controls and measured modes, see
+[the capture research](capture-device-research-2026-10-07.md).
+
+Run the reusable hardware smoke test explicitly through the queue. It records the
+existing HDMI picture; it does not launch a game or send Wii controls. The new
+output directory must not exist. It checks three recording modes, encoded sizes,
+SIGTERM finalization and rejection of an early file-size stop.
+
+```bash
+python3 ~/.wii-bench/wiibench.py add --name "Wii64 HDMI validation" \
+  --agent wii64-capture --timeout 180 --cwd "$PWD" -- \
+  python3 tests/wii_video_hardware_test.py .dev/runs/hdmi-validation-NEW
+```
+
+Keep the hardware test and source helpers unchanged until this matrix job ends.
+The host unit suite does not reserve the Wii or start camera capture. On this Mac,
+720×480 MOV encoding remains unresolved; use 720p60 for routine recordings.
 
 ## What is on the card
 
