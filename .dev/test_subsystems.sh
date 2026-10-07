@@ -39,6 +39,8 @@ python3 tests/hardware_queue_test.py
 python3 tests/hardware_collect_test.py
 python3 tests/hardware_stage_roms_test.py
 python3 tests/wii_video_test.py
+python3 tests/wii_video_build_test.py
+python3 tests/wii_video_run_test.py
 python3 tests/build_agent_test.py
 python3 tests/subsystem_report_test.py
 python3 tests/subsystem_workflow_test.py
