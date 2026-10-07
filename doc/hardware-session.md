@@ -149,11 +149,13 @@ workstation client and central lease coordinate all projects' Wii tests.
 ## Direct HDMI capture on macOS
 
 The workstation's UGREEN 15389 dongle is a local video device, not a URL.
-The native helper uses AVFoundation, with no server or incoming port. The Python
+The native helper uses AVFoundation, with no server or incoming port. Live commands
+launch the separate **Wii64 HDMI Capture** application through macOS LaunchServices.
+Its Camera and Microphone grants are separate from Codex's. The Python
 standard-library wrapper uses the existing Wii queue. It does not process video.
 The default device is exact; it will not select the FaceTime camera. Xcode Command
-Line Tools provide Swift. The helper has an embedded privacy description and an
-ad-hoc signature. Its content-aware build cache is under ignored `.dev/tools/`.
+Line Tools provide Swift. The helper has privacy descriptions and an ad-hoc
+signature. Its content-aware app/binary cache is under ignored `.dev/tools/`.
 
 ```bash
 bash scripts/wii_video_capture.sh list
@@ -168,12 +170,14 @@ bash scripts/wii_video_capture.sh report .dev/runs/wii-video.json
 bash scripts/wii_video_capture.sh analyze .dev/runs/wii-frame.jpg --require-nonblack
 ```
 
-Run `authorize` once from the intended host application and approve macOS Camera
-access there. This privacy permission is separate from the firewall. Routine
+Run `authorize` once and approve Camera access for **Wii64 HDMI Capture**, not
+Codex. This privacy permission is separate from the firewall. Routine
 captures check authorization and fail with instructions rather than request it.
 Captures submitted outside a queue job print a job ID and run when the Wii is
 available. Inside an existing job they use that lease. The native executable and
-its launcher are frozen before submission.
+its launcher and the complete signed app are frozen before submission. The wrapper
+checks the app's completion status, not only `open`'s launch result. On cancellation
+it verifies the recorder PID's executable before sending a signal.
 A local advisory lock rejects overlapping Wii64 captures. Another application
 can still own the device; close that application's capture session, not its
 unrelated processes.
@@ -200,13 +204,16 @@ from persistent failure; black content is not proof of lost HDMI signal.
 `analyze --require-nonblack` is an optional dark-image check, not a Wii correctness
 verdict. Capture FPS measures delivered video, not guest N64 emulation speed.
 
-Audio is off by default. The owner declined Microphone access for Codex; do not
-run `authorize --audio` or launch audio capture from Codex. An exact audio device
-ID does not narrow macOS's app-wide Microphone permission. Use a separately
-trusted recording app or validate a device-only USB capture guest before adding
-audio automation. Never use a default microphone as a substitute. Routine capture
-does not request Camera or Microphone permission; no privacy or firewall policy
-is disabled. See [capture tools and privacy](capture-tools-and-privacy-2026-10-07.md).
+Audio is off by default. The owner permits Microphone access for the separate
+recorder, not Codex. Run `bash scripts/wii_video_capture.sh authorize --audio`
+and approve **Wii64 HDMI Capture** only. Use `list` to obtain the exact HDMI audio
+ID, then pass `--audio-device-id ID` to `capture`. Never substitute the default
+microphone. Device selection does not narrow the recorder's app-wide permission.
+Routine captures do not request permission. A changed ad-hoc-signed recorder
+may need renewed approval; unchanged builds retain the cached signed app. No
+privacy or firewall policy is disabled. Directly executing the cached binary
+does not use this independent app launch path. See
+[capture tools and privacy](capture-tools-and-privacy-2026-10-07.md).
 
 Keep video capture off for clean performance comparisons, or enable the same mode
 in all A/B/A runs. USB traffic and host JPEG encoding can change collection timing.

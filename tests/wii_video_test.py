@@ -86,6 +86,15 @@ class VideoCLITest(unittest.TestCase):
                 self.assert_cli_error(self.run_helper("capture", self.tmp / "invalid.mov",
                                                      flag, value), "wii_video:")
 
+    def test_launch_status_records_real_failure_and_success(self):
+        path = self.tmp / "launch.json"
+        failed = self.run_helper("--launch-status", path, "unknown")
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertEqual(json.loads(path.read_text())["exitCode"], failed.returncode)
+        passed = self.run_helper("--launch-status", path, "self-test")
+        self.assertEqual(passed.returncode, 0, passed.stderr)
+        self.assertEqual(json.loads(path.read_text())["exitCode"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

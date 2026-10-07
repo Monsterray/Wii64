@@ -4,13 +4,13 @@ Research date: 2026-10-07. Baseline: master `e266c144974e28981fd3d43703ae40a8a55
 
 ## Required privacy boundary
 
-The owner declined Microphone access for Codex. Do not request it again or try another API to evade that decision. Continue authorized video capture and offline file analysis only.
+The owner declined Microphone access for Codex. Do not request it or try another API to evade that decision. The owner subsequently authorized an app-wide grant for a separate CLI-backed recorder. Wii64 1.6.19 packages the existing native helper as **Wii64 HDMI Capture.app**, launched through LaunchServices. Approve that recorder only; never approve a prompt naming Codex. The prior VM proposal remains optional, not required for the accepted app-wide grant.
 
 macOS exposes Microphone authorization per application, not a supported per-USB-device grant. A script's input ID selects a source; it does not restrict the OS grant. Running FFmpeg, Swift or Python is not an exception. The existing native helper uses Codex's responsible-app privacy context when launched here. A separately launched capture application can have its own authorization, but that remains app-wide. [Apple microphone controls](https://support.apple.com/guide/mac-help/control-access-to-the-microphone-on-mac-mchla1b1e1fe/mac), [Apple capture authorization](https://developer.apple.com/documentation/avfoundation/requesting-authorization-to-capture-and-save-media).
 
 | Architecture | Access boundary | Limitation |
 |---|---|---|
-| Current queued native CLI | Exact video selection; Codex Microphone stays denied | No HDMI audio in this workflow |
+| Queued native CLI through the separate app (1.6.19) | Recorder owns Camera/Microphone grants; Codex stays denied | Recorder's grant is app-wide; actual audio still needs a hardware check |
 | User-launched QuickTime or OBS | Capture app gets its own grant; Codex analyzes authorized output files | App can access other audio inputs if permitted; source selection is not OS isolation |
 | Small independent recorder | Audited binary fixes the UGREEN input and refuses fallback | Application policy only; signing, launch attribution and updates need validation |
 | Linux VM with only UGREEN passed through | Guest receives that composite USB device, not the Mac microphone | Hypervisor remains trusted; compatibility, throughput and host-input forwarding need testing |
@@ -79,8 +79,57 @@ Notable alternatives reviewed:
 3. Reuse bounded captures and offline reports: timing percentiles, repeated-frame observations, brightness, audio peaks/RMS, silence and synchronization markers. Flag findings for review; static menus, fades and deliberate silence are not failures.
 4. Compare capture-on/off host collection behavior and use identical capture settings across A/B/A runs. Delivered USB frames can repeat a guest frame. Use Wii64 probes as the performance authority, not capture FPS.
 
-Next experiment: validate device-only USB capture in an isolated guest, if the owner chooses that architecture. No VM, packages, firmware changes or audio-permission changes were installed by this research. No game upload or new media capture was needed. Keep future media, descriptors with personal identifiers and firmware dumps out of Git.
+The original research made no VM, package, firmware or audio-permission changes. With the subsequent CLI-recorder approval, the next experiment is a bounded queued HDMI audio/video capture through the separate app, followed by a permission-state comparison with the direct Codex-launched helper. Keep media, descriptors with personal identifiers and firmware dumps out of Git.
 
 ## Local-model review
 
 Two asynchronous courts used `muse-glimmer:30b` and `gemma4:26b`, each with a 10,000-token response cap; both completed. They helped surface privacy and vendor-tool risks. Source checks rejected claims that USB passthrough provides IOMMU isolation, that transferring intentionally captured files defeats the privacy goal, or that an encoded video codec identifies USB transport. A fetch/summarize job hit a 1,400-token cap; its incomplete answer was not used as evidence. Improvements: expose an explicit fetch budget, flag truncation clearly, and separate supplied facts from platform-specific hypotheses.
+
+## CLI-backed recorder update (1.6.19)
+
+The owner accepted app-wide permission for a separate recorder. The existing
+Swift helper now runs inside a signed app bundle for live commands. `open`
+launches it through LaunchServices; private temporary logs and a PID/completion
+file preserve its actual result. Missing completion after a crash fails the
+command. Timeout/cancellation verifies the PID's executable before signaling it.
+Queued captures freeze the complete signed bundle and launcher. No new server,
+login item, VM or media dependency was added.
+
+Validation:
+
+- Native CLI: 10 tests pass. Runner: 19 tests pass. Build-cache checks pass,
+  including unchanged-app reuse, tampering and failed-build preservation.
+- The full host/subsystem suite passes. The final clean glN64 Wii build passes
+  with documented HBC SDK 1.9.4, commit `0b214c7a`, built into Wii64's own archive.
+  The shared HBC checkout stays at 1.8.8 and was not changed. SDK source snapshot:
+  `/private/tmp/wii64-capture-sdk.nggTth`; its sparse checkout includes `sdk` and
+  `channel/channelapp`, which the SDK makefile requires. Pass that directory as
+  `HBC_AGENT_ROOT` for subsequent builds while the shared source remains older.
+- Muted Dolphin startup of the final build passes in a separate profile, with
+  no invalid-access, DSP or SD-sync warnings. DOL SHA-256:
+  `fe694e36d8f34fd146e550317728c95a1423040d9ac57e0cefe59a2999bc8242`.
+- macOS TCC logs identify the Microphone request's subject and responsible
+  process as `org.wii64.dev-capture`, not Codex. The recorder initially reports
+  `not_determined`; the direct Codex-launched helper still reports Microphone
+  denied. These checks do not record an audio input.
+- Both authorization attempts timed out without a decision; the second used a
+  three-minute response window. HDMI audio recording and copied-bundle grant
+  persistence remain pending until approval succeeds. Do not label these passed.
+- A real LaunchServices invocation of an invalid recorder command returns the
+  recorder's exit code 2 rather than a launch-success result. macOS can warn that
+  a very short-lived app exited before `open` could wait; the completion marker
+  still preserves the actual failure in this check.
+
+The hardware smoke test accepts `--audio-device-id ID`, checks an encoded audio
+track in every tested mode, and retains cancellation/file-cap checks. Use it
+under the existing Wii lease after approval; it records the existing HDMI
+picture and leaves the console untouched. A track proves recording, not sound
+quality or correct Wii64 synthesis.
+
+Two further local-model courts used 10,000-token caps and completed in roughly
+46 and 90 seconds. Their launch/status cautions informed the implementation.
+Their unsupported code findings were rejected against live `open -h`, source
+and tests, including claims that this Mac lacks stdout/argument flags and that
+the app cache stores the unbundled executable's hash. Local review needs better
+adherence to supplied positive evidence; no production change came from those
+false findings.

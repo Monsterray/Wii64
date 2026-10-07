@@ -5,6 +5,7 @@ Discovery, permission setup and offline analysis never reserve the Wii.
 Video uses native AVFoundation, not a network listener or Python camera API.
 """
 import fcntl
+import ctypes
 import json
 import math
 import os
@@ -55,6 +56,8 @@ def run_owned(binary, args, timeout):
             fcntl.flock(owned, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise RuntimeError("another Wii64 capture owns this workstation's capture lock")
+        if Path(binary).suffix == ".app":
+            return run_application(Path(binary), args, timeout)
         process = subprocess.Popen([str(binary), *args], start_new_session=True)
         previous = {}
 
@@ -83,6 +86,80 @@ def run_owned(binary, args, timeout):
         finally:
             for signum, handler in previous.items():
                 signal.signal(signum, handler)
+
+
+def signal_application(app, status, signum):
+    """LaunchServices children are not in open's process group. Check ownership."""
+    try:
+        data = json.loads(status.read_text())
+    except FileNotFoundError:
+        return  # App never started; do not signal an unrelated process.
+    pid = data.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 1:
+        raise RuntimeError("invalid recorder PID")
+    if data.get("exitCode") is not None:
+        return
+    buffer = ctypes.create_string_buffer(4096)
+    library = ctypes.CDLL("/usr/lib/libproc.dylib")
+    if library.proc_pidpath(pid, buffer, len(buffer)) <= 0:
+        return  # Already exited.
+    if Path(os.fsdecode(buffer.value)).resolve() != (app / "Contents/MacOS/wii-video").resolve():
+        raise RuntimeError("recorder PID no longer belongs to this application")
+    try:
+        os.kill(pid, signum)
+    except ProcessLookupError:
+        pass
+
+
+def run_application(app, args, timeout):
+    """Launch via macOS, preserve logs, and return the app's actual exit code."""
+    if args[:1] == ["authorize"]:
+        print("Approve only 'Wii64 HDMI Capture' in the macOS prompt, not Codex.",
+              file=sys.stderr, flush=True)
+    with tempfile.TemporaryDirectory(prefix="wii64-recorder-") as temporary:
+        directory = Path(temporary)
+        status, output, error = [directory / name for name in ("status.json", "stdout", "stderr")]
+        output.touch()
+        error.touch()
+        process = subprocess.Popen(["/usr/bin/open", "-n", "-W", "-a", str(app),
+                                    "--stdout", str(output), "--stderr", str(error),
+                                    "--args", "--launch-status", str(status), *args], start_new_session=True)
+        previous = {}
+
+        def stop(signum, frame):
+            raise InterruptedError(f"recorder interrupted by signal {signum}")
+
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            previous[signum] = signal.signal(signum, stop)
+        try:
+            try:
+                launch_code = process.wait(timeout=timeout)
+            except (subprocess.TimeoutExpired, InterruptedError) as failure:
+                for signum in previous:
+                    signal.signal(signum, signal.SIG_IGN)
+                try:
+                    signal_application(app, status, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=12)
+                    except subprocess.TimeoutExpired:
+                        signal_application(app, status, signal.SIGKILL)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
+                raise RuntimeError(f"recorder stopped ({failure}); partial output retained")
+            if launch_code:
+                raise RuntimeError(f"macOS could not launch recorder (exit {launch_code})")
+            data = json.loads(status.read_text())
+            code = data.get("exitCode")
+            if not isinstance(code, int) or isinstance(code, bool) or not 0 <= code <= 255:
+                raise RuntimeError("recorder ended without a valid completion status")
+            return code
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
+            print(output.read_text(), end="")
+            print(error.read_text(), end="", file=sys.stderr)
 
 
 def main(args):
@@ -119,9 +196,12 @@ def main(args):
     if capture and (len(args) < 2 or len(args) % 2 or
                     len(set(args[2::2])) != len(args[2::2])):
         raise ValueError("capture needs an output and unique option/value pairs")
-    timeout = deadline(args) if capture else 180
-    binary = native or build()
+    timeout = deadline(args) if capture else (220 if args[:1] == ["authorize"] else 180)
+    binary = native or build(application=bool(args and args[0] in
+                                             ("list", "inspect", "authorize", "snapshot", "capture")))
     if not capture:
+        if binary.suffix == ".app":
+            return run_application(binary, args, timeout)
         return subprocess.call([str(binary), *args])
     if len(args) < 2:
         raise ValueError("capture requires a new output path")
@@ -144,8 +224,11 @@ def main(args):
         raise ValueError(f"Wii queue client not found: {client}")
     run_root.mkdir(parents=True, exist_ok=True)
     frozen_dir = Path(tempfile.mkdtemp(prefix="hdmi-helper-", dir=run_root))
-    frozen = frozen_dir / "wii-video"
-    shutil.copy2(binary, frozen)
+    frozen = frozen_dir / binary.name
+    if binary.suffix == ".app":
+        shutil.copytree(binary, frozen)
+    else:
+        shutil.copy2(binary, frozen)
     launcher = frozen_dir / "wii_video_run.py"
     shutil.copy2(Path(__file__), launcher)
     shutil.copy2(ROOT / "scripts/build_wii_video.py", frozen_dir / "build_wii_video.py")

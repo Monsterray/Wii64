@@ -34,7 +34,7 @@ class VideoRunTest(unittest.TestCase):
         (self.root / "scripts/build_wii_video.py").write_text("# fixture builder\n")
 
     def main_patches(self):
-        return patch.dict(RUNNER, {"ROOT": self.root, "build": lambda: self.root / "helper"})
+        return patch.dict(RUNNER, {"ROOT": self.root, "build": lambda **kwargs: self.root / "helper"})
 
     def test_capture_without_lease_queues_frozen_helper(self):
         client = self.root / "client.py"
@@ -229,6 +229,81 @@ class VideoRunTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "another Wii64 capture"):
                 runner["run_owned"]("helper", [], 10)
         popen.assert_not_called()
+
+    def test_app_returns_recorder_failure_not_launch_success(self):
+        process = unittest.mock.Mock()
+        process.wait.return_value = 0
+
+        def launch(command, **kwargs):
+            status = Path(command[command.index("--launch-status") + 1])
+            status.write_text(json.dumps({"pid": 4321, "exitCode": 7}))
+            return process
+
+        with patch("subprocess.Popen", side_effect=launch) as popen:
+            self.assertEqual(runner["run_application"](self.root / "Recorder.app", ["list"], 10), 7)
+        command = popen.call_args.args[0]
+        self.assertEqual(command[:4], ["/usr/bin/open", "-n", "-W", "-a"])
+        self.assertEqual(command[-1], "list")
+
+    def test_crashed_app_without_completion_does_not_pass(self):
+        process = unittest.mock.Mock()
+        process.wait.return_value = 0
+
+        def launch(command, **kwargs):
+            Path(command[command.index("--launch-status") + 1]).write_text(
+                json.dumps({"pid": 4321, "exitCode": None}))
+            return process
+
+        with patch("subprocess.Popen", side_effect=launch):
+            with self.assertRaisesRegex(RuntimeError, "completion status"):
+                runner["run_application"](self.root / "Recorder.app", ["list"], 10)
+
+    def test_app_timeout_stops_recorder_and_reaps_launch_command(self):
+        process = unittest.mock.Mock()
+        process.wait.side_effect = [subprocess.TimeoutExpired("open", 1),
+                                    subprocess.TimeoutExpired("open", 12), 0]
+        process.poll.return_value = None
+        app = self.root / "Recorder.app"
+        with patch("subprocess.Popen", return_value=process), \
+                patch.dict(RUNNER, {"signal_application": unittest.mock.Mock()}):
+            stop = RUNNER["signal_application"]
+            with self.assertRaisesRegex(RuntimeError, "recorder stopped"):
+                runner["run_application"](app, ["capture"], 1)
+            self.assertEqual([c.args[2] for c in stop.call_args_list], [signal.SIGTERM, signal.SIGKILL])
+        self.assertEqual(process.wait.call_args_list, [call(timeout=1), call(timeout=12), call(timeout=5)])
+        process.kill.assert_called_once()
+
+    def test_signal_refuses_pid_reused_by_another_executable(self):
+        status = self.root / "status.json"
+        status.write_text(json.dumps({"pid": 4321, "exitCode": None}))
+        library = unittest.mock.Mock()
+
+        def path(pid, buffer, length):
+            buffer.value = b"/unrelated/process"
+            return len(buffer.value)
+
+        library.proc_pidpath.side_effect = path
+        with patch("ctypes.CDLL", return_value=library), patch("os.kill") as kill:
+            with self.assertRaisesRegex(RuntimeError, "no longer belongs"):
+                runner["signal_application"](self.root / "Recorder.app", status, signal.SIGTERM)
+        kill.assert_not_called()
+
+    def test_queue_freezes_entire_application_bundle(self):
+        client = self.root / "client.py"
+        client.touch()
+        app = self.root / "Recorder.app"
+        (app / "Contents/MacOS").mkdir(parents=True)
+        (app / "Contents/MacOS/wii-video").write_bytes(b"signed fixture")
+        (app / "Contents/Info.plist").write_bytes(b"fixture plist")
+        with patch.dict(RUNNER, {"ROOT": self.root, "build": lambda **kwargs: app}), \
+                patch.dict(os.environ, {"WII_BENCH_CLIENT": str(client)}, clear=True), \
+                patch("subprocess.call", return_value=0) as queue:
+            self.assertEqual(runner["main"](["capture", ".dev/runs/queued.mov"]), 0)
+        command = queue.call_args.args[0]
+        frozen = Path(command[command.index("--native") + 1])
+        self.assertEqual(frozen.suffix, ".app")
+        self.assertEqual((frozen / "Contents/MacOS/wii-video").read_bytes(), b"signed fixture")
+        self.assertEqual((frozen / "Contents/Info.plist").read_bytes(), b"fixture plist")
 
 
 if __name__ == "__main__":

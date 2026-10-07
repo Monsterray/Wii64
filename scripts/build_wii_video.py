@@ -6,6 +6,7 @@ scripts/build-wii-capture.py. No changes to OS privacy/firewall policy.
 """
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -14,7 +15,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def build():
+def build(application=False):
     if sys.platform != "darwin":
         raise SystemExit("Native HDMI capture requires macOS")
     import fcntl
@@ -22,7 +23,46 @@ def build():
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / "wii-video-build.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return build_locked()
+        binary = build_locked()
+        return build_application(binary) if application else binary
+
+
+def build_application(binary):
+    """Keep a real LaunchServices bundle separate from its CLI caller."""
+    directory = binary.parent
+    output = directory / "Wii64 HDMI Capture.app"
+    plist = ROOT / "scripts/wii_video.plist"
+    digest = hashlib.sha256(binary.read_bytes() + plist.read_bytes()).hexdigest()
+    stamp = directory / "wii-video-app.json"
+    try:
+        cached = json.loads(stamp.read_text())
+        if cached["inputs_sha256"] == digest and \
+                hashlib.sha256((output / "Contents/MacOS/wii-video").read_bytes()).hexdigest() == cached["binary_sha256"] and \
+                (output / "Contents/Info.plist").read_bytes() == plist.read_bytes():
+            subprocess.run(["codesign", "--verify", "--strict", str(output)], check=True)
+            return output
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError):
+        pass
+    with tempfile.TemporaryDirectory(prefix="video-app-", dir=directory) as temporary:
+        app = Path(temporary) / output.name
+        (app / "Contents/MacOS").mkdir(parents=True)
+        shutil.copy2(binary, app / "Contents/MacOS/wii-video")
+        shutil.copy2(plist, app / "Contents/Info.plist")
+        subprocess.run(["codesign", "--force", "--sign", "-", str(app)], check=True)
+        subprocess.run(["codesign", "--verify", "--strict", str(app)], check=True)
+        previous = Path(temporary) / "previous.app"
+        if output.exists():
+            output.replace(previous)
+        try:
+            app.replace(output)
+        except OSError:
+            if previous.exists():
+                previous.replace(output)
+            raise
+        stamp.write_text(json.dumps({"inputs_sha256": digest,
+                                    "binary_sha256": hashlib.sha256(
+                                        (output / "Contents/MacOS/wii-video").read_bytes()).hexdigest()}) + "\n")
+    return output
 
 
 def build_locked():
@@ -64,4 +104,4 @@ def build_locked():
 
 
 if __name__ == "__main__":
-    print(build())
+    print(build(application="--app" in sys.argv[1:]))

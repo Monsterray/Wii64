@@ -3,8 +3,10 @@
 
 Queue with wiibench.py add --timeout 180 --cwd <repo> -- python3
 tests/wii_video_hardware_test.py .dev/runs/<new-directory>.
-Leaves the Wii untouched; records the existing HDMI picture with no audio.
+Leaves the Wii untouched; records the existing HDMI picture. Audio is opt-in
+with --audio-device-id after authorizing the separate recorder application.
 """
+import argparse
 import json
 import os
 from pathlib import Path
@@ -17,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "scripts/wii_video_capture.sh"
 
 
-def main(directory):
+def main(directory, audio_device=None):
     if not os.environ.get("WII_BENCH_JOB_START") or not os.environ.get("WII_BENCH_IP"):
         raise RuntimeError("queue this hardware test; do not invent a lease")
     output = Path(directory).resolve()
@@ -25,6 +27,9 @@ def main(directory):
         raise RuntimeError("hardware results must stay under .dev/runs")
     output.mkdir(parents=True, exist_ok=False)
     info = json.loads(subprocess.check_output(["bash", str(WRAPPER), "inspect"], text=True, timeout=180))
+    if audio_device and (info["audioAuthorization"] != "authorized" or
+                         not any(d["id"] == audio_device for d in info["audio"])):
+        raise RuntimeError("selected audio endpoint is unavailable or recorder permission is missing")
     rows = []
     for width, height, rate in ((1280, 720, 60), (1920, 1080, 60), (2560, 1440, 30)):
         formats = [f for f in info["formats"] if f["width"] == width and f["height"] == height
@@ -36,10 +41,13 @@ def main(directory):
         command = ["bash", str(WRAPPER), "capture", str(stem.with_suffix(".mov")),
                    "--seconds", "3", "--format", str(formats[0]["index"]), "--fps", str(rate),
                    "--pixel-format", "420v", "--frames-dir", str(stem) + "-frames", "--report", str(report)]
+        if audio_device:
+            command += ["--audio-device-id", audio_device]
         result = subprocess.run(command, timeout=65)
         data = json.loads(report.read_text())
         assert result.returncode == 0 and not data["error"], data.get("error")
         assert data["movieFinalized"] and data["videoTracks"], "missing finalized video"
+        assert data["audioTracks"] == (1 if audio_device else 0), "encoded audio track count mismatch"
         assert all(t["width"] == width and t["height"] == height for t in data["videoTracks"]), "encoded size mismatch"
         assert data["observedFPS"] >= rate * 0.85, "unexpected delivered-rate shortfall"
         rows.append({k: v for k, v in data.items() if k != "samples"})
@@ -76,7 +84,8 @@ def main(directory):
     assert result.returncode != 0 and "file-size cap" in cap["error"], "size cap falsely passed"
     summary = {"queueJob": os.environ.get("WII_BENCH_JOB"), "modes": rows,
                "cancellation": "PASS: finalized partial movie", "fileSizeCap": "PASS: incomplete capture rejected",
-               "audio": "not tested: explicit permission/device selection required",
+               "audio": "PASS: selected endpoint recorded in each mode" if audio_device else "not tested: opt-in",
+               "audioDeviceID": audio_device or "",
                "480pMOV": "not validated: current AVFoundation path returns Cannot Record"}
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print("HDMI hardware: modes, encoded dimensions, graceful cancel and size cap PASS")
@@ -84,7 +93,11 @@ def main(directory):
 
 if __name__ == "__main__":
     try:
-        main(sys.argv[1])
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument("directory")
+        parser.add_argument("--audio-device-id")
+        args = parser.parse_args()
+        main(args.directory, args.audio_device_id)
     except (AssertionError, IndexError, KeyError, OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"HDMI hardware test failed: {error}", file=sys.stderr)
         sys.exit(1)

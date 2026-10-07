@@ -42,4 +42,25 @@ with tempfile.TemporaryDirectory(prefix="wii64 video build ") as directory:
         else:
             raise AssertionError("Accepted compile failure")
         assert binary.read_bytes() == previous
+        fail[0] = False
+        app = build(application=True)
+        app_binary = app / "Contents/MacOS/wii-video"
+        assert app_binary.read_bytes() == previous
+        assert (app / "Contents/Info.plist").read_text() == "fixture: wii_video.plist"
+        count = len(calls)
+        build(application=True)
+        assert len(calls) == count + 1, "Cached app was rebuilt/re-signed"
+        assert calls[-1][:3] == ["codesign", "--verify", "--strict"]
+        app_binary.write_bytes(b"tampered app")
+        build(application=True)
+        assert app_binary.read_bytes() == previous
+        (root / "scripts/wii_video.swift").write_text("newer source")
+        fail[0] = True
+        try:
+            build(application=True)
+        except subprocess.CalledProcessError:
+            pass
+        else:
+            raise AssertionError("Accepted app compile failure")
+        assert app_binary.read_bytes() == previous, "Failure destroyed previous app"
 print("Capture build: cached content, signature checks and preserved previous binary PASS")

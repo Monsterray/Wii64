@@ -4,10 +4,24 @@ import CoreImage
 import Foundation
 
 private let defaultDevice = "UGREEN 15389"
+private var launchStatusURL: URL?
+private var launchExitCode: Int32 = 1
+
+private func writeLaunchStatus(_ code: Int32?) {
+    guard let url = launchStatusURL else { return }
+    let value: [String: Any] = ["pid": ProcessInfo.processInfo.processIdentifier,
+                              "exitCode": code.map { Int($0) as Any } ?? NSNull()]
+    do { try JSONSerialization.data(withJSONObject: value).write(to: url, options: .atomic) }
+    catch { fputs("wii_video: cannot write launcher status: \(error)\n", stderr) }
+}
+private func finish(_ code: Int32) -> Never {
+    launchExitCode = code
+    exit(code)
+}
 
 private func fail(_ message: String, code: Int32 = 1) -> Never {
     fputs("wii_video: \(message)\n", stderr)
-    exit(code)
+    finish(code)
 }
 
 private func usage() -> Never {
@@ -59,7 +73,7 @@ private func analyze(_ path: String, requireNonblack: Bool) -> Never {
     printJSON(["width": rep.pixelsWide, "height": rep.pixelsHigh, "meanBrightness": stats.meanBrightness,
                "peakBrightness": stats.peakBrightness, "darkFraction": stats.darkFraction,
                "essentiallyBlack": stats.essentiallyBlack])
-    exit(requireNonblack && stats.essentiallyBlack ? 1 : 0)
+    finish(requireNonblack && stats.essentiallyBlack ? 1 : 0)
 }
 private func selfTest() -> Never {
     func fixture(_ value: UInt8) -> NSBitmapImageRep {
@@ -84,11 +98,18 @@ private func selfTest() -> Never {
     let sixty = frameDuration(60, minimum: minimum, maximum: maximum)
     guard CMTimeCompare(sixty, minimum) >= 0 && CMTimeCompare(sixty, maximum) <= 0 else { fail("self-test failed: 60 fps duration rounding") }
     print("self-test: image stats, warmup boundary, command validation PASS")
-    exit(0)
+    finish(0)
 }
 
 // Offline commands deliberately run before enumerating any capture device.
-let args = Array(CommandLine.arguments.dropFirst())
+var args = Array(CommandLine.arguments.dropFirst())
+if args.first == "--launch-status" {
+    guard args.count >= 3, args[1].hasPrefix("/") else { usage() }
+    launchStatusURL = URL(fileURLWithPath: args[1])
+    args.removeFirst(2)
+    atexit { writeLaunchStatus(launchExitCode) }
+    writeLaunchStatus(nil)
+}
 guard let command = args.first, validCommand(command) else { usage() }
 if command == "self-test" {
     guard args.count == 1 else { usage() }
@@ -242,12 +263,12 @@ private func authorize(_ media: AVMediaType) {
         AVCaptureDevice.requestAccess(for: media) { value in
             DispatchQueue.main.async { decision = value }
         }
-        let deadline = Date(timeIntervalSinceNow: 60)
+        let deadline = Date(timeIntervalSinceNow: 180)
         while decision == nil && Date() < deadline { pump() }
         guard decision != nil else { fail("permission decision timed out") }
     }
     guard authStatus(media) == "authorized" else {
-        fail("\(media.rawValue) permission is \(authStatus(media)); enable access for this host app in macOS Privacy settings")
+        fail("\(media == .audio ? "Microphone/HDMI audio" : "Camera") permission is \(authStatus(media)); enable access for Wii64 HDMI Capture in macOS Privacy settings")
     }
     print("\(media.rawValue) access authorized.")
 }
@@ -263,15 +284,16 @@ let devices = videoDevices()
 let audioDevices = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInMicrophone, .externalUnknown], mediaType: .audio, position: .unspecified).devices
 if command == "list" {
     guard args.count == 1 else { usage() }
-    printJSON(["cameraAuthorization": authStatus(.video), "audioAuthorization": authStatus(.audio),
+    printJSON(["permissionHost": Bundle.main.bundleIdentifier ?? "unbundled",
+               "cameraAuthorization": authStatus(.video), "audioAuthorization": authStatus(.audio),
                "video": devices.map { ["name": $0.localizedName, "id": $0.uniqueID] },
                "audio": audioDevices.map { ["name": $0.localizedName, "id": $0.uniqueID] }])
-    exit(0)
+    finish(0)
 }
 if command == "authorize" {
     guard args.count == 1 || args == ["authorize", "--audio"] else { usage() }
     authorize(args.count == 1 ? .video : .audio)
-    exit(0)
+    finish(0)
 }
 private let options = parseOptions(args, from: command == "inspect" ? 1 : 2)
 if command != "inspect" {
@@ -304,7 +326,7 @@ if command == "inspect" {
     info["audioAuthorization"] = authStatus(.audio)
     info["audio"] = audioDevices.map { ["id": $0.uniqueID, "name": $0.localizedName] }
     printJSON(info)
-    exit(0)
+    finish(0)
 }
 guard args.count >= 2 else { usage() }
 let outputURL = URL(fileURLWithPath: args[1]).standardizedFileURL
@@ -511,3 +533,4 @@ do {
 } catch {
     fail("capture setup failed: \(error.localizedDescription)")
 }
+finish(0)
