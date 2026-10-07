@@ -1,7 +1,7 @@
 """Offline CLI smoke checks for the macOS AVFoundation video helper."""
 
 import pathlib
-import re
+import json
 import subprocess
 import sys
 import tempfile
@@ -48,7 +48,7 @@ class VideoCLITest(unittest.TestCase):
 
     def test_wrong_duration_fails_without_camera_permission(self):
         result = self.run_helper("capture", self.tmp / "duration.mov", "--seconds", "0")
-        self.assert_cli_error(result, "duration must be between 1 and 300 seconds")
+        self.assert_cli_error(result, "duration must be between 1 and 600 seconds")
 
     def test_existing_output_fails_without_camera_permission(self):
         output = self.tmp / "exists.jpg"
@@ -63,11 +63,28 @@ class VideoCLITest(unittest.TestCase):
     def test_default_device_is_exact_and_has_no_fallback(self):
         source = SOURCE.read_text()
         self.assertIn('private let defaultDevice = "UGREEN 15389"', source)
-        self.assertIn("deviceName = defaultDevice", source)
-        self.assertRegex(source, re.compile(
-            r"devices\s*\.first\(where:\s*\{\s*\$0\.localizedName\s*==\s*deviceName\s*\}\)"
-        ))
-        self.assertNotRegex(source, r"\?\?\s*devices\.first\b")
+        self.assertIn("ds.filter { $0.localizedName == (o.device ?? defaultDevice) }", source)
+        self.assertIn('duplicate device name; use --device-id', source)
+        self.assertNotIn("?? devices.first", source)
+
+    def test_native_self_test_checks_image_and_warmup_boundaries(self):
+        result = self.run_helper("self-test")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("PASS", result.stdout)
+
+    def test_list_is_machine_readable_and_identifies_video_and_audio(self):
+        result = self.run_helper("list")
+        info = json.loads(result.stdout)
+        self.assertIn("video", info)
+        self.assertIn("audio", info)
+
+    def test_invalid_numeric_options_fail_before_access(self):
+        for flag, value in (("--warmup", "nan"), ("--fps", "inf"),
+                            ("--interval", "0"), ("--format", "-1"),
+                            ("--max-mib", "2049")):
+            with self.subTest(flag=flag):
+                self.assert_cli_error(self.run_helper("capture", self.tmp / "invalid.mov",
+                                                     flag, value), "wii_video:")
 
 
 if __name__ == "__main__":

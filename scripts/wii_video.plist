@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>org.wii64.dev-capture</string>
+<key>CFBundleName</key><string>Wii64 HDMI Capture</string>
+<key>NSCameraUsageDescription</key><string>Capture the selected development Wii HDMI device during a leased test.</string>
+<key>NSMicrophoneUsageDescription</key><string>Record the explicitly selected HDMI audio input for a development Wii test.</string>
+</dict></plist>
