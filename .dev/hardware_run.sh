@@ -52,7 +52,7 @@ if [ "$result_mode" = auto ]; then
 fi
 case "$result_mode" in
 	pull)
-		[[ -f "$hbc_client" && -z "${WII64_ROM_DIR:-}" ]] || { echo 'Pull mode needs HBC-Reborn and pre-staged ROMs. Use WII64_RESULT_MODE=push for ROM serving.' >&2; exit 2; }
+		[[ -f "$hbc_client" ]] || { echo 'Pull mode needs HBC-Reborn. Use WII64_RESULT_MODE=push for older HBC.' >&2; exit 2; }
 		;;
 	push)
 		python3 -c 'import ipaddress,sys; ipaddress.IPv4Address(sys.argv[1])' "$mac_ip"
@@ -118,7 +118,7 @@ else
 fi
 if [ -n "${WII64_ROM_DIR:-}" ]; then
 	[ -d "$WII64_ROM_DIR" ] || { echo "ROM folder does not exist: $WII64_ROM_DIR" >&2; exit 1; }
-	printf 'rom_fetch=1\n' >> "$out/diag.cfg"
+	if [ "$result_mode" = push ]; then printf 'rom_fetch=1\n' >> "$out/diag.cfg"; fi
 fi
 python3 - "$out" "$dol" <<'PY'
 import hashlib, json, pathlib, sys
@@ -135,7 +135,7 @@ receiver_cmd=("$receiver_python" scripts/hardware_receive.py "$out" --bind "$mac
 if [ "$result_mode" = pull ]; then
 	receiver_cmd=("$receiver_python" scripts/hardware_collect.py "$out" --wii-ip "$wii_ip" --timeout "$receiver_timeout")
 fi
-if [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
+if [ "$result_mode" = push ] && [ -n "${WII64_ROM_DIR:-}" ]; then receiver_cmd+=(--rom-dir "$WII64_ROM_DIR"); fi
 if [ -f "$hbc_client" ]; then
 	# Port 4299 also answers inside an app: require HBC itself before uploading.
 	python3 "$hbc_client" --wii "$wii_ip" wait 90
@@ -146,6 +146,9 @@ from scripts.hbc_watch import load_client
 if load_client(sys.argv[1]).proto(sys.argv[2]) < 2:
     sys.exit('Pull collection needs HBC protocol 2+; use WII64_RESULT_MODE=push for older HBC.')
 PY
+		if [ -n "${WII64_ROM_DIR:-}" ]; then
+			python3 scripts/hardware_stage_roms.py "$chain_file" "$WII64_ROM_DIR" --wii-ip "$wii_ip" --hbc-client "$hbc_client"
+		fi
 	fi
 	python3 "$hbc_client" --wii "$wii_ip" --json status > "$out/hbc-before.json"
 	if [ "${WII64_STAGE_INPUTS:-1}" = 1 ]; then
