@@ -27,11 +27,13 @@ waiting in Homebrew Channel.
    Run `.dev/hardware_run.sh` from the repo root. For Rice, use
    `.dev/hardware_run.sh Rice_wii`. The script queues itself and waits for the
    central lease before it contacts the Wii. Within that lease it builds with
-   `PERF_PROF`, starts a one-run receiver, and sends the DOL with `wiiload`.
+   `PERF_PROF` and sends the DOL with `wiiload`. On macOS it collects files
+   through HBC-Reborn after the run; Windows and Linux use a one-run receiver.
    Missing server configuration stops the run; a server outage does not permit
    direct upload. The dispatcher waits for Homebrew Channel between jobs.
-4. Wii64 runs the chain without a controller. At the end, it sends `perf.log`,
-   available `xfb_NN.bin` frames, and `padtrace_NN.csv` files to the computer.
+4. Wii64 runs the chain without a controller and writes results to SD.
+   The runner collects `perf.log`, `xfb_NN.bin` frames, replay traces and saved
+   PC histograms. In receiver mode, Wii64 sends the available files itself.
    The script waits for Homebrew Channel to return, then makes PNGs and prints a
    per-game table under `.dev/runs/`. Smoke runs also fail if a game stops rendering.
 
@@ -95,10 +97,19 @@ replays stop the run. To stage them separately, run
 Set `WII64_STAGE_INPUTS=0` to retain manually staged files or use an older HBC
 without file transfers. Do not upload to the shared Wii outside its lease.
 
-Keep the computer awake. On macOS, the receiver uses Apple's built-in Python so the
-firewall can allow it without a repeated Homebrew Python prompt. If the firewall does
-prompt, allow incoming connections for the test; keep the firewall enabled. The
-receiver accepts files only from the configured Wii IP.
+Keep the computer awake. `WII64_RESULT_MODE=auto` selects **pull** on macOS:
+the workstation makes outbound connections to HBC-Reborn, without a Python
+listener or an incoming-connection firewall prompt. This requires HBC protocol
+2 or later and a current `PERF_PROF` build. Each run gets a
+unique tag; a stale SD log cannot complete a new job. Transfers use the HBC
+client's CRC checks. Missing files, new crash records and incomplete chains fail
+the run. Pull mode never falls back to a listener.
+
+`WII64_RESULT_MODE=push` explicitly selects the existing receiver. Use it for
+legacy frozen builds or original HBC. It requires an
+incoming firewall allowance on TCP 39364 and accepts results only from the
+configured Wii IP. Windows and Linux retain push as their automatic mode;
+they can select pull when HBC-Reborn is available. Keep the firewall enabled.
 If transfer fails or a game hangs outside the watchdog, use the SD results below.
 The Wii must be on for the first run. Later LAN runs can start directly from Homebrew
 Channel. Use only a trusted LAN: this simple result channel is not encrypted.
@@ -115,7 +126,13 @@ For example, from the repo root:
 WII64_ROM_DIR="$(dirname "$PWD")/temp-roms" .dev/hardware_run.sh glN64_wii audio_coverage
 ```
 
-The diagnostic build downloads only missing ROMs named in that chain to
+In pull mode the runner stages only chain-named missing ROMs through HBC's
+CRC-checked transfers, before launch. Matching existing files are skipped;
+different existing files are preserved and stop the run. It validates local
+paths before writing and deduplicates repeated chain entries. This also keeps
+the library runner's frozen ROM-folder workflow free of a workstation listener.
+
+In push mode the diagnostic build downloads only missing ROMs named in that chain to
 `sd:/wii64/roms/` before testing. It writes each download to a temporary file
 and renames it after transfer. Keep Homebrew Channel open and the SD card in the
 Wii. Without `WII64_ROM_DIR`, the run uses ROMs already on the card. This
@@ -128,6 +145,29 @@ with CRC-checked transfers and no partial destination file on failure. Its
 `sync` command copies only changed files. These commands are optional; the
 Wii64 runner also works with the original Homebrew Channel. The installed
 workstation client and central lease coordinate all projects' Wii tests.
+
+## Direct HDMI capture on macOS
+
+The workstation's UGREEN 15389 dongle is a local video device, not a URL.
+The native helper uses AVFoundation. It has no server, Python dependency or
+audio input. The default device is exact; it will not select the FaceTime camera.
+Xcode Command Line Tools provide the Swift compiler. The wrapper caches its
+binary under ignored `.dev/tools/` and rebuilds it when the source changes.
+
+```bash
+bash scripts/wii_video_capture.sh list
+bash scripts/wii_video_capture.sh authorize
+bash scripts/wii_video_capture.sh snapshot .dev/runs/wii-frame.jpg
+bash scripts/wii_video_capture.sh capture .dev/runs/wii-video.mov --seconds 10
+```
+
+Run `authorize` once from the intended host application and approve macOS Camera
+access there. This privacy permission is separate from the firewall. Routine
+captures check authorization and fail with instructions rather than request it.
+Use `--device "name from list"` for another dongle. Choose a new output path:
+existing files are preserved. Movies are limited to 1–300 seconds; missing frames
+and unfinished recordings have deadlines. Captures remain local and ignored.
+Capture during your queue job, not another project's turn.
 
 ## What is on the card
 
