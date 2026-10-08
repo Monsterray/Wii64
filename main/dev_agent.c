@@ -37,6 +37,16 @@ extern GXRModeObj *vmode;
 extern char shutdown;
 extern unsigned int hasLoadedROM;
 extern timers Timers;
+extern void ScanPADSandReset(u32 count);
+
+/* The SDK chains Wii64 input scans. VIDEO_Init clears that callback, so retain
+   the installed chain at each video-mode reset, without another per-VI wrapper. */
+static VIRetraceCallback agentRetraceCallback;
+void devAgent_restoreRetrace(void)
+{
+    VIDEO_SetPostRetraceCallback(agentRetraceCallback
+                                ? agentRetraceCallback : ScanPADSandReset);
+}
 
 static volatile int homeWanted; // HOME stopped the game: open the overlay after go()
 static int toWii64Menu;         // the overlay's Wii64 Menu button was pressed
@@ -156,6 +166,8 @@ void devAgent_init(void)
 #endif
     cfg.on_exit_choice = exitChoice;
     int result = hbc_agent_init(&cfg);
+    agentRetraceCallback = VIDEO_SetPostRetraceCallback(ScanPADSandReset);
+    devAgent_restoreRetrace();
     hbc_agent_set_slot_menu(0, "Wii64", "Wii64 " WII64_VERSION, wii64Items,
                             sizeof(wii64Items) / sizeof(wii64Items[0]));
     perfProf_mark(result == 0 ? "HBC agent ready" : "HBC agent init failed");

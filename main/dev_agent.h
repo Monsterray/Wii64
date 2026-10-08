@@ -2,12 +2,14 @@
 #define WII64_DEV_AGENT_H
 /* The HBC-Reborn agent (main/dev_agent.c): in every Wii build (Makefile.wii). It is
    Wii64's HOME menu and gives development tools status, files, exit and crash
-   reports. GameCube builds have no agent; these are no-ops there. */
+   reports. GameCube builds have no agent; restoreRetrace installs normal input,
+   and the other calls are no-ops there. */
 #ifdef WII64_HBC_AGENT
 #ifdef __cplusplus
 extern "C" {
 #endif
 void devAgent_init(void);
+void devAgent_restoreRetrace(void); /* after VIDEO_Init: retain SDK safety + input */
 int devAgent_exitRequested(void);
 int devAgent_netReady(void);
 void devAgent_alive(void);
@@ -24,6 +26,7 @@ void devAgent_testCrash(void);
 #endif
 #else
 #define devAgent_init() ((void)0)
+#define devAgent_restoreRetrace() ((void)VIDEO_SetPostRetraceCallback(ScanPADSandReset))
 #define devAgent_exitRequested() 0
 #define devAgent_netReady() 1
 #define devAgent_alive() ((void)0)

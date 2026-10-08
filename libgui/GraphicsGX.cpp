@@ -32,6 +32,7 @@
 
 #include "../main/rom.h"
 #include "../main/perf_subsystem.h"
+#include "../main/dev_agent.h"
 
 extern "C" void ScanPADSandReset(u32 _);
 void video_mode_init(GXRModeObj *rmode, unsigned int *fb1, unsigned int *fb2);
@@ -46,7 +47,7 @@ Graphics::Graphics(GXRModeObj *rmode)
 		  transparency(1.0f)
 {
 	VIDEO_Init();
-	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
+	devAgent_restoreRetrace();
 	switch (videoMode)
 	{
 	case VIDEOMODE_AUTO:
@@ -156,7 +157,7 @@ void Graphics::drawInit()
 	vmode->viWidth = 704;
 	vmode->viXOrigin = (VI_MAX_WIDTH_PAL - vmode->viWidth) / 2;
 	VIDEO_Init ();
-	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
+	devAgent_restoreRetrace();
 	VIDEO_Configure (vmode);
 	curVmode = vmode;
 	VIDEO_Flush ();
@@ -600,7 +601,7 @@ void Graphics::setInGameVMode() {
 #endif
 	vmode->viXOrigin = (VI_MAX_WIDTH_PAL - vmode->viWidth) / 2;
 	VIDEO_Init ();
-	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
+	devAgent_restoreRetrace();
 	VIDEO_Configure (vmode);
 	curVmode = vmode;
 	VIDEO_Flush ();

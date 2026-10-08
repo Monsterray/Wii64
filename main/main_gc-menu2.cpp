@@ -988,11 +988,12 @@ int main(int argc, const char* argv[]) {
 #else
 	load_config("sd");
 #endif
+	// The agent chains this callback for frame pacing; do not replace it later.
+	devAgent_restoreRetrace();
 	devAgent_init();
 	perfMem_snapshot("boot");
 	MenuContext *menu = new MenuContext(vmode); // runs an autoboot ROM, chain game 1 included
 	while (!devAgent_exitRequested() && chainNext()) {}
-	VIDEO_SetPostRetraceCallback (ScanPADSandReset);
 	//Switch to MiniMenu if active
 	if (miniMenuActive)
 	{
