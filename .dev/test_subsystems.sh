@@ -42,6 +42,8 @@ python3 tests/wii_video_test.py
 python3 tests/wii_video_build_test.py
 python3 tests/wii_video_run_test.py
 python3 tests/build_agent_test.py
+python3 tests/agent_startup_test.py
+python3 tests/wii_release_check_test.py
 python3 tests/release_metadata_test.py
 python3 tests/subsystem_report_test.py
 python3 tests/subsystem_workflow_test.py
