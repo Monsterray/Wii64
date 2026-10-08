@@ -38,7 +38,6 @@
 #include "../libgui/CursorManager.h"
 #include "../libgui/Gui.h"
 extern "C" {
-extern void LoadingBar_showBar(float percent, const char* string);
 }
 
 extern "C" {
@@ -801,14 +800,10 @@ void selectRomFrame_Error(fileBrowser_file* dir, int error_code)
 
 void selectRomFrame_FillPage()
 {
-	// Measured via Dolphin's IOS_SD log (real SDIO DMA read timestamps, not
-	// guesswork): a full page of boxart reads totals well under a second --
-	// the earlier per-tile LoadingBar_showBar() call was solving a latency
-	// problem that isn't actually there, and instead turned one brief pause
-	// into a visibly janky multi-step reveal (flash a frame, block, flash the
-	// next). One frame up front reads as a quick blip; a frame per tile reads
-	// as slow motion even though the total time is the same either way.
-	LoadingBar_showBar(0.0f, "Loading boxart...");
+	// No loading bar: a page of boxart loads in about 0.2 s on the Wii, and the
+	// bar drew an extra frame over the grid on every page. Paging with +/- (from
+	// drawChildren) drew that frame inside the menu's own draw and flashed the
+	// whole screen.
 
 	// System-level diagnostic knob (sd:/wii64/diag.cfg, see boxart.h) and the
 	// perf log (sd:/wii64/perf.log, PERF_PROF builds only) this page fill
