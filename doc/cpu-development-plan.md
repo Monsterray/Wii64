@@ -49,7 +49,7 @@ and [whole-system results](subsystem-results-2026-10-01.md).
 
 | Phase | Work | Evidence required to advance | Status |
 |---|---|---|---|
-| 0. Safe diagnostics | Pin the newest HBC SDK/client, validate memory layout, crash recovery, retained logs, and hang handling. Freeze an environment manifest. | Layout tests, matched ELF symbolication, expected exception/fatal/hang checks, clean HBC return. | Active: isolated SDK 1.9.4 build/layout and VM-active DSI recovery pass; shared client, fatal/hang and retained-output checks remain |
+| 0. Safe diagnostics | Pin the newest HBC SDK/client, validate memory layout, crash recovery, retained logs, and hang handling. Freeze an environment manifest. | Layout tests, matched ELF symbolication, expected exception/fatal/hang checks, clean HBC return. | Active: shared SDK/client 1.10.0, layout, release HOME/retrace and VM-active DSI recovery pass; separate fatal/hang and retained-output checks remain |
 | 1. CPU map and correctness harness | Use the local graph to map active Wii branches and manual generated-code edges. Audit interpreter/comparison facilities and add bounded instruction tests. | Source-backed map and passing state comparisons for each tested instruction family. | Active: graph built; harness not implemented |
 | 2. Reliable CPU baseline | Calibrate existing probes, add only the counters needed for the next decision, and repeat representative scenes. | Valid scene/replay, stable counters, measured probe cost, explicit uncertainty and CPU priority table. | Active: current four-scene survey collected; execute/helper aliasing and probe cost limit ranking |
 | 3. Dispatch, lookup and code cache | Audit the existing target cache/JR lookup; measure misses, allocation, linking, eviction and recompilation. | Host stress tests, correct unlinking/invalidation, muted Dolphin checks, repeat Wii A/B/A gain. | Existing speed paths integrated; systematic correctness audit pending |
@@ -64,10 +64,13 @@ stronger evidence. Fix a confirmed bug before pursuing a speed candidate.
 
 ### 0. HBC agent integration
 
-Remote HBC-Reborn was checked at `0b214c7a78d81d87f4a2b24e53feb3c967e26d5c`
-(1.9.4). The external local checkout remains 1.8.8; previous Wii64 captures used
-an older SDK. These are not claims about the version currently running on the
-Wii. Recheck remote HEAD and record the chosen commit before building.
+HBC-Reborn was checked and the shared checkout fast-forwarded on 2026-10-07 to
+`fa9c0b2a36587b97b48d31e3947fd53b43f45be8` (1.10.0). The workstation queue shim
+imports its current client; Wii64 builds a private archive with its own compiler.
+The Wii reports HBC 1.10.0. Previous results retain their original SDK versions.
+Recheck remote HEAD and record the chosen commit before the next upgrade.
+The tested private archive was built from `0da18f9`; the newest commit has the
+identical SDK tree and changes only queue tooling, tests and review notes.
 
 The newer SDK has protocol 4, version-2 crash records, `hbc_agent_fatal()` /
 `hbc_agent_fatal_now()`, `hbc_agent_alive()`, nested `hbc_agent_hold()` calls,
@@ -78,9 +81,9 @@ assertion for the retained log. Keep this fix; it is no longer pending work.
 
 Current Wii builds always include the agent and HOME overlay. The fork already
 calls progress heartbeats from guest-VI/menu thread context, holds expected
-loads/uploads, and wraps `c_default_exceptionhandler`. The Mac's external
-checkout is still 1.8.8 and lacks the required newer SDK APIs. Refresh it safely
-when no live workflow uses its source, then rebuild with `.dev/build_agent.sh`.
+loads/uploads, and wraps `c_default_exceptionhandler`. Refresh the external
+checkout safely when no live workflow uses its source, then rebuild with
+`.dev/build_agent.sh`.
 The archive now belongs in ignored `.dev/hbc_agent/`, built with Wii64's own
 compiler; the shared checkout's archive is not an acceptable substitute.
 
@@ -296,14 +299,37 @@ guest exception counts differ; the strict parity gate remains open. Do not
 promote one sample histogram to an optimization decision.
 Retain light controls; sample shares do not replace wall, PMC or GP metrics.
 
-Finish phase 0's default shared-source/client refresh and recovery validation
-before new hardware CPU changes; preserve the integration already merged into
-the fork. In parallel, complete phase 1's source map and comparison-harness
+Finish phase 0's separate fatal/hang and retained-output checks before new
+hardware CPU changes; preserve the integration already merged into the fork.
+In parallel, complete phase 1's source map and comparison-harness
 audit. Phase 2
 must rerank the CPU after the existing dispatch/JR changes. In phase 3, audit
 those paths before choosing any additional speed change. The isolated SDK
 1.9.4 build has passed VM-active DSI recovery on the Wii; do not treat that as
 completion of the separate fatal/hang/retained-output checks.
+
+Update 2026-10-07: the shared SDK/client is now 1.10.0 at the commit above.
+The private SDK and clean probe-off glN64 target build with GCC 16.1.0; the full
+host and ROM/VM suites pass. Muted Dolphin startup passed. Wii job
+`20261007-183223-da601a` passed menu, SM64 and Kart boot/HOME/HBC-return checks,
+with advancing SDK retrace counters and no new crash. Job
+`20261007-183458-62266a` passed the VM-active DSI recovery check: exception 3,
+DAR `0x10`, matched `devAgent_testCrash` and automatic HBC 1.10.0 return.
+The first release check exposed the replaced SDK retrace callback; the shared
+restore helper now passes host and hardware checks. These boot tests are not
+gameplay, audio-quality or performance measurements. No installed channel or
+shared lease-server deployment was changed. The separate fatal/hang and retained
+output checks remain open.
+
+Both glN64 and Rice clean probe-off builds passed muted Dolphin startup and
+real-Wii menu/ROM/HOME checks (Rice job `20261007-183723-2deb86`). The longer
+Kart check `20261007-183831-b5e27f` reached the race demo and returned to HBC.
+Its capture contains stray polygons. The preserved 1.6.19 reference
+(`20261007-195911-fa24b8`, SDK 1.9.4) also shows them; this bounded comparison
+does not show a new SDK regression or establish visual accuracy.
+A validator initially treated the
+clearing of the earlier deliberate crash record as a new crash; its regression
+test now distinguishes record removal from a new nonempty report.
 
 Local review used Muse Glimmer and Gemma4 concurrently with 10,000-token caps
 and 300-second timeouts; both answered in about 78 seconds wall time. Suggestions

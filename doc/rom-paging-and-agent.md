@@ -55,6 +55,28 @@ renamed exception-frame fields and removed `MQ_ERROR_SUCCESSFUL` with `-D` flags
 `HBC_AGENT=1` in older commands is now a no-op. Wii64 needs HBC-Reborn 29e19e0 or
 later for the HOME menu (below).
 
+As of 2026-10-07, the shared checkout and workstation queue client use HBC-Reborn
+1.10.0 at `fa9c0b2a36587b97b48d31e3947fd53b43f45be8`. The private Wii64
+archive was built from `0da18f9fc5d991ba65893e1010c102f5c6a75354`; both commits
+have the identical SDK tree `835caab9cc53d4bb232c860782d33df15c27a48a`.
+The later commit changes only queue tooling, tests and review notes.
+The Wii also reports HBC 1.10.0.
+Recheck remote HEAD before the next upgrade; these are dated versions, not a
+moving dependency pin. No channel/WAD or shared lease-server deployment was done.
+
+Current SDK headers select libogc2's exception fields through its version macro.
+`build_agent.sh` force-includes `ogc/libversion.h` when available, retaining the
+SDK's context-offset assertions. A host compilation test covers this selection.
+
+SDK 1.10.0 chains the post-retrace callback for frame/safety statistics. Wii64's
+three graphics video resets used to replace it. `devAgent_restoreRetrace()`
+restores the installed SDK chain after each reset, with normal input scans as
+the pre-init/old-SDK fallback. GameCube installs its normal callback directly.
+There is no added Wii64 per-retrace wrapper. The compiled host test covers
+repeated resets and exactly one SDK/input call per retrace. Optional SDK memory
+tracking and reload-stub protection remain off; do not enable them without a
+new memory-budget and timing check.
+
 ### HOME menu
 
 HOME on a Wii Remote or Classic Controller, or `hbc.py key h`, opens the agent's

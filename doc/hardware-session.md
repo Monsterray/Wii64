@@ -70,6 +70,32 @@ The job preserves these settings and `WII64_ROM_DIR` even if the dispatcher was
 already running. Only the dispatcher supplies `WII_BENCH_JOB`; normal callers
 use the queued entry point.
 
+### Probe-off release check
+
+Build the current SDK with `.dev/build_agent.sh`, run
+`.dev/build.sh glN64_wii clean`, then `.dev/build.sh glN64_wii DEBUG_FLAGS=`.
+Freeze the DOL, matching ELF,
+`scripts/wii_release_check.py` and the current `hbc-reborn/tools/hbc.py` in a new
+ignored directory before queuing. For a frozen directory `$run`, use:
+
+```bash
+python3 ~/.wii-bench/wiibench.py add --name 'Wii64 release check' \
+  --agent wii64-release --timeout 600 --cwd "$PWD" -- \
+  python3 "$run/wii_release_check.py" --client "$run/hbc.py" \
+  --dol "$run/wii64-glN64.dol" --output "$run/results" \
+  --version 1.6.20 --sdk-version 1.10.0 \
+  --rom 'sd:/wii64/roms/Super Mario 64.v64' \
+  --rom 'sd:/wii64/roms/Mario Kart 64.v64'
+```
+
+Set `$run` to an absolute path and update the expected versions for each build.
+The script refuses direct use without a queue lease. It checks menu/ROM boots,
+advancing SDK retraces, stack protection, HOME open/close and HBC return. It
+retains status and frame files, disables autosave, and detects new crash records.
+Connections are outbound; it starts no Python listener. `--settle-seconds 30`
+allows a longer startup before each capture. Inspect the captured frames; boot
+checks alone do not establish gameplay speed, sound quality or visual accuracy.
+
 Queue entry points assign a session ID through `WII_BENCH_AGENT` and pass an
 explicit job timeout. A survey shares its ID across its jobs so the dispatcher
 can apply HBC-Reborn's same-agent chaining and fairness rules. The receiver
