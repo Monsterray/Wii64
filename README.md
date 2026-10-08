@@ -134,7 +134,7 @@ Save Settings. Hi-Fi and Preserve Pitch are optional CPU enhancements.
  * **AutoSave** - Whether or not to automatically save native saves when returning to the menu
 	 * 0 = Disabled
 	 * 1 = Enabled (default)
- * **LimitVIs** - How to cap emulation speed
+ * **LimitVIs** - How to cap emulation speed (Settings > Audio > Speed Limit)
 	 * 0 = No VI limit
 	 * 1 = Wait for VI (default)
 	 * 2 = Wait for Frame

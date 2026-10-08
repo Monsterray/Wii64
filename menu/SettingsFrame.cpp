@@ -79,6 +79,9 @@ void Func_ToggleButtonLoad();
 void Func_AudioOn();
 void Func_AudioOff();
 void Func_AdvancedAudioSettings();
+void Func_SpeedLimitOff();
+void Func_SpeedLimitVi();
+void Func_SpeedLimitFrame();
 
 void Func_AutoSaveNativeYes();
 void Func_AutoSaveNativeNo();
@@ -94,14 +97,14 @@ static const char* LoadButtonLabels[5] = {
 	"Default"
 };
 
-#define NUM_FRAME_BUTTONS 42
+#define NUM_FRAME_BUTTONS 45
 #define NUM_TAB_BUTTONS 5
 #define FRAME_BUTTONS settingsFrameButtons
 #define FRAME_STRINGS settingsFrameStrings
-#define NUM_FRAME_TEXTBOXES 15
+#define NUM_FRAME_TEXTBOXES 16
 #define FRAME_TEXTBOXES settingsFrameTextBoxes
 
-static char FRAME_STRINGS[41][23] =
+static char FRAME_STRINGS[44][23] =
 	{ "General",
 	  "Video",
 	  "Input",
@@ -148,6 +151,9 @@ static char FRAME_STRINGS[41][23] =
 	  "2",
 	  "3",
 	  "Advanced",   //[40]
+	  "Speed Limit",  //[41] Audio tab
+	  "VI",
+	  "Frame",
 	};
 
 struct ButtonInfo
@@ -210,15 +216,19 @@ struct ButtonInfo
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	310.0,	 70.0,	50.0,	31,	34,	32,	32,	Func_SaveButtonsUSB,	Func_ReturnFromSettingsFrame }, // Save Button Configs to USB
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[29],	330.0,	380.0,	160.0,	50.0,	32,	 2,	-1,	-1,	Func_ToggleButtonLoad,	Func_ReturnFromSettingsFrame }, // Toggle Button Load Slot
 	//Buttons for Audio Tab (starts at button[35])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 3,	41,	36,	36,	Func_AudioOn,	Func_ReturnFromSettingsFrame }, // Audio: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 3,	41,	35,	35,	Func_AudioOff,	Func_ReturnFromSettingsFrame }, // Audio: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 3,	42,	36,	36,	Func_AudioOn,	Func_ReturnFromSettingsFrame }, // Audio: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 3,	43,	35,	35,	Func_AudioOff,	Func_ReturnFromSettingsFrame }, // Audio: Off
 	//Buttons for Saves Tab (starts at button[37])
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
 	//Button 41 appended out of tab order (not 37-40) so the Saves tab's existing indices didn't need renumbering
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	 20.0,	380.0,	120.0,	50.0,	35,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-left of Audio tab -- bottom-right is under the spinning logo)
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[40],	 20.0,	380.0,	120.0,	50.0,	42,	 3,	-1,	-1,	Func_AdvancedAudioSettings, Func_ReturnFromSettingsFrame }, // Advanced Audio Settings (bottom-left of Audio tab -- bottom-right is under the spinning logo)
+	//Buttons 42-44 (Audio tab): speed limit, in Timers.limitVIs order
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	330.0,	170.0,	 70.0,	50.0,	35,	41,	44,	43,	Func_SpeedLimitOff,		Func_ReturnFromSettingsFrame }, // Speed Limit: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[42],	415.0,	170.0,	 55.0,	50.0,	36,	41,	42,	44,	Func_SpeedLimitVi,		Func_ReturnFromSettingsFrame }, // Speed Limit: VI
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[43],	485.0,	170.0,	 90.0,	50.0,	36,	41,	43,	42,	Func_SpeedLimitFrame,	Func_ReturnFromSettingsFrame }, // Speed Limit: Frame
 };
 
 struct TextBoxInfo
@@ -251,6 +261,8 @@ struct TextBoxInfo
 	{	NULL,	FRAME_STRINGS[30],	180.0,	125.0,	 1.0,	true }, // Audio: On/Off
 	//TextBoxes for Saves Tab (starts at textBox[14])
 	{	NULL,	FRAME_STRINGS[33],	180.0,	125.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
+	//TextBox 15 (Audio tab)
+	{	NULL,	FRAME_STRINGS[41],	180.0,	195.0,	 1.0,	true }, // Speed Limit: Off/VI/Frame
 
 };
 
@@ -407,6 +419,7 @@ void SettingsFrame::activateSubmenu(int submenu)
 			}
 			for (int i = 13; i < 14; i++)
 				FRAME_TEXTBOXES[i].textBox->setVisible(true);
+			FRAME_TEXTBOXES[15].textBox->setVisible(true);
 			FRAME_BUTTONS[3].button->setSelected(true);
 			if (audioEnabled == AUDIO_ENABLE)	FRAME_BUTTONS[35].button->setSelected(true);
 			else								FRAME_BUTTONS[36].button->setSelected(true);
@@ -415,8 +428,12 @@ void SettingsFrame::activateSubmenu(int submenu)
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
-			FRAME_BUTTONS[41].button->setVisible(true);
-			FRAME_BUTTONS[41].button->setActive(true);
+			FRAME_BUTTONS[42 + Timers.limitVIs].button->setSelected(true);
+			for (int i = 41; i < 45; i++)
+			{
+				FRAME_BUTTONS[i].button->setVisible(true);
+				FRAME_BUTTONS[i].button->setActive(true);
+			}
 			break;
 		case SUBMENU_SAVES:
 			setDefaultFocus(FRAME_BUTTONS[4].button);
@@ -1018,10 +1035,17 @@ void Func_ReturnFromSettingsFrame()
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
 }
 
-/*extern timers Timers;
-
-void Func_ToggleVILimit()
+/* Speed limit (settings.cfg LimitVIs). Wii64 before 2014 saved 0 (no limit,
+   it synced to the old audio driver) as its default, and the menu had no
+   option for it, so an old settings.cfg kept running games unlimited. */
+static void SetSpeedLimit(int limit)
 {
-	Timers.limitVIs = (Timers.limitVIs+1) % 3;
-	FRAME_BUTTONS[2].buttonString = FRAME_STRINGS[Timers.limitVIs + 4];
-}*/
+	for (int i = 42; i <= 44; i++)
+		FRAME_BUTTONS[i].button->setSelected(false);
+	FRAME_BUTTONS[42 + limit].button->setSelected(true);
+	Timers.limitVIs = limit;
+}
+
+void Func_SpeedLimitOff() { SetSpeedLimit(LIMITVIS_NONE); }
+void Func_SpeedLimitVi() { SetSpeedLimit(LIMITVIS_WAIT_FOR_VI); }
+void Func_SpeedLimitFrame() { SetSpeedLimit(LIMITVIS_WAIT_FOR_FRAME); }

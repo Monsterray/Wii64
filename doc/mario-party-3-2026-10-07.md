@@ -69,3 +69,35 @@ Library check on the frozen `PERF_PROF` build: the 9 Dolphin ROMs and the 18
 Wii entries (`baselines/library-20261007-present-hardware-0{1,2,3}`) reached
 their VI targets with the same replays, exception and recompile counts,
 speed and DL/s as before, and their final frames show the expected scenes.
+
+## Production Wii (192.168.8.200), 2026-10-08
+
+The report came from the user's own Wii, not the bench Wii. Its
+`sd:/wii64/settings.cfg` has `LimitVIs = 0` (no speed limit) and `FBTex = 1`
+(framebuffer textures, so the change above does not apply there).
+
+| Run (MP3 USA, no input, 9,000 VIs) | Wall time | VI/s |
+|---|---:|---:|
+| The user's settings | 75.4 s | 119 (1.4x to 4.7x on the overlay) |
+| The same, `LimitVIs=1` | 151.2 s | 59.7 |
+
+Without a limit the game runs as fast as the Wii can, and `AudioSync = 2`
+(preserve pitch) plays the music fast at its normal pitch. The captures of
+the unlimited run show torn and smeared frames before the rainbow star; with
+the limit the framebuffer-texture path shows clean frames. Both reports have
+this one cause.
+
+How the value got there: from 2009 to January 2014 Wii64's default was
+`Timers.limitVIs = 0` ("sync to audio": the old AI driver held the speed).
+The AESND driver (`ca438f3`) changed the default to wait for VI. Settings >
+Save writes every value, so a `settings.cfg` first saved by an older Wii64
+kept `LimitVIs = 0` in every later version. The menu option for it had been
+commented out since 2009. Not64's own settings on the same card have
+`LimitVIs = 1`, and the Wii64 `meta.xml` passes no arguments.
+
+Done: with the user's permission, `LimitVIs = 1` on the production card (the
+only change; backup of `sd:/wii64` and `sd:/apps/wii64` with SHA-256 sums in
+`C:/backups/wii-production-20261008/`). The test runs used `AutoSave=0`;
+all 89 saves and `settings.cfg` matched the backup afterwards, and the test
+files were removed and `perf.log` restored. Settings > Audio now has a Speed
+Limit row (Off / VI / Frame) for `LimitVIs`.
