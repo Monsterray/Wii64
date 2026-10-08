@@ -12,8 +12,13 @@
 ## QUICK USAGE:
  * On SD/USB, use uncompressed N64 ROM images (`.z64`, `.v64`, `.n64`, `.bin`, or `.rom`). Wii64 does not open ROMs inside `.zip` or `.7z` archives.
  * To install: Extract the contents of the latest release zip to the root of your SD card
- * For SD/USB: Put ROMs in the directory named /wii64/roms,
+ * For SD/USB: Put ROMs in the directory named /wii64/roms, or in any folder: the ROM browser
+    shows one folder at a time (folders first), B goes up a folder and leaves at the card's root,
+    and it opens in the folder of the last ROM you loaded (kept in /wii64/romdir.txt).
     All save types will automatically be placed in /wii64/saves
+ * Project64 saves (`GAME.eep`, `.sra`, `.fla`, `.mpk` in /wii64/saves) are imported the first
+    time the game loads: Wii64 writes `GAME(U).eep` (with the ROM's region) and keeps the original
+    as `GAME.eep.pj64`. `python3 scripts/n64_saves.py SAVES ROMS` converts a folder on a PC.
  * For DVD: ROMs may be anywhere on the disc (requires a compatible Wii)
  * Load the desired executable from the HBC or in the loader of your choice, the emulator is shipped with 2 graphics plugins now.
 	 * **Rice GFX Plugin version** 

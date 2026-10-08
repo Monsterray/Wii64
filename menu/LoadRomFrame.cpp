@@ -183,12 +183,13 @@ LoadRomFrame::~LoadRomFrame()
 
 extern MenuContext *pMenuContext;
 extern void fileBrowserFrame_OpenDirectory(fileBrowser_file* dir);
+extern void fileBrowserFrame_OpenStart();
 
 void Func_LoadFromSD()
 {
 	setupFatDevice(&topLevel_libfat_Default);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_FILEBROWSER);
-	fileBrowserFrame_OpenDirectory(romFile_topLevel);
+	fileBrowserFrame_OpenStart();
 }
 
 void Func_LoadFromDVD()
@@ -212,9 +213,9 @@ void Func_LoadFromDVD()
 void Func_LoadFromUSB()
 {
 #ifdef WII
-	setupFatDevice(&topLevel_libfat_USB);	
+	setupFatDevice(&topLevel_libfat_USB);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_FILEBROWSER);
-	fileBrowserFrame_OpenDirectory(romFile_topLevel);
+	fileBrowserFrame_OpenStart();
 #endif
 }
 

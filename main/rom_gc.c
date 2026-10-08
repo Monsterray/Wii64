@@ -250,6 +250,48 @@ void countrycodestring(unsigned short countrycode, char *string)
     }
 }
 
+/* Wii64 names a save GOODNAME(REGION).ext (the ROM's internal name).
+   Project64 writes GOODNAME.ext. When only that file exists, it is imported:
+   its SRAM and FlashRAM hold byte-swapped 32-bit words (little-endian PC),
+   and it can be shorter than size (a 4 Kbit EEPROM is 512 bytes; Project64
+   stops some files after the last byte the game wrote). The rest of buf
+   keeps what the caller put there (a blank save). The import is written
+   under the Wii64 name, and the original is kept as GOODNAME.ext.pj64.
+   scripts/n64_saves.py does the same on a PC. Returns the bytes read; 0 when
+   there is no save. */
+int loadSaveFile(fileBrowser_file* dir, const char* ext, void* buf, unsigned int size)
+{
+	fileBrowser_file save, plain;
+	char probe, kept[FILE_BROWSER_MAX_PATH_LEN];
+	memcpy(&save, dir, sizeof(save));
+	memcpy(&plain, dir, sizeof(plain));
+	snprintf(save.name, sizeof(save.name), "%s/%s%s.%s", dir->name, ROM_SETTINGS.goodname, saveregionstr(), ext);
+	snprintf(plain.name, sizeof(plain.name), "%s/%s.%s", dir->name, ROM_SETTINGS.goodname, ext);
+	save.offset = plain.offset = 0;
+	if (saveFile_readFile(&save, &probe, 1) == 1) {
+		save.offset = 0;
+		int bytes = saveFile_readFile(&save, buf, size);
+		return bytes > 0 ? bytes : 0;
+	}
+	if (saveFile_readFile(&plain, &probe, 1) != 1)
+		return 0;
+	plain.offset = 0;
+	int bytes = saveFile_readFile(&plain, buf, size);
+	if (bytes <= 0)
+		return 0;
+	if (!strcmp(ext, "sra") || !strcmp(ext, "fla")) {
+		unsigned int i, *word = (unsigned int*)buf;
+		for (i = 0; i < size / 4; i++)
+			word[i] = __builtin_bswap32(word[i]);
+	}
+	save.offset = 0;
+	if (saveFile_writeFile(&save, buf, size) == (int)size) {
+		snprintf(kept, sizeof(kept), "%s.pj64", plain.name);
+		rename(plain.name, kept); // saves are on SD or USB (libfat)
+	}
+	return bytes;
+}
+
 char *saveregionstr()
 {
     switch (ROM_HEADER.Country_code&0xFF)

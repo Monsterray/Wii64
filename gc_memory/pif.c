@@ -89,27 +89,9 @@ static inline unsigned char byte2bcd(int n)
 
 int loadEeprom(fileBrowser_file* savepath){
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
-	int i, result = 0;
-	fileBrowser_file saveFile;
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.eep",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_readFile(&saveFile, &i, 4) == 4) {  //file exists
-		saveFile.offset = 0;
-		if(saveFile_readFile(&saveFile, eeprom, 0x800)!=0x800) { //error reading file
-			init_eeprom();
-			eepromWritten = false;
-			return -1;
-		}
-		result = 1;
-		eepromWritten = 1;
-		return result;  //file read ok
-	} else init_eeprom(); //file doesn't exist
-
-	eepromWritten = false;
-
-	return result;  //no file
+	init_eeprom();
+	eepromWritten = loadSaveFile(savepath, "eep", eeprom, 0x800) > 0;
+	return eepromWritten;
 }
 
 int saveEeprom(fileBrowser_file* savepath){
@@ -252,28 +234,9 @@ unsigned char mempack_crc(unsigned char *data)
 
 int loadMempak(fileBrowser_file* savepath){
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
-	int i, result = 0;
-	fileBrowser_file saveFile;
-
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.mpk",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_readFile(&saveFile, &i, 4) == 4) {  //file exists
-		saveFile.offset = 0;
-		if(saveFile_readFile(&saveFile, mempack, 0x8000 * 4)!=(0x8000*4)) { //error reading file
-			format_mempacks();
-			mempakWritten = false;
-			return -1;
-		}
-		result = 1;
-		mempakWritten = 1;
-		return result;  //file read ok
-	} else format_mempacks(); //file doesn't exist
-
-	mempakWritten = false;
-
-	return result;    //no file
+	format_mempacks();
+	mempakWritten = loadSaveFile(savepath, "mpk", mempack, 0x8000 * 4) > 0;
+	return mempakWritten;
 }
 
 int saveMempak(fileBrowser_file* savepath){

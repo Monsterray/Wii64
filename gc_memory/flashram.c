@@ -64,27 +64,9 @@ _FlashRAMInfo flashRAMInfo;
 
 int loadFlashram(fileBrowser_file* savepath){
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
-	int i, result = 0;
-	fileBrowser_file saveFile;
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.fla",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_readFile(&saveFile, &i, 4) == 4) {  //file exists
-		saveFile.offset = 0;
-		if(saveFile_readFile(&saveFile, flashram, 0x20000)!=0x20000) {  //error reading file
-  		for (i=0; i<0x20000; i++) flashram[i] = 0xff;
-  		flashramWritten = false;
-  		return -1;
-		}
-		result = 1;
-		flashramWritten = 1;
-		return result;  //file read ok
-	} else for (i=0; i<0x20000; i++) flashram[i] = 0xff;  //file doesn't exist
-
-	flashramWritten = false;
-
-	return result;    //no file
+	memset(flashram, 0xff, 0x20000);
+	flashramWritten = loadSaveFile(savepath, "fla", flashram, 0x20000) > 0;
+	return flashramWritten;
 }
 
 int saveFlashram(fileBrowser_file* savepath){

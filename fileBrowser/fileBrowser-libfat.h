@@ -32,6 +32,10 @@ extern fileBrowser_file saveDir_libfat_Default;   //GC SD Slots & Wii Front SD S
 extern fileBrowser_file saveDir_libfat_USB;       //Wii only, USB
 
 int fileBrowser_libfat_readDir(fileBrowser_file*, fileBrowser_file**, int, int);
+int fileBrowser_libfat_isRoot(const char* path);
+void fileBrowser_libfat_parent(char* path, int dropUpEntry);
+void fileBrowser_libfat_rememberRomDir(const char* romPath);
+int fileBrowser_libfat_lastRomDir(const fileBrowser_file* top, fileBrowser_file* out);
 int fileBrowser_libfat_readFile(fileBrowser_file*, void*, unsigned int);
 int fileBrowser_libfat_writeFile(fileBrowser_file*, void*, unsigned int);
 int fileBrowser_libfat_deleteFile(fileBrowser_file* f);

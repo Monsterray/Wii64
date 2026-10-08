@@ -85,6 +85,10 @@ void byte_swap(char* buffer, unsigned int length, int byte_swap_type);
 void countrycodestring(unsigned short countrycode, char *string);
 char *saveregionstr();
 
+#include "../fileBrowser/fileBrowser.h"
+/* Read the save GOODNAME(REGION).ext from dir into buf; see rom_gc.c. */
+int loadSaveFile(fileBrowser_file* dir, const char* ext, void* buf, unsigned int size);
+
 #ifdef __cplusplus
 }
 #endif

@@ -24,6 +24,7 @@
 #include "MenuContext.h"
 #include "FileBrowserFrame.h"
 #include "../libgui/Button.h"
+#include "../libgui/TextBox.h"
 #include "../libgui/GuiResources.h"
 #include "../libgui/resources.h"
 #include "../libgui/MessageBox.h"
@@ -43,6 +44,7 @@ extern "C" {
 void Func_PrevPage();
 void Func_NextPage();
 void Func_ReturnFromFileBrowserFrame();
+void Func_FB_Back();
 void Func_Select1();
 void Func_Select2();
 void Func_Select3();
@@ -82,19 +84,24 @@ struct ButtonInfo
 	ButtonFunc		returnFunc;
 } FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
 { //	button	buttonStyle		buttonString		x		y		width	height	Up	Dwn	Lft	Rt	clickFunc		returnFunc
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[0],	 35.0,	220.0,	 70.0,	40.0,	-1,	-1,	-1,	 2,	Func_PrevPage,	Func_ReturnFromFileBrowserFrame }, // Prev
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[1],	535.0,	220.0,	 70.0,	40.0,	-1,	-1,	 2,	-1,	Func_NextPage,	Func_ReturnFromFileBrowserFrame }, // Next
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	 40.0,	400.0,	35.0,	11,	 3,	 0,	 1,	Func_Select1,	Func_ReturnFromFileBrowserFrame }, // File Button 1
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	 80.0,	400.0,	35.0,	 2,	 4,	 0,	 1,	Func_Select2,	Func_ReturnFromFileBrowserFrame }, // File Button 2
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	120.0,	400.0,	35.0,	 3,	 5,	 0,	 1,	Func_Select3,	Func_ReturnFromFileBrowserFrame }, // File Button 3
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	160.0,	400.0,	35.0,	 4,	 6,	 0,	 1,	Func_Select4,	Func_ReturnFromFileBrowserFrame }, // File Button 4
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	200.0,	400.0,	35.0,	 5,	 7,	 0,	 1,	Func_Select5,	Func_ReturnFromFileBrowserFrame }, // File Button 5
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	240.0,	400.0,	35.0,	 6,	 8,	 0,	 1,	Func_Select6,	Func_ReturnFromFileBrowserFrame }, // File Button 6
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	280.0,	400.0,	35.0,	 7,	 9,	 0,	 1,	Func_Select7,	Func_ReturnFromFileBrowserFrame }, // File Button 7
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	320.0,	400.0,	35.0,	 8,	10,	 0,	 1,	Func_Select8,	Func_ReturnFromFileBrowserFrame }, // File Button 8
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	360.0,	400.0,	35.0,	 9,	11,	 0,	 1,	Func_Select9,	Func_ReturnFromFileBrowserFrame }, // File Button 9
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	400.0,	400.0,	35.0,	10,	 2,	 0,	 1,	Func_Select10,	Func_ReturnFromFileBrowserFrame }, // File Button 10
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[0],	 35.0,	220.0,	 70.0,	40.0,	-1,	-1,	-1,	 2,	Func_PrevPage,	Func_FB_Back }, // Prev
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[1],	535.0,	220.0,	 70.0,	40.0,	-1,	-1,	 2,	-1,	Func_NextPage,	Func_FB_Back }, // Next
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	 40.0,	400.0,	35.0,	11,	 3,	 0,	 1,	Func_Select1,	Func_FB_Back }, // File Button 1
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	 80.0,	400.0,	35.0,	 2,	 4,	 0,	 1,	Func_Select2,	Func_FB_Back }, // File Button 2
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	120.0,	400.0,	35.0,	 3,	 5,	 0,	 1,	Func_Select3,	Func_FB_Back }, // File Button 3
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	160.0,	400.0,	35.0,	 4,	 6,	 0,	 1,	Func_Select4,	Func_FB_Back }, // File Button 4
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	200.0,	400.0,	35.0,	 5,	 7,	 0,	 1,	Func_Select5,	Func_FB_Back }, // File Button 5
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	240.0,	400.0,	35.0,	 6,	 8,	 0,	 1,	Func_Select6,	Func_FB_Back }, // File Button 6
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	280.0,	400.0,	35.0,	 7,	 9,	 0,	 1,	Func_Select7,	Func_FB_Back }, // File Button 7
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	320.0,	400.0,	35.0,	 8,	10,	 0,	 1,	Func_Select8,	Func_FB_Back }, // File Button 8
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	360.0,	400.0,	35.0,	 9,	11,	 0,	 1,	Func_Select9,	Func_FB_Back }, // File Button 9
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[2],	120.0,	400.0,	400.0,	35.0,	10,	 2,	 0,	 1,	Func_Select10,	Func_FB_Back }, // File Button 10
 };
+
+static fileBrowser_file	currentDir;   // the folder shown (SD/USB: one level, see OpenDirectory)
+static char				pathLabel[FILE_BROWSER_MAX_PATH_LEN];
+static char*			pathText = pathLabel;
+static menu::TextBox*	pathBox;
 
 FileBrowserFrame::FileBrowserFrame()
 {
@@ -125,7 +132,9 @@ FileBrowserFrame::FileBrowserFrame()
 	}
 
 	setDefaultFocus(FRAME_BUTTONS[2].button);
-	setBackFunc(Func_ReturnFromFileBrowserFrame);
+	pathBox = new menu::TextBox(&pathText, 320.0, 20.0, 0.8, true); // folder shown
+	add(pathBox);
+	setBackFunc(Func_FB_Back);
 	setEnabled(true);
 
 }
@@ -137,6 +146,7 @@ FileBrowserFrame::~FileBrowserFrame()
 		menu::Cursor::getInstance().removeComponent(this, FRAME_BUTTONS[i].button);
 		delete FRAME_BUTTONS[i].button;
 	}
+	delete pathBox;
 
 }
 
@@ -298,6 +308,31 @@ void Func_NextPage()
 
 extern MenuContext *pMenuContext;
 
+/* B: up a folder on SD/USB; at the root (or on DVD) back to the main menu. */
+void Func_FB_Back()
+{
+	if (currentDir.name[0] && currentDir.name[0] != '\\' && !fileBrowser_libfat_isRoot(currentDir.name))
+	{
+		fileBrowser_file up = currentDir;
+		fileBrowser_libfat_parent(up.name, 0);
+		fileBrowserFrame_OpenDirectory(&up);
+		menu::Focus::getInstance().clearPrimaryFocus();
+		return;
+	}
+	currentDir.name[0] = 0;
+	Func_ReturnFromFileBrowserFrame();
+}
+
+/* SD/USB: the folder of the last ROM loaded, else the device's top level. */
+void fileBrowserFrame_OpenStart()
+{
+	fileBrowser_file start;
+	if (fileBrowser_libfat_lastRomDir(romFile_topLevel, &start))
+		fileBrowserFrame_OpenDirectory(&start);
+	else
+		fileBrowserFrame_OpenDirectory(romFile_topLevel);
+}
+
 void Func_ReturnFromFileBrowserFrame()
 {
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
@@ -359,17 +394,32 @@ void fileBrowserFrame_OpenDirectory(fileBrowser_file* dir)
 //	if(menu_items){  free(menu_items);  menu_items  = NULL; }
 	if(dir_entries){ free(dir_entries); dir_entries = NULL; }
 	
-	// Read the directories and return on error
-	num_entries = romFile_readDir(dir, &dir_entries, 1, 1);
-	if(num_entries <= 0)
-	{ 
-		if(dir_entries) { free(dir_entries); dir_entries = NULL; } 
-		fileBrowserFrame_Error(dir, num_entries); 
+	// SD/USB list one folder (B goes up); the DVD keeps its flat ROM list.
+	const bool fat = dir->name[0] != '\\';
+	fileBrowser_file shown = *dir;
+	if (fat) fileBrowser_libfat_parent(shown.name, 1); // the '..' entry opens the parent
+	num_entries = romFile_readDir(&shown, &dir_entries, !fat, 1);
+	const bool up = fat && num_entries >= 0 && !fileBrowser_libfat_isRoot(shown.name);
+	if(num_entries < 0 || (num_entries == 0 && !up))
+	{
+		if(dir_entries) { free(dir_entries); dir_entries = NULL; }
+		fileBrowserFrame_Error(&shown, num_entries);
 		return;
 	}
-	
-	// Sort the listing
-	qsort(dir_entries, num_entries, sizeof(fileBrowser_file), dir_comparator);
+	currentDir = shown;
+	snprintf(pathLabel, sizeof(pathLabel), "%s", shown.name);
+
+	// Folders first, then ROMs, each by name; the up entry before them
+	if (num_entries) qsort(dir_entries, num_entries, sizeof(fileBrowser_file), dir_comparator);
+	if (up)
+	{
+		dir_entries = (fileBrowser_file*)realloc(dir_entries, (num_entries + 1) * sizeof(fileBrowser_file));
+		memmove(dir_entries + 1, dir_entries, num_entries * sizeof(fileBrowser_file));
+		dir_entries[0] = shown;
+		snprintf(dir_entries[0].name, sizeof(dir_entries[0].name), "%s/..", shown.name);
+		dir_entries[0].attr = FILE_BROWSER_ATTR_DIR;
+		num_entries++;
+	}
 
 	current_page = 0;
 	max_page = (int)ceil((float)num_entries/NUM_FILE_SLOTS);
@@ -467,6 +517,7 @@ void fileBrowserFrame_LoadFile(int i)
 		menu::Focus::getInstance().clearPrimaryFocus();
 	} else {
 		// We must select this file
+		if (dir_entries[i].name[0] != '\\') fileBrowser_libfat_rememberRomDir(dir_entries[i].name);
 		int ret = loadROM( &dir_entries[i] );
 		
 		if(!ret){	// If the read succeeded.

@@ -33,6 +33,7 @@
 #include "fileBrowser.h"
 #include <sdcard/gcsd.h>
 #include "../r4300/r4300.h"
+#include "../main/rom.h"
 #include "../main/ROM-Cache.h"
 #include "../main/perf_subsystem.h"
 
@@ -113,7 +114,9 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 		// overflows direntry->name into the rest of the (heap-allocated)
 		// struct and whatever the allocator placed after it. Skip entries
 		// whose combined path doesn't fit rather than corrupt memory.
-		if(snprintf(direntry->name, FILE_BROWSER_MAX_PATH_LEN, "%s/%s", file->name, entry->d_name)
+		const size_t parentLen = strlen(file->name);
+		if(snprintf(direntry->name, FILE_BROWSER_MAX_PATH_LEN,
+		            parentLen && file->name[parentLen-1] == '/' ? "%s%s" : "%s/%s", file->name, entry->d_name)
 		   >= FILE_BROWSER_MAX_PATH_LEN)
 			continue;
 		direntry->offset = 0;
@@ -131,10 +134,10 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 		direntry->size = 0;
 		direntry->attr   = (entry->d_type == DT_DIR) ?
 							FILE_BROWSER_ATTR_DIR : 0;
+		if(entry->d_name[0] == '.') continue;
 		
 		// If recursive, search all directories
 		if(recursive && (direntry->attr == FILE_BROWSER_ATTR_DIR)) {
-			if(entry->d_name[0] == '.') continue;	// hide/do not browse these directories.
 			//print_gecko("Entering directory: %s\r\n", direntry->name);
 			fileBrowser_libfat_readDir(direntry, dir, recursive, n64only);
 		}
@@ -155,7 +158,7 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 				dir_capacity *= 2;
 				*dir = realloc( *dir, dir_capacity * sizeof(fileBrowser_file) );
 			}
-			if(n64only) {
+			if(n64only && direntry->attr != FILE_BROWSER_ATTR_DIR) {
 				// Byte order comes from the ROM header's magic word (see
 				// init_byte_swap() in rom_gc.c), not the extension -- .rom is
 				// a plain-bare-extension convention some dumps/sites use for
@@ -166,6 +169,15 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 					 strcasecmp(ext, ".n64") && strcasecmp(ext, ".bin") &&
 					 strcasecmp(ext, ".rom")))
 					continue;
+				// .bin is also used for other data (boxart.bin, diagnostics):
+				// list one only if it starts like an N64 ROM.
+				if(!strcasecmp(ext, ".bin")) {
+					unsigned char magic[4] = {0};
+					FILE* f = fopen(direntry->name, "rb");
+					if(f) { if(fread(magic, 1, 4, f) != 4) magic[0] = 0; fclose(f); }
+					if(init_byte_swap((magic[0] << 24) | (magic[1] << 16) | (magic[2] << 8) | magic[3]) == BYTE_SWAP_BAD)
+						continue;
+				}
 			}
 			
 			memcpy(&(*dir)[num_entries], direntry, sizeof(fileBrowser_file));
@@ -179,6 +191,69 @@ int fileBrowser_libfat_readDir(fileBrowser_file* file, fileBrowser_file** dir, i
 	closedir(dp);
 
 	return num_entries;
+}
+
+/* ROM browsing, one folder at a time (menu/SelectRomFrame.cpp and
+   menu/FileBrowserFrame.cpp): B goes up a folder, and leaves at the root. */
+int fileBrowser_libfat_isRoot(const char* path){
+	const char* colon = strchr(path, ':');
+	return !colon || !colon[1] || (colon[1] == '/' && !colon[2]);
+}
+
+/* "sd:/ROMS/N64" -> "sd:/ROMS" -> "sd:/". With dropUpEntry, a trailing
+   "/.." (the browser's up entry) is dropped first, so "sd:/ROMS/N64/.." ->
+   "sd:/ROMS" and "sd:/ROMS/.." -> "sd:/". */
+void fileBrowser_libfat_parent(char* path, int dropUpEntry){
+	size_t len = strlen(path);
+	if(dropUpEntry) {
+		if(len < 3 || strcmp(path + len - 3, "/..")) return;
+		path[len - 3] = 0;
+	}
+	char* colon = strchr(path, ':');
+	char* slash = strrchr(path, '/');
+	if(!colon || !slash || slash < colon) return;
+	if(slash == colon + 1) slash[1] = 0;
+	else *slash = 0;
+}
+
+/* The folder of the last ROM loaded, kept across boots. Not in settings.cfg:
+   writing that at every ROM load would also save settings the user did not
+   choose to save. */
+static const char* const romDirFiles[2] = { "sd:/wii64/romdir.txt", "usb:/wii64/romdir.txt" };
+
+void fileBrowser_libfat_rememberRomDir(const char* romPath){
+	char dir[FILE_BROWSER_MAX_PATH_LEN], old[FILE_BROWSER_MAX_PATH_LEN] = "";
+	snprintf(dir, sizeof(dir), "%s", romPath);
+	fileBrowser_libfat_parent(dir, 0);
+	for(int i = 0; i < 2; i++) {
+		FILE* f = fopen(romDirFiles[i], "r");
+		if(f) { if(!fgets(old, sizeof(old), f)) old[0] = 0; fclose(f); }
+		if(!strcmp(old, dir)) return;
+		f = fopen(romDirFiles[i], "w");
+		if(f) { fputs(dir, f); fclose(f); return; }
+	}
+}
+
+/* The remembered folder, if it is on the same device as top and still there. */
+int fileBrowser_libfat_lastRomDir(const fileBrowser_file* top, fileBrowser_file* out){
+	const char* colon = strchr(top->name, ':');
+	if(!colon) return 0;
+	for(int i = 0; i < 2; i++) {
+		char dir[FILE_BROWSER_MAX_PATH_LEN];
+		FILE* f = fopen(romDirFiles[i], "r");
+		if(!f) continue;
+		int ok = fgets(dir, sizeof(dir), f) != NULL;
+		fclose(f);
+		dir[strcspn(dir, "\r\n")] = 0;
+		if(!ok || strncmp(dir, top->name, colon - top->name + 1)) continue;
+		DIR* dp = opendir(dir);
+		if(!dp) continue;
+		closedir(dp);
+		memcpy(out, top, sizeof(*out));
+		snprintf(out->name, sizeof(out->name), "%s", dir);
+		return 1;
+	}
+	return 0;
 }
 
 int fileBrowser_libfat_seekFile(fileBrowser_file* file, unsigned int where, unsigned int type){

@@ -67,26 +67,9 @@ bool sramWritten = false;
 int loadSram(fileBrowser_file* savepath)
 {
 	PERF_SUBSYSTEM_C_SCOPE(PERF_SUB_SAVE_LOAD);
-	int i, result = 0;
-	fileBrowser_file saveFile;
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.sra",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_readFile(&saveFile, &i, 4) == 4){ //file exists
-		saveFile.offset = 0;
-		if(saveFile_readFile(&saveFile, sram, 0x8000)!=0x8000) {  //error reading file
-			for (i=0; i<0x8000; i++) sram[i] = 0;
-			sramWritten = false;
-			return -1;
-		}
-		result = 1;
-		sramWritten = 1;
-		return result;  //file read ok
-	} else for (i=0; i<0x8000; i++) sram[i] = 0;  //file doesn't exist
-
-	sramWritten = false;
-	return result;    //no file
+	memset(sram, 0, 0x8000);
+	sramWritten = loadSaveFile(savepath, "sra", sram, 0x8000) > 0;
+	return sramWritten;
 }
 
 int saveSram(fileBrowser_file* savepath)
