@@ -37,8 +37,6 @@
 #include "../libgui/FocusManager.h"
 #include "../libgui/CursorManager.h"
 #include "../libgui/Gui.h"
-extern "C" {
-}
 
 extern "C" {
 #include "../fileBrowser/fileBrowser.h"
