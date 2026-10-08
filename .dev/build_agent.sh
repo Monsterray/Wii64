@@ -17,13 +17,18 @@ if [ ! -d "$ogc_include" ]; then ogc_include="$libogc2/wii/include"; fi
 [[ -d "$ogc_include" ]] || { echo "Install libogc2 first." >&2; exit 2; }
 echo "Building HBC agent with $DEVKITPPC and $ogc_include"
 compat=""
+# Recent SDKs select exception fields using libogc2's version macro, but
+# context.h does not provide it. Keep the compiler's layout assertions active.
+if [ -f "$ogc_include/ogc/libversion.h" ]; then
+    compat='-include ogc/libversion.h'
+fi
 # libogc2 r1 renamed C fields without changing its assembly frame. HBC-Reborn after
 # 1.9.3 handles it; for an older checkout, map the names. Keep the SDK's offset
 # assertions active; probe the installed headers, not a version pin.
 if ! grep -q FC_SRR0 "$hbc_root/sdk/hbc_agent/agent.c" &&
     printf '#include <ogc/context.h>\nint check(void) { return ((frame_context*)0)->srr0; }\n' | \
     "$DEVKITPPC/bin/powerpc-eabi-gcc" -I"$ogc_include" -x c -fsyntax-only - 2>/dev/null; then
-    compat='-DEXCPT_Number=nExcept -DSRR0=srr0 -DSRR1=srr1 -DGPR=gpr -DGQR=gqr -DCR=cr -DLR=lr -DCTR=ctr -DXER=xer'
+    compat+=' -DEXCPT_Number=nExcept -DSRR0=srr0 -DSRR1=srr1 -DGPR=gpr -DGQR=gqr -DCR=cr -DLR=lr -DCTR=ctr -DXER=xer'
 fi
 if ! printf '#include <ogc/message.h>\nint check(void) { return MQ_ERROR_SUCCESSFUL; }\n' | \
     "$DEVKITPPC/bin/powerpc-eabi-gcc" -I"$ogc_include" -x c -fsyntax-only - 2>/dev/null; then
