@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"  # toolchain paths; python3 on Windows
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 task_sub_tmp="$(mktemp -d "${TMPDIR:-/tmp}/wii64-subsystems.XXXXXX")"
-trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o" "$task_sub_tmp/hprof" "$task_sub_tmp/memory"; rmdir "$task_sub_tmp"' EXIT
+trap 'rm -f "$task_sub_tmp/control" "$task_sub_tmp/probes" "$task_sub_tmp/interval" "$task_sub_tmp/no-self" "$task_sub_tmp/scope" "$task_sub_tmp/timer.o" "$task_sub_tmp/hprof" "$task_sub_tmp/memory" "$task_sub_tmp/settings"; rmdir "$task_sub_tmp"' EXIT
 "${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
     -fno-sanitize-recover=all -DPERF_PROF -DPERF_MEMORY -Itests/memory_stubs -Itests/perf_stubs \
     tests/perf_memory_test.c main/perf_memory.c -o "$task_sub_tmp/memory"
@@ -59,6 +59,9 @@ python3 tests/graphics_reset_test.py
 python3 tests/yuyv_convert_test.py
 python3 tests/n64_saves_test.py
 python3 tests/browser_path_test.py
+"${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -fno-sanitize-recover=all -Imain tests/settings_test.c main/settings.c -o "$task_sub_tmp/settings"
+"$task_sub_tmp/settings"
 python3 tests/cache_probe_test.py
 python3 tests/texture_probe_test.py
 python3 tests/cache_probe_report_test.py

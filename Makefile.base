@@ -36,6 +36,7 @@ CXXFLAGS	+= -Wno-register
 OBJ		+= \
 		main/gamehacks.o \
 		main/rom_gc.o \
+		main/settings.o \
 		main/ROM-Cache.o \
 		main/main_gc-menu2.o \
 		main/timers.o \

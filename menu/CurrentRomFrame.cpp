@@ -149,6 +149,10 @@ void Func_ShowRomInfo()
     countrycodestring(ROM_HEADER.Country_code&0xFF, buffer2);
 	sprintf(buffer,"Country: %s\n",buffer2);
 	strcat(RomInfo,buffer);
+	if(rom_game_code(buffer2)) {
+		sprintf(buffer,"Game code: %s (settings/%s.ini)\n",buffer2,buffer2);
+		strcat(RomInfo,buffer);
+	}
 
 	menu::MessageBox::getInstance().setMessage(RomInfo);
 }

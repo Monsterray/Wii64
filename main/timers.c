@@ -14,7 +14,7 @@
 #include "perf_prof.h"
 #include "dev_agent.h"
 
-timers Timers = {0.0, 0.0, 0, 1, 0, 100};
+timers Timers = {0.0, 0.0, 0, 1};
 float VILimit = 60.0;
 double VILimitMicroseconds = 1000000.0/60.0;
 
@@ -56,15 +56,8 @@ int GetVILimit(void)
 }
 
 void InitTimer(void) {
-	int temp;
 	VILimit = GetVILimit();
-	if (Timers.useFpsModifier) {
-		temp = Timers.fpsModifier ; 
-	}  
-	else {
-		temp = 100;
-	}
-	VILimitMicroseconds = (double) 1000000.0/(VILimit * temp / 100);
+	VILimitMicroseconds = (double) 1000000.0/VILimit;
 	Timers.frameDrawn = 0;
 }
 

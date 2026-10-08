@@ -74,6 +74,7 @@ extern "C" {
 #include "../fileBrowser/fileBrowser.h"
 #include "../fileBrowser/fileBrowser-libfat.h"
 #include "wii64config.h"
+#include "settings.h"
 #ifndef HW_RVL
 #include "../vm/vm.h"
 #include "../gc_memory/ARAM.h"
@@ -146,48 +147,94 @@ char miniMenuActive;
 	   char pakMode[4];
 	   char loadButtonSlot;
 
-static struct {
-	const char* key;
-	char* value; // Not a string, but a char pointer
-	char  min, max;
-} OPTIONS[] =
-{ { "MiniMenu", &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE },
-  { "Audio", &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE },
-  { "AudioQuality", &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_HIFI },
-  { "AudioOutputResampler", &audioOutputResampler, AUDIOOUTPUT_DSP, AUDIOOUTPUT_HIFI },
-  { "AudioMixerPrecision", &audioMixerPrecision, AUDIOMIX_ACCURATE, AUDIOMIX_HIFI },
-  { "AudioLatency", &audioLatency, AUDIOLATENCY_LOW, AUDIOLATENCY_STABLE },
-  { "AudioSync", &audioSync, AUDIOSYNC_NATIVE, AUDIOSYNC_PRESERVE },
-  { "FPS", &showFPSonScreen, FPS_HIDE, FPS_SHOW },
-//  { "Debug", &printToScreen, DEBUG_HIDE, DEBUG_SHOW },
-  { "FBTex", &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE },
-  { "NativeOutput", &nativeOutput, NATIVEOUT_DISABLE, NATIVEOUT_ENABLE },
-  { "2xSaI", &glN64_use2xSaiTextures, GLN64_2XSAI_DISABLE, GLN64_2XSAI_ENABLE },
-  { "ScreenMode", &screenMode, SCREENMODE_4x3, SCREENMODE_16x9_PILLARBOX },
-  { "VideoMode", &videoMode, VIDEOMODE_AUTO, VIDEOMODE_576P },
-  { "Core", ((char*)&dynacore)+3, DYNACORE_INTERPRETER, DYNACORE_PURE_INTERP },
-  { "CountPerOp", ((char*)&count_per_op)+3, COUNT_PER_OP_1, COUNT_PER_OP_3 },
-  { "NativeDevice", &nativeSaveDevice, NATIVESAVEDEVICE_SD, NATIVESAVEDEVICE_USB },
-  { "StatesDevice", &saveStateDevice, SAVESTATEDEVICE_SD, SAVESTATEDEVICE_USB },
-  { "AutoSave", &autoSave, AUTOSAVE_DISABLE, AUTOSAVE_ENABLE },
-  { "LimitVIs", &Timers.limitVIs, LIMITVIS_NONE, LIMITVIS_WAIT_FOR_FRAME },
-/*  { "PadType1", &padType[0], PADTYPE_NONE, PADTYPE_WII },
-  { "PadType2", &padType[1], PADTYPE_NONE, PADTYPE_WII },
-  { "PadType3", &padType[2], PADTYPE_NONE, PADTYPE_WII },
-  { "PadType4", &padType[3], PADTYPE_NONE, PADTYPE_WII },
-  { "PadAssign1", &padAssign[0], PADASSIGN_INPUT0, PADASSIGN_INPUT3 },
-  { "PadAssign2", &padAssign[1], PADASSIGN_INPUT0, PADASSIGN_INPUT3 },
-  { "PadAssign3", &padAssign[2], PADASSIGN_INPUT0, PADASSIGN_INPUT3 },
-  { "PadAssign4", &padAssign[3], PADASSIGN_INPUT0, PADASSIGN_INPUT3 },*/
-  { "Pak1", &pakMode[0], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK },
-  { "Pak2", &pakMode[1], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK },
-  { "Pak3", &pakMode[2], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK },
-  { "Pak4", &pakMode[3], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK },
-  { "LoadButtonSlot", &loadButtonSlot, LOADBUTTON_SLOT0, LOADBUTTON_DEFAULT },
+/* settings.ini (main/settings.h). One row per setting: add a setting by adding a row.
+   Keys are the 1.6 settings.cfg keys, so an old settings.cfg still reads. Rows marked
+   SETTING_GAME can also come from a game's own settings/<game code>.ini. */
+#ifdef HW_RVL
+#define DEFAULT_COUNT_PER_OP COUNT_PER_OP_2
+#else
+#define DEFAULT_COUNT_PER_OP COUNT_PER_OP_3
+#endif
+#ifdef GC_BASIC
+#define DEFAULT_MINIMENU MINIMENU_DISABLE
+#else
+#define DEFAULT_MINIMENU MINIMENU_ENABLE
+#endif
+#define C SETTING_CHAR
+#define I SETTING_INT
+#define G SETTING_GAME
+static const struct setting SETTINGS[] =
+{
+  { "General", SETTING_SECTION, 0, 0, 0, 0, 0, "The menu and the emulator." },
+  { "MiniMenu", C, 0, &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE, DEFAULT_MINIMENU,
+    "The menu: 0 = full menu, 1 = mini menu with boxart. A change applies at the next start." },
+  { "Core", I, G, &dynacore, DYNACORE_INTERPRETER, DYNACORE_PURE_INTERP, DYNACORE_DYNAREC,
+    "The CPU emulator: 0 = interpreter, 1 = dynarec (fast), 2 = pure interpreter (slow, for tests)." },
+  { "CountPerOp", I, G, &count_per_op, COUNT_PER_OP_1, COUNT_PER_OP_3, DEFAULT_COUNT_PER_OP,
+    "CPU clock divider: 1, 2 or 3 N64 cycles per instruction. More is faster for the Wii but can slow some games." },
+  { "LimitVIs", C, G, &Timers.limitVIs, LIMITVIS_NONE, LIMITVIS_WAIT_FOR_FRAME, LIMITVIS_WAIT_FOR_VI,
+    "Speed limit: 0 = off (as fast as the Wii can), 1 = N64 speed (wait for each VI), 2 = wait only when a frame was drawn." },
+
+  { "Video", SETTING_SECTION, 0, 0, 0, 0, 0, "The picture." },
+  { "VideoMode", C, 0, &videoMode, VIDEOMODE_AUTO, VIDEOMODE_576P, VIDEOMODE_AUTO,
+    "TV signal: 0 = auto (Wii settings), 1 = 480i 60 Hz, 2 = 240p, 3 = 480p, 4 = 576i 50 Hz, 5 = 288p, 6 = 576p. A change applies at the next start." },
+  { "ScreenMode", C, G, &screenMode, SCREENMODE_4x3, SCREENMODE_16x9_PILLARBOX, SCREENMODE_4x3,
+    "Aspect: 0 = 4:3, 1 = 16:9, 2 = force 16:9 in games. The default follows the Wii's 16:9 setting." },
+  { "FPS", C, 0, &showFPSonScreen, FPS_HIDE, FPS_SHOW, FPS_SHOW,
+    "Show VI/s, speed and DL/s on the screen: 0 = no, 1 = yes." },
+  { "NativeOutput", C, G, &nativeOutput, NATIVEOUT_DISABLE, NATIVEOUT_ENABLE, NATIVEOUT_DISABLE,
+    "240p output for games that use it: 0 = off, 1 = on." },
+  { "FBTex", C, G, &glN64_useFrameBufferTextures, GLN64_FBTEX_DISABLE, GLN64_FBTEX_ENABLE, GLN64_FBTEX_DISABLE,
+    "glN64 framebuffer textures (for example the OoT pause screen): 0 = off, 1 = on." },
+  { "2xSaI", C, G, &glN64_use2xSaiTextures, GLN64_2XSAI_DISABLE, GLN64_2XSAI_ENABLE, GLN64_2XSAI_DISABLE,
+    "glN64 2xSaI texture filter: 0 = off, 1 = on." },
+  { "CpuFramebuffer", C, G, &renderCpuFramebuffer, CPUFRAMEBUFFER_DISABLE, CPUFRAMEBUFFER_ENABLE, CPUFRAMEBUFFER_DISABLE,
+    "glN64: show the framebuffer the game's CPU draws (some menus and videos): 0 = off, 1 = on." },
+
+  { "Audio", SETTING_SECTION, 0, 0, 0, 0, 0, "The sound. Settings > Audio > Advanced changes the ones after Audio." },
+  { "Audio", C, 0, &audioEnabled, AUDIO_DISABLE, AUDIO_ENABLE, AUDIO_ENABLE,
+    "Sound: 0 = off, 1 = on." },
+  { "AudioQuality", C, G, &audioQuality, AUDIOQUALITY_ACCURATE, AUDIOQUALITY_HIFI, AUDIOQUALITY_ACCURATE,
+    "N64 resampling: 0 = accurate, 1 = fast, 2 = hi-fi (more CPU)." },
+  { "AudioOutputResampler", C, G, &audioOutputResampler, AUDIOOUTPUT_DSP, AUDIOOUTPUT_HIFI, AUDIOOUTPUT_DSP,
+    "Wii output resampling: 0 = Wii DSP, 1 = hi-fi (more CPU)." },
+  { "AudioMixerPrecision", C, G, &audioMixerPrecision, AUDIOMIX_ACCURATE, AUDIOMIX_HIFI, AUDIOMIX_ACCURATE,
+    "Mixer: 0 = accurate (as the N64), 1 = hi-fi (more CPU)." },
+  { "AudioLatency", C, 0, &audioLatency, AUDIOLATENCY_LOW, AUDIOLATENCY_STABLE, AUDIOLATENCY_STABLE,
+    "Sound queue: 0 = low latency, 1 = balanced, 2 = stable (fewest gaps)." },
+  { "AudioSync", C, G, &audioSync, AUDIOSYNC_NATIVE, AUDIOSYNC_PRESERVE, AUDIOSYNC_NATIVE,
+    "When the game runs slow: 0 = native rate, 1 = follow the game speed, 2 = keep the pitch (more CPU)." },
+
+  { "Saves", SETTING_SECTION, 0, 0, 0, 0, 0, "Game saves and save states." },
+  { "NativeDevice", C, 0, &nativeSaveDevice, NATIVESAVEDEVICE_SD, NATIVESAVEDEVICE_USB, NATIVESAVEDEVICE_SD,
+    "Where game saves go: 0 = SD, 1 = USB." },
+  { "StatesDevice", C, 0, &saveStateDevice, SAVESTATEDEVICE_SD, SAVESTATEDEVICE_USB, SAVESTATEDEVICE_SD,
+    "Where save states go: 0 = SD, 1 = USB." },
+  { "AutoSave", C, 0, &autoSave, AUTOSAVE_DISABLE, AUTOSAVE_ENABLE, AUTOSAVE_ENABLE,
+    "Load game saves when a ROM loads and save them when you leave the game: 0 = no, 1 = yes." },
+
+  { "Input", SETTING_SECTION, 0, 0, 0, 0, 0, "Controllers. The button maps are in control*.cfg." },
+  { "PadAutoAssign", C, 0, &padAutoAssign, PADAUTOASSIGN_MANUAL, PADAUTOASSIGN_AUTOMATIC, PADAUTOASSIGN_AUTOMATIC,
+    "Controllers to N64 ports: 0 = as PadType/PadAssign below, 1 = automatic." },
+  { "PadType1", C, 0, &padType[0], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 1 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
+  { "PadAssign1", C, 0, &padAssign[0], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT0, "Port 1 uses controller 0 to 3 (manual)." },
+  { "PadType2", C, 0, &padType[1], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 2 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
+  { "PadAssign2", C, 0, &padAssign[1], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT1, "Port 2 uses controller 0 to 3 (manual)." },
+  { "PadType3", C, 0, &padType[2], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 3 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
+  { "PadAssign3", C, 0, &padAssign[2], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT2, "Port 3 uses controller 0 to 3 (manual)." },
+  { "PadType4", C, 0, &padType[3], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 4 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
+  { "PadAssign4", C, 0, &padAssign[3], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT3, "Port 4 uses controller 0 to 3 (manual)." },
+  { "Pak1", C, G, &pakMode[0], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 1 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
+  { "Pak2", C, G, &pakMode[1], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 2 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
+  { "Pak3", C, G, &pakMode[2], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 3 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
+  { "Pak4", C, G, &pakMode[3], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 4 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
+  { "LoadButtonSlot", C, 0, &loadButtonSlot, LOADBUTTON_SLOT0, LOADBUTTON_DEFAULT, LOADBUTTON_DEFAULT,
+    "Button map loaded at start: 0 to 3 = slot 1 to 4, 4 = default." },
 };
-void handleConfigPair(char* kv);
-void readConfig(FILE* f);
-void writeConfig(FILE* f);
+#undef C
+#undef I
+#undef G
+#define NUM_SETTINGS ((int)(sizeof(SETTINGS) / sizeof(SETTINGS[0])))
 
 extern "C" void gfx_set_fb(unsigned int* fb1, unsigned int* fb2);
 void gfx_set_window(int x, int y, int width, int height);
@@ -221,6 +268,8 @@ static void ensure_wii64_dirs(const char *prefix) {
 	snprintf(path, sizeof(path), "%sroms", prefix);
 	mkdir(path, 0777);
 	snprintf(path, sizeof(path), "%ssaves", prefix);
+	mkdir(path, 0777);
+	snprintf(path, sizeof(path), "%ssettings", prefix);
 	mkdir(path, 0777);
 }
 
@@ -290,6 +339,9 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           that Settings tab at boot -- for
                                           screenshotting a menu layout
                                           without a controller.
+     save_settings=1                     Write settings.ini at boot, as
+                                          Settings > Save Settings does (the
+                                          settings.cfg migration, unattended).
      test_selectload=1                   Jump to the ROM browser (SD) and
                                           click the first entry in the
                                           sorted list, like a real user
@@ -371,6 +423,7 @@ static int g_diagAudioOutput = -1, g_diagAudioMixer = -1, g_diagAudioLatency = -
 static int g_diagStressSelectRom = 0; // repeat count for "New ROM -> SD -> back" at boot, 0 = off
 static int g_diagTestSaveLoad = 0; // 1 = run the SD/USB save+load round trip at boot, 0 = off
 static int g_diagSettingsSubmenu = -1; // -1 = not requested; else SettingsFrame::SUBMENU_* value
+static bool g_diagSaveSettings = false;
 static int g_diagTestSelectLoad = 0; // 1 = click the first ROM in the SD browser listing at boot, 0 = off
 static char g_diagArgs[32][192];
 static int g_diagArgN;
@@ -670,6 +723,8 @@ static void apply_diag_line(char* line) {
 			g_diagSettingsSubmenu = 3;
 		} else if(strncmp(line, "autonav=advanced_audio", 22) == 0) {
 			g_diagSettingsSubmenu = 5;
+		} else if(strncmp(line, "save_settings=1", 15) == 0) {
+			g_diagSaveSettings = true;
 		} else if(strncmp(line, "autonav=settings_saves", 22) == 0) {
 			g_diagSettingsSubmenu = 4; // SettingsFrame::SUBMENU_SAVES
 		} else if(sscanf(line, "dynacore=%31[^\r\n]", coreName) == 1) {
@@ -772,6 +827,21 @@ static void apply_diag_automation(void) {
 	}
 }
 
+/* The folder of settings.ini, and of settings/<game code>.ini. */
+static char settingsDir[16];
+int settings_save(const char* path);
+
+/* The settings of the game in settings/<game code>.ini, over the global ones. */
+static void loadGameSettings(void){
+	char code[5], path[48];
+	if(!settingsDir[0] || !rom_game_code(code)) return;
+	snprintf(path, sizeof(path), "%ssettings/%s.ini", settingsDir, code);
+	FILE* f = fopen(path, "r");
+	if(!f) return;
+	settings_game_begin(SETTINGS, NUM_SETTINGS, f);
+	fclose(f);
+}
+
 void load_config(const char *loaded_path) {
 	//config stuff
 	fileBrowser_file configFile_file;
@@ -806,11 +876,21 @@ void load_config(const char *loaded_path) {
 		perfProf_reset(); // truncates sd:/wii64/perf.log once per boot; no-op unless built with -DPERF_PROF
 		apply_diag_automation(); // sd:/wii64/diag.cfg -- autoboot_rom / autonav, see comment above
 		perfProf_selfTest(); // sanity-checks the timer itself; see perf_prof.c
-		sprintf(configFile_file.name, "%s%s", prefix, "settings.cfg");
-		FILE* f = fopen( configFile_file.name, "r" );  //attempt to open file
-		if(f) {        //open ok, read it
-			readConfig(f);
+		strcpy(settingsDir, prefix);
+		// settings.ini; before 1.7.0 the same lines were in settings.cfg
+		sprintf(configFile_file.name, "%s%s", prefix, "settings.ini");
+		FILE* f = fopen( configFile_file.name, "r" );
+		if(!f) {
+			sprintf(configFile_file.name, "%s%s", prefix, "settings.cfg");
+			f = fopen( configFile_file.name, "r" );
+		}
+		if(f) {
+			settings_read(SETTINGS, NUM_SETTINGS, f);
 			fclose(f);
+		}
+		if(g_diagSaveSettings) {
+			sprintf(configFile_file.name, "%s%s", prefix, "settings.ini");
+			settings_save(configFile_file.name);
 		}
 		if(g_diagAudioQualityOverride != -1)
 			audioQuality = g_diagAudioQualityOverride;
@@ -914,58 +994,16 @@ int main(int argc, const char* argv[]) {
 	DVD_Init();  
 #endif
 
-	// Default Settings
-#if !(defined(GC_BASIC))
-	miniMenuActive   = MINIMENU_ENABLE; // Activate MiniMenu
-#else
-	miniMenuActive   = MINIMENU_DISABLE; // Activate MiniMenu
+	// Default settings (SETTINGS[] above); the Wii picks the aspect
+	settings_defaults(SETTINGS, NUM_SETTINGS);
+#ifdef HW_RVL
+	screenMode = CONF_GetAspectRatio() == CONF_ASPECT_16_9 ? SCREENMODE_16x9_PILLARBOX : SCREENMODE_4x3;
 #endif
-	audioEnabled     = 1; // Audio
-	audioQuality     = AUDIOQUALITY_ACCURATE; // Audio resample quality
-	audioOutputResampler = AUDIOOUTPUT_DSP;
-	audioMixerPrecision = AUDIOMIX_ACCURATE;
-	audioLatency = AUDIOLATENCY_STABLE; // retain the legacy queue by default
-	audioSync = AUDIOSYNC_NATIVE;
-	showFPSonScreen  = 1; // Show FPS on Screen (default on for now, while diagnosing perf/hangs)
 	printToScreen    = 1; // Show DEBUG text on screen
 	printToSD        = 0; // Disable SD logging
-	Timers.limitVIs  = LIMITVIS_WAIT_FOR_VI; // Sync to VI
 	saveEnabled      = 0; // Don't save game
-	nativeSaveDevice = 0; // SD
-	saveStateDevice	 = 0; // SD
-	autoSave         = 1; // Auto Save Game
 	creditsScrolling = 0; // Normal menu for now
-	dynacore         = 1; // Dynarec
-#ifndef HW_RVL
-	count_per_op	 = COUNT_PER_OP_3;
-	screenMode		 = SCREENMODE_4x3;
-#else
-	count_per_op	 = COUNT_PER_OP_2;
-	screenMode		 = CONF_GetAspectRatio() == CONF_ASPECT_16_9 ? SCREENMODE_16x9_PILLARBOX : SCREENMODE_4x3;
-#endif
-	videoMode		 = VIDEOMODE_AUTO;
-	padAutoAssign	 = PADAUTOASSIGN_AUTOMATIC;
-	padType[0]		 = PADTYPE_NONE;
-	padType[1]		 = PADTYPE_NONE;
-	padType[2]		 = PADTYPE_NONE;
-	padType[3]		 = PADTYPE_NONE;
-	padAssign[0]	 = PADASSIGN_INPUT0;
-	padAssign[1]	 = PADASSIGN_INPUT1;
-	padAssign[2]	 = PADASSIGN_INPUT2;
-	padAssign[3]	 = PADASSIGN_INPUT3;
-	pakMode[0]		 = PAKMODE_MEMPAK; // memPak plugged into controller 1
-	pakMode[1]		 = PAKMODE_MEMPAK;
-	pakMode[2]		 = PAKMODE_MEMPAK;
-	pakMode[3]		 = PAKMODE_MEMPAK;
-	loadButtonSlot	 = LOADBUTTON_DEFAULT;
-#ifdef GLN64_GX
-	// glN64 specific  settings
- 	glN64_useFrameBufferTextures = 0; // Disable FrameBuffer textures
-	glN64_use2xSaiTextures = 0;	// Disable 2xSai textures
-	renderCpuFramebuffer = 0; // Disable CPU Framebuffer Rendering
-#endif //GLN64_GX
 	menuActive = 1;
-	nativeOutput	 = NATIVEOUT_DISABLE;
 
 #ifdef HW_RVL
 	if (argc > 1 && argv && argv[1] && strncmp(argv[1], "--diag=", 7) != 0)
@@ -984,7 +1022,7 @@ int main(int argc, const char* argv[]) {
 	// Apply normal settings overrides after the saved settings have loaded.
 	for(i=1; argv && i<argc; ++i)
 		if(argv[i] && strncmp(argv[i], "--diag=", 7) != 0)
-			handleConfigPair((char*)argv[i]);
+			settings_line(SETTINGS, NUM_SETTINGS, (char*)argv[i], 0);
 #else
 	load_config("sd");
 #endif
@@ -1116,6 +1154,8 @@ static int loadROM_unheld(fileBrowser_file* rom){
   int ret = 0;
 	perfMem_snapshot("load_enter");
 	perfProf_mark("loadROM: enter");
+	// The global settings again: rom_read's game hacks start from them
+	settings_game_end(SETTINGS, NUM_SETTINGS);
 	// First, if there's already a loaded ROM
 	if(hasLoadedROM){
 		// Unload it, and deinit everything
@@ -1154,6 +1194,7 @@ static int loadROM_unheld(fileBrowser_file* rom){
 		hasLoadedROM = FALSE;
 		return ret;
 	}
+	loadGameSettings(); // before the plugins and the CPU read the settings
 
 	// Init everything for this ROM
 	perfProf_mark("loadROM: before init_memory");
@@ -1360,40 +1401,10 @@ void video_mode_init(GXRModeObj *v,unsigned int *fb1, unsigned int *fb2)
 	xfb[1] = fb2;
 }
 
-void setOption(char* key, int value){
-	for(unsigned int i=0; i<sizeof(OPTIONS)/sizeof(OPTIONS[0]); ++i){
-		if(!strcmp(OPTIONS[i].key, key)){
-			if(value >= OPTIONS[i].min && value <= OPTIONS[i].max)
-				*OPTIONS[i].value = value;
-			break;
-		}
-	}
-}
-
-void handleConfigPair(char* kv){
-	kv += strspn(kv, " \t");
-	char* vs = strpbrk(kv, " \t:=");
-	if(!vs) return;
-	*(vs++) = 0;
-	while(*vs == ' ' || *vs == '\t' || *vs == ':' || *vs == '=')
-			++vs;
-
-	char* end;
-	long value = strtol(vs, &end, 10);
-	if(end == vs || value < -128 || value > 127) return;
-	setOption(kv, (int)value);
-}
-
-void readConfig(FILE* f){
-	char line[256];
-	while(fgets(line, 256, f)){
-		if(line[0] == '#') continue;
-		handleConfigPair(line);
-	}
-}
-
-void writeConfig(FILE* f){
-	for(unsigned int i=0; i<sizeof(OPTIONS)/sizeof(OPTIONS[0]); ++i){
-		fprintf(f, "%s = %d\n", OPTIONS[i].key, *OPTIONS[i].value);
-	}
+/* Settings > Save Settings: settings.ini on SD or USB. */
+int settings_save(const char* path){
+	FILE* f = fopen(path, "wb");
+	if(!f) return 0;
+	settings_write(SETTINGS, NUM_SETTINGS, f);
+	return fclose(f) == 0;
 }

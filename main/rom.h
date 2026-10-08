@@ -84,6 +84,8 @@ void byte_swap(char* buffer, unsigned int length, int byte_swap_type);
 
 void countrycodestring(unsigned short countrycode, char *string);
 char *saveregionstr();
+/* The 4-letter game code (for example NSME); 0 when the header has none. */
+int rom_game_code(char code[5]);
 
 #include "../fileBrowser/fileBrowser.h"
 /* Read the save GOODNAME(REGION).ext from dir into buf; see rom_gc.c. */

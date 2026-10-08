@@ -250,6 +250,19 @@ void countrycodestring(unsigned short countrycode, char *string)
     }
 }
 
+/* Header bytes 0x3B-0x3E: media (N = cartridge), cartridge ID, region. */
+int rom_game_code(char code[5])
+{
+	code[0] = ROM_HEADER.Manufacturer_ID & 0xFF;
+	code[1] = ROM_HEADER.Cartridge_ID >> 8;
+	code[2] = ROM_HEADER.Cartridge_ID & 0xFF;
+	code[3] = ROM_HEADER.Country_code;
+	code[4] = 0;
+	for (int i = 0; i < 4; i++)
+		if (!isalnum((unsigned char)code[i])) return 0;
+	return 1;
+}
+
 /* Wii64 names a save GOODNAME(REGION).ext (the ROM's internal name).
    Project64 writes GOODNAME.ext. When only that file exists, it is imported:
    its SRAM and FlashRAM hold byte-swapped 32-bit words (little-endian PC),

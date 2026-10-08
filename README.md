@@ -55,13 +55,17 @@
 	* Native Saves Device: Choose where to load and save native game saves
 	* Save States Device: Choose where to load and save save states
 	* Select CPU Core: Choose whether to play games with pure interpreter (better compatibility) or dynarec (better speed)
-	* Save settings.cfg: Save all of these settings either SD or USB (to be loaded automatically next time)
+	* CPU Clock Divider: N64 cycles for each instruction (1, 2 or 3); more is faster on the Wii but can slow some games
+	* Mini Menu: Start in the mini menu with boxart, or in the full menu (applies at the next start)
+	* Save Settings: Write settings.ini to SD or USB (see "Settings file" below)
 * Video
 	* Show FPS: Display the framerate in the top-left corner of the screen
 	* Screen Mode: Select the aspect ratio of the display; 'Force 16:9' will pillar-box the in-game display
 	* CPU Framebuffer: Enable for games which only draw directly to the framebuffer (this will only need to be set for some homebrew demos)
 	* 2xSaI Tex: Scale and Interpolate in-game textures (unstable on GC, not supported in Rice GFX)
 	* FB Textures: Enable framebuffer textures (necessary for some games to render everything correctly (e.g. Zelda Subscreen), but can impact performance; unstable on GC, not supported in Rice GFX)
+	* Enable 240p: 240p output for games that use it
+	* Video Mode: The TV signal: Auto (the Wii's settings), 480i 60 Hz, 240p, 480p, 576i 50 Hz, 288p or 576p (applies at the next start)
 * Input
 	* Configure Input: Select controllers to use in game
 	* Configure Paks: Select which controller paks to use in which controllers
@@ -86,107 +90,41 @@ The "-exp.dol" versions support the expansion pak by reducing certain cache size
 ### "WiiVC" Version
 This version isn't really supported much due to the niche nature of it. It enables DRC (Wii U GamePad) support, and also takes advantage of unlocked CPU multiplier support if enabled. The gist of it is that you can run Wii64 on a Wii U in "Wii mode" but with Wii U Game Pad support and (optionally) the CPU multiplier unlocked. To boot this version you can either just use the vWii mode to use the GamePad, or to unlock the CPU multiplier you'll need to be well versed in Wii U homebrew setups (essentially there's a process that exists to inject homebrew into a WiiVC title - e.g. Wii titles were available on the Wii U via the eShop) and there's a thing called [sign_c2w_patcher](https://github.com/FIX94/sign_c2w_patcher) that you must boot before loading this title to unlock the CPU multiplier. This version is shipped as "Wii64 | Rice GFX | WiiVC" and "Wii64 | glN64 GFX | WiiVC" in the archive.
 
-### Boot time arguments
-The following can be passed in via wiiload or by editing the meta.xml to override settings. They can also be changed via the settings.cfg that's created upon booting up the emulator for the first time.
+### Settings file (settings.ini)
+Settings > General > Save Settings writes `wii64/settings.ini` on SD or USB.
+Wii64 reads it at start, from the device it was started from (SD first, then
+USB). Above each key, a comment tells its values, so you can edit the file on
+a PC. Wii64 ignores an unknown key or a value out of range, and keeps the
+default for a key that is not in the file. Wii64 1.6 kept the same keys in
+`settings.cfg`. Without a `settings.ini`, Wii64 reads `settings.cfg`, and the
+next Save Settings writes `settings.ini`.
 
-For synthesis/output resampling, mixer precision, latency, and synchronization,
-see [Audio settings](doc/audio-settings.md). Save menu changes with General,
-Save Settings. Hi-Fi and Preserve Pitch are optional CPU enhancements.
+**Settings for one game.** Put the keys marked "(per game)" in
+`wii64/settings/<game code>.ini`. Current ROM shows the game code (for example
+NSME for Super Mario 64, USA). When that game starts, its keys replace the
+global settings. When you load a different game, Wii64 restores them. For
+example, `wii64/settings/NSME.ini`:
 
-* **MiniMenu** - Which menu style should the emulator default to.
-	 * 0 = Don't boot to Mini Menu
-	 * 1 = Boot to mini menu (default)
-* **Audio** - Audio toggle
-	 * 0 = Disabled
-	 * 1 = Enabled (default)
-
- * **FPS** - FPS display toggle
-	 * 0 = Disabled (default)
-	 * 1 = Enabled
- * **FBTex** - FrameBuffer textures for glN64 (e.g. OoT pause screen)
-	 * 0 = Disabled (default)
-	 * 1 = Enabled
- * **2xSaI** - 2xSaI texture upscaling for glN64
-	 * 0 = Disabled (default)
-	 * 1 = Enabled
- * **ScreenMode**
-	 * 0 = 4:3
-	 * 1 = 16:9
-	 * 2 = 16:9 Pillar box
- * **VideoMode**
-	 * 0 = VIDEOMODE_AUTO (default)
-	 * 1 = VIDEOMODE_PAL60
-	 * 2 = VIDEOMODE_240P
-	 * 3 = VIDEOMODE_480P
-	 * 4 = VIDEOMODE_PAL
-	 * 5 = VIDEOMODE_288P
-	 * 6 = VIDEOMODE_576P
- * **Core**
-	 * 0 = Pure Interpreter
-	 * 1 = Dynamic Recompiler (default)
- * **CountPerOp**
-	 * 0 = 1 per Op (default for WiiVC)
-	 * 1 = 2 per Op (default for Wii)
-	 * 2 = 3 per Op (default for GameCube)
- * **NativeDevice** - Which device to use for Native (SRAM/FlashRAM/EEPROM) saves
-	 * 0 = SD
-	 * 1 = USB
-	 * 2 = Memory Card A
-	 * 3 = Memory Card B
- *  **StatesDevice** - Which device to use for Save States
-	 * 0 = SD
-	 * 1 = USB
- * **AutoSave** - Whether or not to automatically save native saves when returning to the menu
-	 * 0 = Disabled
-	 * 1 = Enabled (default)
- * **LimitVIs** - How to cap emulation speed (Settings > Audio > Speed Limit)
-	 * 0 = No VI limit
-	 * 1 = Wait for VI (default)
-	 * 2 = Wait for Frame
- * **Pak1 / Pak2 / Pak3 / Pak4** - What's inserted in each Controller Pak slot
-	 * 0 = Memory Pak (default)
-	 * 1 = Rumble Pak
- * **LoadButtonSlot** - Which slot to load button mappings from
-	 * 0 to 3 = Button slots 0 to 3
-	 * 4 = Default
-
-## COMPATIBILITY
-Report and view any open issues on the [issue tracker](https://github.com/emukidid/Wii64/issues).
-
-## BUILDING FROM SOURCE
-Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its Wii development tools. Keep [libogc2](https://github.com/extremscorner/libogc2) and [libfat](https://github.com/extremscorner/libfat) in separate checkouts and build/install them with the same devkitPPC toolchain as Wii64. Wii builds also link [HBC-Reborn](https://github.com/Monsterray/hbc-reborn)'s agent, the HOME menu: clone it beside this repository and run `.dev/build_agent.sh`, which builds its library with the same toolchain into `.dev/hbc_agent/`. Set `DEVKITPRO`, `DEVKITPPC`, and `PATH` for that installation; `PATH` must include `$(DEVKITPRO)/tools/bin` and `$(DEVKITPPC)/bin`.
-
-On Windows:
-
-1. Install [devkitPro](https://github.com/devkitPro/installer/releases/latest) with "Wii Development" checked, at `C:\devkitPro`. Install Git for Windows and Python 3.
-2. Clone this repository to a path without spaces, for example `C:\projects\Wii64`.
-3. From devkitPro's MSYS2 shell or Git Bash, run `.dev/setup-devkitpro-windows.sh` once. It clones libogc2, libfat and HBC-Reborn beside this repository, builds libogc2 and libfat with devkitPro's current devkitPPC and installs them into `C:\devkitPro\wii64-sdk`, then builds the HBC agent library (`.dev/build_agent.sh`). It does not change `C:\devkitPro\libogc2`, so other projects that use that copy are not affected. Run it again after you update any of the checkouts.
-4. Build with `.dev/build.sh glN64_wii`, or with `make -f Makefile.glN64_wii` as shown below. The makefiles use `C:\devkitPro\wii64-sdk` when it exists. When it does not exist, they stop and tell you to run the setup script.
-
-On macOS, see [the Intel Mac development notes](doc/macos-development-setup.md).
-
-Build any target with the matching makefile, for example:
-
-```
-make -f Makefile.glN64_wii
+```ini
+; Super Mario 64 (USA)
+LimitVIs = 2
+FBTex = 1
 ```
 
-Other targets: `Makefile.glN64_gc[_exp]`, `Makefile.glN64_wiivc`, `Makefile.Rice_wii`, `Makefile.Rice_gc[_exp]`, and `Makefile.Rice_wiivc`. The Wii makefile recognizes both `libogc2/include` + `libogc2/lib/wii` and `libogc2/wii/include` + `libogc2/wii/lib` layouts. Clean before switching targets or toolchains because object files are built beside their sources.
+Save Settings always writes the global values, also while a game uses its own file.
 
-For local macOS builds and Dolphin smoke tests, source `.dev/env.sh`, then use `.dev/build.sh glN64_wii` and `.dev/dolphin_test.sh wii64-glN64.dol`. The scripts use an isolated Dolphin profile and stage ROMs from `~/Library/Application Support/Dolphin/Load/WiiSDSync/wii64/roms`; set `WII64_ROM_DIR` to use a different ROM folder. On Windows, ROMs come from `C:\tools\Dolphin-x64\User\Load\WiiSDSync\wii64\roms` (or `WII64_ROM_DIR`), and Dolphin is `C:\Tools\Dolphin-x64\Dolphin.exe` unless `DOLPHIN_EXE` says otherwise. Dolphin runs with MMU emulation on: ROMs larger than 16 MB page through address-translation faults and do not boot without it. It also stores XFB copies in emulated RAM and presents them at VI scan (`XFBToTextureEnable=False`, `ImmediateXFBEnable=False`), as a Wii does; otherwise the HOME menu, which the CPU draws, never shows, and chain screenshots read stale memory.
+**Launch arguments.** wiiload or the `<arguments>` of meta.xml can give
+`key=value` lines with the same keys, for example `LimitVIs=1`. They apply
+after settings.ini.
 
-For audio changes, run `.dev/test_rsp_audio.sh` with a host C compiler that supports AddressSanitizer and UndefinedBehaviorSanitizer. It checks synthesis, output streaming, queue boundaries, settings, and diagnostics. See [the optimization handoff](doc/optimization-handoff.md) for current audio status and test-profile storage limits.
-
-For a real Wii, see [hardware testing](doc/hardware-session.md). Set up the shared Wii queue client and SD test chain once. `.dev/hardware_baseline.sh` waits for the central lease, builds a profiling DOL, sends it from Homebrew Channel with `wiiload`, collects the results, and files a baseline. SD results remain available if transfer fails. Use `.dev/profile_subsystems.sh` for a matched subsystem probe/control survey.
-
-For a ROM-library smoke test on Dolphin and the Wii, see [library testing](doc/library-testing.md). It records coverage, VI speed, video/audio activity and stutter candidates without muting the guest sound engine.
-
-Wii builds prepare large ROMs before gameplay to reduce paging stalls. This can increase load time. For the HBC agent (HOME menu, crash reports, file transfer) and matched paging comparisons, see [the agent and MEM2 notes](doc/rom-paging-and-agent.md).
+For the audio keys, see [Audio settings](doc/audio-settings.md). Hi-Fi and
+Preserve Pitch are optional CPU enhancements.
 
 ## CREDITS
+ * Author and maintainer since 1.7.0: Monty Perrotti
  * Core Coder: tehpola
  * Graphics & Menu Coder: sepp256
- * General Coder & current maintainer: emu_kidid
+ * General Coder & maintainer before 1.7.0: emu_kidid
  * Original mupen64: Hactarux
  * [Not64](https://github.com/extremscorner/not64) /[libogc2](https://github.com/extremscorner/libogc2): [Extrems](extremscorner.org)
  * WiiVC/DRG stuff: [FIX94](https://github.com/FIX94/)

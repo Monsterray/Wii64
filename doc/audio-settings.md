@@ -2,7 +2,7 @@
 
 Open Settings, Audio, Advanced. Press A on a row to cycle its options.
 The Audio On/Off control stays on the main Audio page. Use Save Settings on
-the General page to write these choices to `settings.cfg`.
+the General page to write these choices to `settings.ini`.
 
 | Setting | Options | Default |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ comparisons. No reverb or DSP On/Off control is added.
 
 ## Config and diagnostic values
 
-`settings.cfg` uses numeric values:
+`settings.ini` uses numeric values (a game can override them; see the README):
 
 | Key | Values |
 | --- | --- |

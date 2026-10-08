@@ -82,12 +82,20 @@ void Func_AdvancedAudioSettings();
 void Func_SpeedLimitOff();
 void Func_SpeedLimitVi();
 void Func_SpeedLimitFrame();
+void Func_MiniMenuOn();
+void Func_MiniMenuOff();
+void Func_ToggleVideoMode();
 
 void Func_AutoSaveNativeYes();
 void Func_AutoSaveNativeNo();
 void Func_CopySaves();
 void Func_DeleteSaves();
 void Func_ReturnFromSettingsFrame();
+
+/* settings.ini VideoMode, in VIDEOMODE_* order */
+static const char* VideoModeLabels[7] = {
+	"Auto", "480i 60 Hz", "240p", "480p", "576i 50 Hz", "288p", "576p"
+};
 
 static const char* LoadButtonLabels[5] = {
 	"Slot 1",
@@ -97,14 +105,14 @@ static const char* LoadButtonLabels[5] = {
 	"Default"
 };
 
-#define NUM_FRAME_BUTTONS 45
+#define NUM_FRAME_BUTTONS 48
 #define NUM_TAB_BUTTONS 5
 #define FRAME_BUTTONS settingsFrameButtons
 #define FRAME_STRINGS settingsFrameStrings
-#define NUM_FRAME_TEXTBOXES 16
+#define NUM_FRAME_TEXTBOXES 18
 #define FRAME_TEXTBOXES settingsFrameTextBoxes
 
-static char FRAME_STRINGS[44][23] =
+static char FRAME_STRINGS[46][23] =
 	{ "General",
 	  "Video",
 	  "Input",
@@ -154,6 +162,8 @@ static char FRAME_STRINGS[44][23] =
 	  "Speed Limit",  //[41] Audio tab
 	  "VI",
 	  "Frame",
+	  "Mini Menu",  //[44] General tab
+	  "Video Mode", //[45] Video tab
 	};
 
 struct ButtonInfo
@@ -182,32 +192,32 @@ struct ButtonInfo
 	//Buttons for General Tab (starts at button[5])
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	100.0,	 55.0,	50.0,	 0,	 7,	 6,	 6,	Func_NativeSaveSD,		Func_ReturnFromSettingsFrame }, // Native Save: SD
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	100.0,	 70.0,	50.0,	 0,	8,	 5,	 5,	Func_NativeSaveUSB,		Func_ReturnFromSettingsFrame }, // Native Save: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	170.0,	 55.0,	50.0,	 5,	9,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	170.0,	 70.0,	50.0,	 6,	9,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	330.0,	240.0,	150.0,	50.0,	 7,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	495.0,	240.0,	120.0,	50.0,	8,	12,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	330.0,	310.0,	 55.0,	50.0,	9,	14,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	400.0,	310.0,	 55.0,	50.0,	9,	15,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	470.0,	310.0,	 55.0,	50.0,	9,	15,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	380.0,	 55.0,	50.0,	11,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
-	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	380.0,	 70.0,	50.0,	12,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[9],	330.0,	156.0,	 55.0,	50.0,	 5,	9,	8,	8,	Func_SaveStateSD,		Func_ReturnFromSettingsFrame }, // Save State: SD
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[10],	400.0,	156.0,	 70.0,	50.0,	 6,	9,	 7,	 7,	Func_SaveStateUSB,		Func_ReturnFromSettingsFrame }, // Save State: USB
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[11],	330.0,	212.0,	150.0,	50.0,	 7,	11,	10,	10,	Func_CpuPureInterp,		Func_ReturnFromSettingsFrame }, // CPU: Pure Interp
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[12],	495.0,	212.0,	120.0,	50.0,	8,	12,	9,	9,	Func_CpuDynarec,		Func_ReturnFromSettingsFrame }, // CPU: Dynarec
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[37],	330.0,	268.0,	 55.0,	50.0,	9,	45,	13,	12,	Func_ClockDivider1,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 1
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[38],	400.0,	268.0,	 55.0,	50.0,	9,	46,	11,	13,	Func_ClockDivider2,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 2
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[39],	470.0,	268.0,	 55.0,	50.0,	9,	46,	12,	11,	Func_ClockDivider3,		Func_ReturnFromSettingsFrame }, // CPU Clock Divider: 3
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[9],	330.0,	380.0,	 55.0,	50.0,	45,	 0,	15,	15,	Func_SaveSettingsSD,	Func_ReturnFromSettingsFrame }, // Save Settings: SD
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[10],	400.0,	380.0,	 70.0,	50.0,	46,	 0,	14,	14,	Func_SaveSettingsUSB,	Func_ReturnFromSettingsFrame }, // Save Settings: USB
 	//Buttons for Video Tab (starts at button[16])
 	//Sized/positioned to match the General tab's convention (button width fit
 	//to its label, 330/400 for a 2-way toggle, 15px gap) instead of a fixed
 	//75px for every button regardless of label length.
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 55.0,	50.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	100.0,	 70.0,	50.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	156.0,	 70.0,	50.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	415.0,	156.0,	 80.0,	50.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	510.0,	156.0,	115.0,	50.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	212.0,	 55.0,	50.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	212.0,	 70.0,	50.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	268.0,	 55.0,	50.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	268.0,	 70.0,	50.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 55.0,	50.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	324.0,	 70.0,	50.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	380.0,	 55.0,	50.0,	25,	 1,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	380.0,	 70.0,	50.0,	26,	 1,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 55.0,	44.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	100.0,	 70.0,	44.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	148.0,	 70.0,	44.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	415.0,	148.0,	 80.0,	44.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	510.0,	148.0,	115.0,	44.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	196.0,	 55.0,	44.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	196.0,	 70.0,	44.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	244.0,	 55.0,	44.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	244.0,	 70.0,	44.0,	22,	26,	23,	23,	Func_2xSaiTexturesOff,	Func_ReturnFromSettingsFrame }, // 2xSai: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	292.0,	 55.0,	44.0,	23,	 27,26,	26,	Func_FbTexturesOn,		Func_ReturnFromSettingsFrame }, // FbTex: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	292.0,	 70.0,	44.0,	24,	 28,25,	25,	Func_FbTexturesOff,		Func_ReturnFromSettingsFrame }, // FbTex: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	340.0,	 55.0,	44.0,	25,	47,	28,	28,	Func_NativeOutputOn,	Func_ReturnFromSettingsFrame }, // 240p: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	340.0,	 70.0,	44.0,	26,	47,	27,	27,	Func_NativeOutputOff,	Func_ReturnFromSettingsFrame }, // 240p: Off
 	//Buttons for Input Tab (starts at button[29])
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[24],	185.0,	100.0,	270.0,	50.0,	 2,	30,	-1,	-1,	Func_ConfigureInput,	Func_ReturnFromSettingsFrame }, // Configure Mappings
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[25],	185.0,	170.0,	270.0,	50.0,	29,	31,	-1,	-1,	Func_ConfigurePaks,		Func_ReturnFromSettingsFrame }, // Configure Paks
@@ -229,6 +239,10 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	330.0,	170.0,	 70.0,	50.0,	35,	41,	44,	43,	Func_SpeedLimitOff,		Func_ReturnFromSettingsFrame }, // Speed Limit: Off
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[42],	415.0,	170.0,	 55.0,	50.0,	36,	41,	42,	44,	Func_SpeedLimitVi,		Func_ReturnFromSettingsFrame }, // Speed Limit: VI
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[43],	485.0,	170.0,	 90.0,	50.0,	36,	41,	43,	42,	Func_SpeedLimitFrame,	Func_ReturnFromSettingsFrame }, // Speed Limit: Frame
+	//Buttons 45-46 (General tab) and 47 (Video tab): settings that apply at the next start
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 55.0,	50.0,	11,	14,	46,	46,	Func_MiniMenuOn,		Func_ReturnFromSettingsFrame }, // Mini Menu: On
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	324.0,	 70.0,	50.0,	12,	15,	45,	45,	Func_MiniMenuOff,		Func_ReturnFromSettingsFrame }, // Mini Menu: Off
+	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[45],	330.0,	388.0,	150.0,	44.0,	27,	 1,	-1,	-1,	Func_ToggleVideoMode,	Func_ReturnFromSettingsFrame }, // Video Mode (cycles)
 };
 
 struct TextBoxInfo
@@ -243,17 +257,17 @@ struct TextBoxInfo
 { //	textBox	textBoxString		x		y		scale	centered
 	//TextBoxes for General Tab (starts at textBox[0])
 	{	NULL,	FRAME_STRINGS[5],	180.0,	125.0,	 1.0,	true }, // Native Save Device: SD/USB
-	{	NULL,	FRAME_STRINGS[6],	180.0,	195.0,	 1.0,	true }, // Save State Device: SD/USB
-	{	NULL,	FRAME_STRINGS[7],	180.0,	265.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
-	{	NULL,	FRAME_STRINGS[36],	180.0,	335.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
+	{	NULL,	FRAME_STRINGS[6],	180.0,	181.0,	 1.0,	true }, // Save State Device: SD/USB
+	{	NULL,	FRAME_STRINGS[7],	180.0,	237.0,	 1.0,	true }, // CPU Core: Pure Interp/Dynarec
+	{	NULL,	FRAME_STRINGS[36],	180.0,	293.0,	 1.0,	true }, // CPU Clock Divider: 1/2/3
 	{	NULL,	FRAME_STRINGS[8],	180.0,	405.0,	 1.0,	true }, // Save settings.cfg: SD/USB
 	//TextBoxes for Video Tab (starts at textBox[5])
-	{	NULL,	FRAME_STRINGS[13],	180.0,	125.0,	 1.0,	true }, // Show FPS: On/Off
-	{	NULL,	FRAME_STRINGS[14],	180.0,	181.0,	 1.0,	true }, // ScreenMode: 4x3/16x9/Force16x9
-	{	NULL,	FRAME_STRINGS[15],	180.0,	237.0,	 1.0,	true }, // CPU Framebuffer: On/Off
-	{	NULL,	FRAME_STRINGS[16],	180.0,	293.0,	 1.0,	true }, // 2xSai: On/Off
-	{	NULL,	FRAME_STRINGS[17],	180.0,	349.0,	 1.0,	true }, // FBTex: On/Off
-	{	NULL,	FRAME_STRINGS[23],	180.0,	405.0,	 1.0,	true }, // Enable 240p: On/Off
+	{	NULL,	FRAME_STRINGS[13],	180.0,	122.0,	 1.0,	true }, // Show FPS: On/Off
+	{	NULL,	FRAME_STRINGS[14],	180.0,	170.0,	 1.0,	true }, // ScreenMode: 4x3/16x9/Force16x9
+	{	NULL,	FRAME_STRINGS[15],	180.0,	218.0,	 1.0,	true }, // CPU Framebuffer: On/Off
+	{	NULL,	FRAME_STRINGS[16],	180.0,	266.0,	 1.0,	true }, // 2xSai: On/Off
+	{	NULL,	FRAME_STRINGS[17],	180.0,	314.0,	 1.0,	true }, // FBTex: On/Off
+	{	NULL,	FRAME_STRINGS[23],	180.0,	362.0,	 1.0,	true }, // Enable 240p: On/Off
 	//TextBoxes for Input Tab (starts at textBox[11])
 	{	NULL,	FRAME_STRINGS[27],	180.0,	335.0,	 1.0,	true }, // Save Button Configs
 	{	NULL,	FRAME_STRINGS[28],	180.0,	405.0,	 1.0,	true }, // Auto Load Slot
@@ -263,6 +277,9 @@ struct TextBoxInfo
 	{	NULL,	FRAME_STRINGS[33],	180.0,	125.0,	 1.0,	true }, // Auto Save Native Save: Yes/No
 	//TextBox 15 (Audio tab)
 	{	NULL,	FRAME_STRINGS[41],	180.0,	195.0,	 1.0,	true }, // Speed Limit: Off/VI/Frame
+	//TextBox 16 (General tab), 17 (Video tab)
+	{	NULL,	FRAME_STRINGS[44],	180.0,	349.0,	 1.0,	true }, // Mini Menu: On/Off
+	{	NULL,	FRAME_STRINGS[45],	180.0,	410.0,	 1.0,	true }, // Video Mode
 
 };
 
@@ -357,6 +374,13 @@ void SettingsFrame::activateSubmenu(int submenu)
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
+			FRAME_TEXTBOXES[16].textBox->setVisible(true);
+			FRAME_BUTTONS[miniMenuActive == MINIMENU_ENABLE ? 45 : 46].button->setSelected(true);
+			for (int i = 45; i <= 46; i++)
+			{
+				FRAME_BUTTONS[i].button->setVisible(true);
+				FRAME_BUTTONS[i].button->setActive(true);
+			}
 			break;
 		case SUBMENU_VIDEO:
 			setDefaultFocus(FRAME_BUTTONS[1].button);
@@ -364,7 +388,7 @@ void SettingsFrame::activateSubmenu(int submenu)
 			{
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_DOWN, FRAME_BUTTONS[16].button);
-				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[27].button);
+				FRAME_BUTTONS[i].button->setNextFocus(menu::Focus::DIRECTION_UP, FRAME_BUTTONS[47].button);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
 			for (int i = 5; i < 11; i++)
@@ -388,6 +412,10 @@ void SettingsFrame::activateSubmenu(int submenu)
 				FRAME_BUTTONS[i].button->setVisible(true);
 				FRAME_BUTTONS[i].button->setActive(true);
 			}
+			FRAME_TEXTBOXES[17].textBox->setVisible(true);
+			FRAME_BUTTONS[47].button->setText((char**)&VideoModeLabels[(int)videoMode]);
+			FRAME_BUTTONS[47].button->setVisible(true);
+			FRAME_BUTTONS[47].button->setActive(true);
 			break;
 		case SUBMENU_INPUT:
 			setDefaultFocus(FRAME_BUTTONS[2].button);
@@ -710,47 +738,19 @@ void Func_ClockDivider3()
 		Func_ResetROM();
 }
 
-extern void writeConfig(FILE* f);
+extern int settings_save(const char* path); // main/main_gc-menu2.cpp
 
-void Func_SaveSettingsSD()
+static void SaveSettings(fileBrowser_file* dir, const char* path, const char* device)
 {
-	fileBrowser_file* configFile_file;
-	int (*configFile_init)(fileBrowser_file*) = fileBrowser_libfat_init;
-	int num_written = 0;
-	configFile_file = &saveDir_libfat_Default;
-	if(configFile_init(configFile_file)) {                //only if device initialized ok
-		FILE* f = fopen( "sd:/wii64/settings.cfg", "wb" );  //attempt to open file
-		if(f) {
-			writeConfig(f);                                   //write out the config
-			fclose(f);
-			num_written++;
-		}
-	}
-	if (num_written == 1)
-		menu::MessageBox::getInstance().setMessage("Saved settings.cfg to SD");
-	else
-		menu::MessageBox::getInstance().setMessage("Error saving settings.cfg to SD");
+	char msg[64];
+	bool ok = fileBrowser_libfat_init(dir) && settings_save(path);
+	snprintf(msg, sizeof(msg), ok ? "Saved settings.ini to %s" : "Error saving settings.ini to %s", device);
+	menu::MessageBox::getInstance().setMessage(msg);
 }
 
-void Func_SaveSettingsUSB()
-{
-	fileBrowser_file* configFile_file;
-	int (*configFile_init)(fileBrowser_file*) = fileBrowser_libfat_init;
-	int num_written = 0;
-	configFile_file = &saveDir_libfat_USB;
-	if(configFile_init(configFile_file)) {                //only if device initialized ok
-		FILE* f = fopen( "usb:/wii64/settings.cfg", "wb" ); //attempt to open file
-		if(f) {
-			writeConfig(f);                                   //write out the config
-			fclose(f);
-			num_written++;
-		}
-	}
-	if (num_written == 1)
-		menu::MessageBox::getInstance().setMessage("Saved settings.cfg to USB");
-	else
-		menu::MessageBox::getInstance().setMessage("Error saving settings.cfg to USB");
-}
+void Func_SaveSettingsSD() { SaveSettings(&saveDir_libfat_Default, "sd:/wii64/settings.ini", "SD"); }
+
+void Func_SaveSettingsUSB() { SaveSettings(&saveDir_libfat_USB, "usb:/wii64/settings.ini", "USB"); }
 
 void Func_ShowFpsOn()
 {
@@ -1049,3 +1049,27 @@ static void SetSpeedLimit(int limit)
 void Func_SpeedLimitOff() { SetSpeedLimit(LIMITVIS_NONE); }
 void Func_SpeedLimitVi() { SetSpeedLimit(LIMITVIS_WAIT_FOR_VI); }
 void Func_SpeedLimitFrame() { SetSpeedLimit(LIMITVIS_WAIT_FOR_FRAME); }
+
+/* Mini Menu and Video Mode take effect when Wii64 starts (Save Settings first). */
+static void NextStart()
+{
+	menu::MessageBox::getInstance().fadeMessage("Save Settings: applies at the next start");
+}
+
+static void SetMiniMenu(int on)
+{
+	FRAME_BUTTONS[45].button->setSelected(on);
+	FRAME_BUTTONS[46].button->setSelected(!on);
+	miniMenuActive = on ? MINIMENU_ENABLE : MINIMENU_DISABLE;
+	NextStart();
+}
+
+void Func_MiniMenuOn() { SetMiniMenu(1); }
+void Func_MiniMenuOff() { SetMiniMenu(0); }
+
+void Func_ToggleVideoMode()
+{
+	videoMode = (videoMode + 1) % 7;
+	FRAME_BUTTONS[47].button->setText((char**)&VideoModeLabels[(int)videoMode]);
+	NextStart();
+}

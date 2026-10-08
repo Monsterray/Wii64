@@ -30,6 +30,7 @@ public class Wii64DiagWin {
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     public static List<IntPtr> Windows = new List<IntPtr>();
     public static bool Report(IntPtr hWnd, IntPtr lParam) {
         if (IsWindowVisible(hWnd)) Windows.Add(hWnd);
@@ -103,6 +104,8 @@ switch ($Action) {
         $hwndVal = [int64](($lines | Where-Object { $_ -like 'HWND=*' }) -replace 'HWND=','')
         $hwnd = [IntPtr]$hwndVal
         # The whole window, whatever its size (a fixed 900x650 cut off the HOME bar).
+        # Real pixels: with display scaling, a DPI-unaware rect cuts off most of the window.
+        [void][Wii64DiagWin]::SetProcessDPIAware()
         $rect = New-Object Wii64DiagWin+RECT
         [void][Wii64DiagWin]::GetWindowRect($hwnd, [ref]$rect)
         $bmp = New-Object System.Drawing.Bitmap ([Math]::Max(1, $rect.Right - $rect.Left)), ([Math]::Max(1, $rect.Bottom - $rect.Top))

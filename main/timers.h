@@ -12,8 +12,6 @@ typedef struct {
    float	vis;			//Current VI/s
    char		frameDrawn;
    char		limitVIs;		//0: NO VI Limit, 1: Limit VI/s, 2: Wait only if frame drawn
-   char		useFpsModifier;	//Modify FPS?
-   int		fpsModifier;	//Framerate modifier in %
 } timers;
 
 //extern timers Timers;
