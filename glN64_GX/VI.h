@@ -30,6 +30,8 @@ extern VIInfo VI;
 
 void VI_UpdateSize();
 void VI_UpdateScreen();
+void VI_ColorImageSwitch( u32 address, u32 width );
+void VI_ResetPresent();
 
 #ifdef __GX__
 

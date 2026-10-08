@@ -227,6 +227,54 @@ void GX_CheckResChange() {
 	}
 }
 
+static bool originFollowsColorImage;
+static u32 presentWait;
+static u32 lastFrameBuffer, presentedDList; // VI_ColorImageSwitch
+
+// The VI shows the buffer the RDP draws into (the origin is inside it).
+static bool VI_ShowsColorImage()
+{
+	const u32 lineBytes = gDP.colorImage.width << gDP.colorImage.size >> 1;
+	return (*REG.VI_ORIGIN & 0xFFFFFF) - gDP.colorImage.address < lineBytes * VI.height;
+}
+
+static void VI_GX_present()
+{
+	VI_GX_cleanUp();
+#ifdef HW_DOL
+	VI_GX_showLoadIcon();
+#endif
+	VI_GX_showFPS();
+	VI_GX_showDEBUG();
+	GX_CopyDisp(VI.xfb[VI.which_fb], GX_TRUE);
+	GX_SetDrawSync(VI.which_fb);
+	gSP.changed &= ~CHANGED_COLORBUFFER;
+	presentWait = 0;
+	presentedDList = RSP.DList;
+}
+
+/* gDPSetColorImage, before it changes buffers: a game that starts drawing
+   into another full-screen framebuffer has finished the frame in the last one.
+   The depth image and narrower buffers do not count: games draw into them
+   inside a frame (Mario Party 3: B, depth, A; Mario Kart: X, depth, X). */
+void VI_ColorImageSwitch( u32 address, u32 width )
+{
+	if (address == gDP.depthImageAddress || width != VI.width)
+		return;
+	if (!OGL.frameBufferTextures && originFollowsColorImage &&
+	    lastFrameBuffer != 0 && lastFrameBuffer != address && RSP.DList != presentedDList)
+		VI_GX_present();
+	lastFrameBuffer = address;
+}
+
+// RomOpen: a new game has not been seen showing its color image yet.
+void VI_ResetPresent()
+{
+	originFollowsColorImage = false;
+	presentWait = 0;
+	lastFrameBuffer = 0;
+}
+
 void VI_UpdateScreen()
 {
 	if (GBI.current && GBI.current->type == F3DGOLDEN) {
@@ -281,17 +329,22 @@ void VI_UpdateScreen()
 	}
 	else
 	{
+		/* Show only finished frames. A game that draws a frame in several RSP
+		   tasks (Mario Party 3: four) can be between them at a VI; the EFB then
+		   holds part of the next frame, drawn into a buffer the VI does not show
+		   yet. Once the game has been seen showing the buffer it draws into, such
+		   a VI keeps the last picture; VI_ColorImageSwitch shows the frame when
+		   the game moves on. Other games, or 30 VIs without a picture, present
+		   at every VI as before. */
+		const bool shown = VI_ShowsColorImage();
+		if (shown)
+			originFollowsColorImage = true;
 		if (gSP.changed & CHANGED_COLORBUFFER)
 		{
-			VI_GX_cleanUp();
-#ifdef HW_DOL
-			VI_GX_showLoadIcon();
-#endif
-			VI_GX_showFPS();
-			VI_GX_showDEBUG();
-			GX_CopyDisp(VI.xfb[VI.which_fb], GX_TRUE);
-			GX_SetDrawSync(VI.which_fb);
-			gSP.changed &= ~CHANGED_COLORBUFFER;
+			if (!shown && originFollowsColorImage && ++presentWait > 30)
+				originFollowsColorImage = false;
+			if (shown || !originFollowsColorImage)
+				VI_GX_present();
 		}
 	}
 }

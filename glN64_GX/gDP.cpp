@@ -377,6 +377,8 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 
 	if (gDP.colorImage.address != address)
 	{
+		VI_ColorImageSwitch( address, width );
+
 		if (gDP.m_fbCopyPending != 0 && gDP.m_fbCopyPending == gDP.colorImage.address)
 		{
 			if (gDP.colorImage.size == G_IM_SIZ_16b && gDP.colorImage.width == VI.width)

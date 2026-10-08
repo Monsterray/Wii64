@@ -196,6 +196,7 @@ EXPORT void CALL RomOpen (void)
 	VI_CacheProbeGXTest();
 #endif
 	RSP_Init();
+	VI_ResetPresent();
 
 	OGL_ResizeWindow();
 
