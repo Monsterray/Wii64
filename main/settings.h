@@ -51,6 +51,8 @@ void settings_write(const struct setting* t, int n, FILE* f);
 void settings_game_begin(const struct setting* t, int n, FILE* f);
 /* Put back the values a game's file changed. */
 void settings_game_end(const struct setting* t, int n);
+/* How many keys the game's file changed (0 without one). */
+int settings_game_count(void);
 
 #ifdef __cplusplus
 }

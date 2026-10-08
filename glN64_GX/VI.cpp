@@ -289,7 +289,8 @@ void VI_UpdateScreen()
 #ifdef HW_DOL
 		VI_GX_showLoadIcon();
 #endif
-		VI_GX_showFPS();
+		if (RSP.DList) // no counter on the black screen before the game draws
+			VI_GX_showFPS();
 		VI_GX_showDEBUG();
 		GX_CopyDisp(VI.xfb[VI.which_fb], GX_TRUE);
 		GX_SetDrawSync(VI.which_fb);

@@ -56,7 +56,7 @@
 	* Save States Device: Choose where to load and save save states
 	* Select CPU Core: Choose whether to play games with pure interpreter (better compatibility) or dynarec (better speed)
 	* CPU Clock Divider: N64 cycles for each instruction (1, 2 or 3); more is faster on the Wii but can slow some games
-	* Mini Menu: Start in the mini menu with boxart, or in the full menu (applies at the next start)
+	* Start Menu: Start in Basic (the mini menu with boxart) or Advanced (the full menu); applies at the next start
 	* Save Settings: Write settings.ini to SD or USB (see "Settings file" below)
 * Video
 	* Show FPS: Display the framerate in the top-left corner of the screen

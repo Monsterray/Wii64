@@ -31,6 +31,7 @@ namespace menu {
 
 #define LOADINGBAR_TEXT_WIDTH 100
 char loadingBarText[LOADINGBAR_TEXT_WIDTH];
+static char loadingBarPercent[8];
 
 LoadingBar::LoadingBar()
 		: buttonImage(0),
@@ -63,8 +64,8 @@ void LoadingBar::showBar(float percent, const char* string)
 	currentFocusFrame = Focus::getInstance().getCurrentFrame();
 	Focus::getInstance().setCurrentFrame(NULL);
 	percentComplete = percent >= 0.0f ? (percent <= 1.0f ? percent : 1.0f) : 0.0f;
-	snprintf(loadingBarText, sizeof(loadingBarText), "%.*s (%u%%)",
-		LOADINGBAR_TEXT_WIDTH - 9, string, (unsigned)(percentComplete * 100 + 0.5f));
+	snprintf(loadingBarText, sizeof(loadingBarText), "%s", string);
+	snprintf(loadingBarPercent, sizeof(loadingBarPercent), "%u%%", (unsigned)(percentComplete * 100 + 0.5f));
 
 	menu::Gui::getInstance().draw();
 
@@ -93,7 +94,7 @@ void LoadingBar::drawLoadingBar(Graphics& gfx)
 	gfx.loadOrthographic();
 
 	//draw box
-	float x = 120; float y = 160; float width = 400; float height = 150;
+	float x = 70; float y = 160; float width = 500; float height = 150; // the Wii's font is wide
 	buttonImage->activateImage(GX_TEXMAP0);
 	gfx.drawImage(0, x, y, width/2, height/2, 0.0, width/16.0, 0.0, height/16.0);
 	gfx.drawImage(0, x+width/2, y, width/2, height/2, width/16.0, 0.0, 0.0, height/16.0);
@@ -118,9 +119,10 @@ void LoadingBar::drawLoadingBar(Graphics& gfx)
 	gfx.drawImage(0, x, y+height/2, width/2, height/2, 0.0, width/16.0, height/16.0, 0.0);
 	gfx.drawImage(0, x+width/2, y+height/2, width/2, height/2, width/16.0, 0.0, height/16.0, 0.0);
 
-	//draw text 'box'
+	//draw the percent, and the text under it
 	x = 120; y = 200; width = 400; height = 40;
 	IplFont::getInstance().drawInit(textColor);
+	IplFont::getInstance().drawString((int) (x+width/2), 185, loadingBarPercent, 0.9, true);
 	IplFont::getInstance().drawString((int) (x+width/2), (int) (y+height/2), loadingBarText, 0.9, true);
 }
 

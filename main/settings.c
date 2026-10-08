@@ -109,6 +109,13 @@ void settings_game_begin(const struct setting* t, int n, FILE* f)
 	}
 }
 
+int settings_game_count(void)
+{
+	int count = 0;
+	for (int i = 0; i < SETTINGS_MAX; i++) count += gameSet[i];
+	return count;
+}
+
 void settings_game_end(const struct setting* t, int n)
 {
 	for (int i = 0; i < n && i < SETTINGS_MAX; i++) {

@@ -167,7 +167,7 @@ static const struct setting SETTINGS[] =
 {
   { "General", SETTING_SECTION, 0, 0, 0, 0, 0, "The menu and the emulator." },
   { "MiniMenu", C, 0, &miniMenuActive, MINIMENU_DISABLE, MINIMENU_ENABLE, DEFAULT_MINIMENU,
-    "The menu: 0 = full menu, 1 = mini menu with boxart. A change applies at the next start." },
+    "Start Menu: 0 = Advanced (the full menu), 1 = Basic (the mini menu with boxart). A change applies at the next start." },
   { "Core", I, G, &dynacore, DYNACORE_INTERPRETER, DYNACORE_PURE_INTERP, DYNACORE_DYNAREC,
     "The CPU emulator: 0 = interpreter, 1 = dynarec (fast), 2 = pure interpreter (slow, for tests)." },
   { "CountPerOp", I, G, &count_per_op, COUNT_PER_OP_1, COUNT_PER_OP_3, DEFAULT_COUNT_PER_OP,

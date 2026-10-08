@@ -112,7 +112,7 @@ static const char* LoadButtonLabels[5] = {
 #define NUM_FRAME_TEXTBOXES 18
 #define FRAME_TEXTBOXES settingsFrameTextBoxes
 
-static char FRAME_STRINGS[46][23] =
+static char FRAME_STRINGS[48][23] =
 	{ "General",
 	  "Video",
 	  "Input",
@@ -162,8 +162,10 @@ static char FRAME_STRINGS[46][23] =
 	  "Speed Limit",  //[41] Audio tab
 	  "VI",
 	  "Frame",
-	  "Mini Menu",  //[44] General tab
+	  "Start Menu", //[44] General tab
 	  "Video Mode", //[45] Video tab
+	  "Basic",      //[46] Start Menu: the mini menu
+	  "Advanced",   //[47] Start Menu: the full menu
 	};
 
 struct ButtonInfo
@@ -207,9 +209,9 @@ struct ButtonInfo
 	//75px for every button regardless of label length.
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 55.0,	44.0,	 1,	19,	17,	17,	Func_ShowFpsOn,			Func_ReturnFromSettingsFrame }, // Show FPS: On
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	100.0,	 70.0,	44.0,	 1,	20,	16,	16,	Func_ShowFpsOff,		Func_ReturnFromSettingsFrame }, // Show FPS: Off
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	148.0,	 70.0,	44.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	415.0,	148.0,	 80.0,	44.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	510.0,	148.0,	115.0,	44.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[20],	330.0,	148.0,	 60.0,	44.0,	16,	21,	20,	19,	Func_ScreenMode4_3,		Func_ReturnFromSettingsFrame }, // ScreenMode: 4:3
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[21],	400.0,	148.0,	 70.0,	44.0,	16,	21,	18,	20,	Func_ScreenMode16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: 16:9
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[22],	480.0,	148.0,	150.0,	44.0,	17,	22,	19,	18,	Func_ScreenForce16_9,	Func_ReturnFromSettingsFrame }, // ScreenMode: Force 16:9 in-game
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	196.0,	 55.0,	44.0,	19,	23,	22,	22,	Func_CpuFramebufferOn,	Func_ReturnFromSettingsFrame }, // CPU FB: On
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	196.0,	 70.0,	44.0,	20,	24,	21,	21,	Func_CpuFramebufferOff,	Func_ReturnFromSettingsFrame }, // CPU FB: Off
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	244.0,	 55.0,	44.0,	21,	25,	24,	24,	Func_2xSaiTexturesOn,	Func_ReturnFromSettingsFrame }, // 2xSai: On
@@ -229,8 +231,8 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	100.0,	 75.0,	50.0,	 3,	42,	36,	36,	Func_AudioOn,	Func_ReturnFromSettingsFrame }, // Audio: On
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	420.0,	100.0,	 75.0,	50.0,	 3,	43,	35,	35,	Func_AudioOff,	Func_ReturnFromSettingsFrame }, // Audio: Off
 	//Buttons for Saves Tab (starts at button[37])
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	330.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	420.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[31],	350.0,	100.0,	 75.0,	50.0,	 4,	39,	38,	38,	Func_AutoSaveNativeYes,	Func_ReturnFromSettingsFrame }, // Auto Save Native: Yes
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[32],	435.0,	100.0,	 75.0,	50.0,	 4,	39,	37,	37,	Func_AutoSaveNativeNo,	Func_ReturnFromSettingsFrame }, // Auto Save Native: No
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[34],	185.0,	170.0,	270.0,	50.0,	37,	40,	-1,	-1,	Func_CopySaves,			Func_ReturnFromSettingsFrame }, // Copy Saves
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[35],	185.0,	240.0,	270.0,	50.0,	39,	 4,	-1,	-1,	Func_DeleteSaves,		Func_ReturnFromSettingsFrame }, // Delete Saves
 	//Button 41 appended out of tab order (not 37-40) so the Saves tab's existing indices didn't need renumbering
@@ -240,8 +242,8 @@ struct ButtonInfo
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[42],	415.0,	170.0,	 55.0,	50.0,	36,	41,	42,	44,	Func_SpeedLimitVi,		Func_ReturnFromSettingsFrame }, // Speed Limit: VI
 	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[43],	485.0,	170.0,	 90.0,	50.0,	36,	41,	43,	42,	Func_SpeedLimitFrame,	Func_ReturnFromSettingsFrame }, // Speed Limit: Frame
 	//Buttons 45-46 (General tab) and 47 (Video tab): settings that apply at the next start
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[18],	330.0,	324.0,	 55.0,	50.0,	11,	14,	46,	46,	Func_MiniMenuOn,		Func_ReturnFromSettingsFrame }, // Mini Menu: On
-	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[19],	400.0,	324.0,	 70.0,	50.0,	12,	15,	45,	45,	Func_MiniMenuOff,		Func_ReturnFromSettingsFrame }, // Mini Menu: Off
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[46],	330.0,	324.0,	 80.0,	50.0,	11,	14,	46,	46,	Func_MiniMenuOn,		Func_ReturnFromSettingsFrame }, // Start Menu: Basic
+	{	NULL,	BTN_A_SEL,	FRAME_STRINGS[47],	420.0,	324.0,	130.0,	50.0,	12,	15,	45,	45,	Func_MiniMenuOff,		Func_ReturnFromSettingsFrame }, // Start Menu: Advanced
 	{	NULL,	BTN_A_NRM,	FRAME_STRINGS[45],	330.0,	388.0,	150.0,	44.0,	27,	 1,	-1,	-1,	Func_ToggleVideoMode,	Func_ReturnFromSettingsFrame }, // Video Mode (cycles)
 };
 
@@ -278,7 +280,7 @@ struct TextBoxInfo
 	//TextBox 15 (Audio tab)
 	{	NULL,	FRAME_STRINGS[41],	180.0,	195.0,	 1.0,	true }, // Speed Limit: Off/VI/Frame
 	//TextBox 16 (General tab), 17 (Video tab)
-	{	NULL,	FRAME_STRINGS[44],	180.0,	349.0,	 1.0,	true }, // Mini Menu: On/Off
+	{	NULL,	FRAME_STRINGS[44],	180.0,	349.0,	 1.0,	true }, // Start Menu: Basic/Advanced
 	{	NULL,	FRAME_STRINGS[45],	180.0,	410.0,	 1.0,	true }, // Video Mode
 
 };
@@ -876,7 +878,6 @@ void Func_ConfigurePaks()
 void Func_ConfigureButtons()
 {
 //	menu::MessageBox::getInstance().setMessage("Controller Buttons not implemented");
-	menu::Gui::getInstance().menuLogo->setVisible(false);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_CONFIGUREBUTTONS,ConfigureButtonsFrame::SUBMENU_N64_PADNONE);
 }
 
@@ -1031,7 +1032,6 @@ void Func_DeleteSaves()
 
 void Func_ReturnFromSettingsFrame()
 {
-	menu::Gui::getInstance().menuLogo->setLocation(580.0, 70.0, -50.0);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_MAIN);
 }
 

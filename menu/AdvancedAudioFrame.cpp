@@ -93,7 +93,7 @@ AdvancedAudioFrame::AdvancedAudioFrame()
     }
     for (int i = 0; i < 8; i++) {
         float x = i >= 1 && i <= 5 ? 40 : 320;
-        float y = i == 0 ? 95 : i <= 5 ? 146 + (i - 1) * 50 : 395 + (i - 6) * 25;
+        float y = i == 0 ? 60 : i <= 5 ? 146 + (i - 1) * 50 : 395 + (i - 6) * 25;
         texts[i] = new menu::TextBox(&labelText[i], x, y, i == 0 ? 1.0f : 0.75f,
                                     !(i >= 1 && i <= 5));
         add(texts[i]);

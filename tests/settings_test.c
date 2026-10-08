@@ -55,7 +55,7 @@ int main(void)
 
 	/* a game's file: only per-game keys, and the global values come back */
 	lines("LimitVIs = 0\nAudio = 1\nPak1 = 1\nPak1 = 0\nPak1 = 1\n", 1);
-	assert(limit == 0 && audio == 0 && pak == 1);
+	assert(limit == 0 && audio == 0 && pak == 1 && settings_game_count() == 2);
 	f = tmpfile(); /* Save Settings while the game runs writes the global values */
 	settings_write(T, N, f);
 	rewind(f);
@@ -66,7 +66,7 @@ int main(void)
 	assert(strstr(text, "LimitVIs = 2\n") && strstr(text, "Pak1 = 0\n") && strstr(text, "[General]\n; The emulator.\n"));
 	assert(strstr(text, "; 0 = off, 1 = VI, 2 = frame. (per game)\nLimitVIs"));
 	settings_game_end(T, N);
-	assert(limit == 2 && pak == 0 && audio == 0);
+	assert(limit == 2 && pak == 0 && audio == 0 && settings_game_count() == 0);
 	lines("Core = 0\n", 1); /* the next game's file starts from the global values */
 	lines("LimitVIs = 1\n", 1);
 	assert(core == 2 && limit == 1);

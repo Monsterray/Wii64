@@ -173,7 +173,6 @@ void Func_CurrentROM()
 
 void Func_Settings()
 {
-	menu::Gui::getInstance().menuLogo->setLocation(580.0, 410.0, -50.0);
 	pMenuContext->setActiveFrame(MenuContext::FRAME_SETTINGS,SettingsFrame::SUBMENU_GENERAL);
 }
 

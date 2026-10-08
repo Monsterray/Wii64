@@ -21,6 +21,7 @@
 #include "MenuContext.h"
 #include "../libgui/FocusManager.h"
 #include "../libgui/CursorManager.h"
+#include "../libgui/Gui.h"
 
 MenuContext *pMenuContext;
 
@@ -180,6 +181,15 @@ void MenuContext::setActiveFrame(int frameIndex)
 		currentActiveFrame = advancedAudioFrame;
 		break;
 	}
+
+	/* The spinning logo is drawn over everything, so it goes where the frame has
+	   nothing: the top right, or the bottom right on Settings (its tab strip
+	   reaches x=615). Configure Buttons uses the whole screen. */
+	menu::Gui::getInstance().menuLogo->setVisible(frameIndex != FRAME_CONFIGUREBUTTONS);
+	if(frameIndex == FRAME_SETTINGS)
+		menu::Gui::getInstance().menuLogo->setLocation(580.0, 410.0, -50.0);
+	else
+		menu::Gui::getInstance().menuLogo->setLocation(580.0, 70.0, -50.0);
 
 	if(currentActiveFrame)
 	{

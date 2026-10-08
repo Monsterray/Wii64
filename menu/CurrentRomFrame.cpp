@@ -37,6 +37,8 @@ extern "C" {
 #include "../r4300/interupt.h"
 #include "../main/wii64config.h"
 #include "../main/rom.h"
+#include "../main/settings.h"
+#include "../r4300/r4300.h"
 #include "../main/plugin.h"
 #include "../main/savestates.h"
 #include "../fileBrowser/fileBrowser.h"
@@ -136,24 +138,24 @@ extern int rom_length;
 
 void Func_ShowRomInfo()
 {
-	char RomInfo[256] = "";
-	char buffer [50];
-	char buffer2 [50];
-	sprintf(buffer,"Rom name: %s\n",ROM_SETTINGS.goodname);
-	strcat(RomInfo,buffer);
-	sprintf(buffer,"Rom size: %d Mb\n",rom_length/1024/1024);
-	strcat(RomInfo,buffer);
-	if(ROM_HEADER.Manufacturer_ID == 'N') sprintf(buffer,"Manufacturer: Nintendo\n");
-	else sprintf(buffer,"Manufacturer: %x\n", ROM_HEADER.Manufacturer_ID);
-	strcat(RomInfo,buffer);
-    countrycodestring(ROM_HEADER.Country_code&0xFF, buffer2);
-	sprintf(buffer,"Country: %s\n",buffer2);
-	strcat(RomInfo,buffer);
-	if(rom_game_code(buffer2)) {
-		sprintf(buffer,"Game code: %s (settings/%s.ini)\n",buffer2,buffer2);
-		strcat(RomInfo,buffer);
+	char RomInfo[512], country[50], code[5];
+	int n = 0;
+#define LINE(...) n += snprintf(RomInfo + n, sizeof(RomInfo) - n, __VA_ARGS__)
+	LINE("Rom name: %s\n", ROM_SETTINGS.goodname);
+	LINE("Rom size: %d MB (%d Mbit)\n", rom_length/1024/1024, rom_length/1024/128);
+	countrycodestring(ROM_HEADER.Country_code&0xFF, country);
+	LINE("Country: %s, version 1.%d\n", country, ROM_HEADER.Version);
+	LINE("CRC: %08X %08X\n", ROM_HEADER.CRC1, ROM_HEADER.CRC2);
+	if(r4300.cic_chip >= 1 && r4300.cic_chip <= 6) LINE("CIC: 610%d\n", r4300.cic_chip);
+	else LINE("CIC: 64DD\n");
+	LINE("CPU core: %s\n", dynacore == DYNACORE_DYNAREC ? "Dynarec" :
+		dynacore == DYNACORE_PURE_INTERP ? "Pure Interpreter" : "Interpreter");
+	if(rom_game_code(code)) {
+		LINE("Game code: %s\n", code);
+		if(settings_game_count()) LINE("settings/%s.ini: %d settings\n", code, settings_game_count());
+		else LINE("No settings/%s.ini\n", code);
 	}
-
+#undef LINE
 	menu::MessageBox::getInstance().setMessage(RomInfo);
 }
 
