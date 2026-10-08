@@ -101,3 +101,25 @@ only change; backup of `sd:/wii64` and `sd:/apps/wii64` with SHA-256 sums in
 all 89 saves and `settings.cfg` matched the backup afterwards, and the test
 files were removed and `perf.log` restored. Settings > Audio now has a Speed
 Limit row (Off / VI / Frame) for `LimitVIs`.
+
+### Other findings on that card (2026-10-08)
+
+- **Saves Wii64 cannot use.** `sd:/wii64/saves` (and `sd:/not64/saves`) holds
+  about 80 Project64 saves and `.pj.zip` save states. They are named
+  `GOODNAME.ext`; Wii64 looks for `GOODNAME(REGION).ext`, and it reads a save
+  only at full size (EEPROM 2,048, SRAM 32,768, FlashRAM 131,072, Controller
+  Pak 131,072 bytes). Many are shorter (512-byte EEPROMs, `MarioParty3.eep`
+  1,384, `Kirby64.eep` 280, `.fla` 114,816–127,744). So these games start
+  with no save. Possible fix: load `GOODNAME.ext` when `GOODNAME(REGION).ext`
+  is missing, accept short files, and write only the region-named file.
+- **Two Mario Party 3 saves:** `MarioParty3(U).eep` (Wii64, 2,048 bytes) and
+  `MarioParty3.eep` (Project64, 1,384 bytes, not loaded).
+- **ROM folder.** The N64 library is in `sd:/ROMS/N64` (23 ROMs);
+  `sd:/wii64/roms`, where the browser opens, has only the three Mario Party
+  ROMs. Not64 has a `rompath` setting; Wii64 has none.
+- **Experimental audio settings.** `AudioQuality = 2`, `AudioMixerPrecision =
+  1` and `AudioSync = 2` are the Hi-Fi/Preserve Pitch modes (about 22–25% more
+  CPU, see `doc/optimization-handoff.md`); with the limit on, MP3 had 7 audio
+  underruns in 150 s.
+- **Not faults:** `Killer Instinct Gold.eep` is 0 bytes (from Project64); the
+  `perf.log` samples of about 1 menu frame/s are the 38 s ROM load screen.
