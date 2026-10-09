@@ -247,6 +247,21 @@ CachedCombiner *Combiner_Compile( u64 mux )
 	ac[1].m  = mAExpanded[combine.mA1];
 	ac[1].a  = aAExpanded[combine.aA1];
 
+	// In the RDP's second cycle, TEXEL1 is the next texel of texture 0, not texture 1.
+	// Pokemon Stadium's "All ready!" text shades the letters with texture 1 in cycle 1
+	// and takes their shape from TEXEL1 in cycle 2; read as texture 1, the letters were
+	// solid gradient boxes. (On the RDP, cycle 2's TEXEL0 is texture 1; swapping that
+	// too blacked out Banjo-Kazooie here, so TEXEL0 stays texture 0.)
+	if (numCycles == 2)
+	{
+		int *inputs[] = { &cc[1].sa, &cc[1].sb, &cc[1].m, &cc[1].a, &ac[1].sa, &ac[1].sb, &ac[1].m, &ac[1].a };
+		for (unsigned k = 0; k < sizeof(inputs) / sizeof(inputs[0]); k++)
+		{
+			if (*inputs[k] == TEXEL1) *inputs[k] = TEXEL0;
+			else if (*inputs[k] == TEXEL1_ALPHA) *inputs[k] = TEXEL0_ALPHA;
+		}
+	}
+
 	for (int i = 0; i < numCycles; i++)
 	{
 		// Simplify each RDP combiner cycle into a combiner stage

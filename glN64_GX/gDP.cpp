@@ -658,7 +658,12 @@ static BOOL _gDPCheckForFrameBufferTexture( u32 address, u32 width, u32 bytes, u
 
 	const u32 bufferStride = buffer->width << buffer->size >> 1;
 
-	if (address > buffer->startAddress && bufferStride != 0 &&
+	// A LoadTile of a sub-rectangle (Pokemon Stadium's Game Pak Check text, 40 texels
+	// of a 538-wide buffer) starts mid-row; its image is the buffer, so it is aligned.
+	const BOOL tileOfBuffer = loadType == LOADTYPE_TILE &&
+	    gDP.textureImage.width == buffer->width && gDP.textureImage.size == buffer->size;
+
+	if (!tileOfBuffer && address > buffer->startAddress && bufferStride != 0 &&
 	    (u32)abs( (s32)buffer->width - (s32)width ) > 1 &&
 	    ((address - buffer->startAddress) % bufferStride) != 0)
 	{
