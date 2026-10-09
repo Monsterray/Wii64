@@ -98,6 +98,8 @@ OBJ		+= \
 		r4300/recomp.o \
 		gc_memory/n64_cic_nus_6105.o \
 		gc_memory/pif.o \
+		gc_memory/gb_cart.o \
+		gc_memory/transfer_pak.o \
 		r4300/pure_interp.o \
 		r4300/compare_core.o \
 		gc_memory/flashram.o \

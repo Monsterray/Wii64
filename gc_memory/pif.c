@@ -47,6 +47,7 @@
 #include "../main/guifuncs.h"
 #include "../main/rom.h"
 #include "../main/wii64config.h"
+#include "transfer_pak.h"
 #include "../fileBrowser/fileBrowser.h"
 #include "Saves.h"
 #include "../main/perf_prof.h"
@@ -274,9 +275,10 @@ int pak_plugin(int pakMode)
 	}
 }
 
-/* Bio Sensor (Tetris 64). 0xC000 reads the pulse: 0x00 for the first half of a
-   beat, 0x03 for the second (mupen64plus biopak.c), timed in game VIs so that it
-   follows the game's speed. Other addresses read zero; writes do nothing. */
+/* Bio Sensor (Tetris 64). 0x8000 reads its identifier, 0x81 (libdragon). 0xC000
+   reads the pulse: 0x00 for the first half of a beat, 0x03 for the second
+   (mupen64plus biopak.c), timed in game VIs so that it follows the game's speed.
+   Other addresses read zero; writes do nothing. */
 int bioSensorBPM = 70;
 extern unsigned int diag_vi_count;
 extern float VILimit;
@@ -284,7 +286,7 @@ extern float VILimit;
 static void biosensor_read(BYTE *Command)
 {
 	int address = ((Command[3] << 8) | Command[4]) & 0xFFE0;
-	BYTE value = 0;
+	BYTE value = address == 0x8000 ? 0x81 : 0;
 	if (address == 0xC000)
 	{
 		unsigned int period = (unsigned int)(VILimit * 60) / bioSensorBPM;
@@ -294,6 +296,9 @@ static void biosensor_read(BYTE *Command)
 	memset(&Command[5], value, 0x20);
 	Command[0x25] = mempack_crc(&Command[5]);
 }
+
+/* The Transfer Pak of each port (gc_memory/transfer_pak.c). */
+struct transfer_pak transferPaks[4];
 
 void internal_ReadController(int Control, BYTE *Command)
 {
@@ -351,6 +356,7 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 					break;
 					case PLUGIN_RAW:
 					case PLUGIN_BIO_SENSOR:
+					case PLUGIN_TANSFER_PAK:
 						Command[5] = 1;
 					break;
 					default:
@@ -395,6 +401,10 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 					case PLUGIN_BIO_SENSOR:
 						biosensor_read(Command);
 					break;
+					case PLUGIN_TANSFER_PAK:
+						tpak_read(&transferPaks[Control], ((Command[3] << 8) | Command[4]) & 0xFFE0, &Command[5]);
+						Command[0x25] = mempack_crc(&Command[5]);
+					break;
 					default:
 						memset(&Command[5], 0, 0x20);
 						Command[0x25] = 0;
@@ -427,6 +437,10 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 					break;
 					case PLUGIN_RAW:
 						controllerCommand(Control, Command);
+					break;
+					case PLUGIN_TANSFER_PAK:
+						tpak_write(&transferPaks[Control], ((Command[3] << 8) | Command[4]) & 0xFFE0, &Command[5]);
+						Command[0x25] = mempack_crc(&Command[5]);
 					break;
 					default:
 						Command[0x25] = mempack_crc(&Command[5]);

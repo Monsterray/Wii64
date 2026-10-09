@@ -1,9 +1,27 @@
 # Transfer Pak plan
 
-Status (2026-10-08): phase 1 is done: `gc_memory/gb_cart.c`, tested by
-`tests/gb_cart_test.c` in `.dev/test_subsystems.sh`. It is not in the Wii build yet; phase 2
-adds it with the pak device. Configure Paks cycles Controller Pak, Rumble Pak, Bio Sensor
-and None; Transfer Pak becomes a fifth choice in phase 3.
+Status (2026-10-08): phases 1 and 2 are done. `gc_memory/gb_cart.c` (the cartridge) and
+`gc_memory/transfer_pak.c` (the pak: protocol, `tpak_insert`, `tpak_save`) are in the Wii
+build, tested by `tests/gb_cart_test.c` and `tests/transfer_pak_test.c` in
+`.dev/test_subsystems.sh`. `gc_memory/pif.c` answers `PLUGIN_TANSFER_PAK` with
+`transferPaks[4]`, but nothing selects that plugin until phase 3. Configure Paks cycles
+Controller Pak, Rumble Pak, Bio Sensor and None; Transfer Pak becomes a fifth choice in
+phase 3.
+
+Phase 3 also has to:
+- call `tpak_insert` for each port with a Transfer Pak when a game starts (and
+  `tpak_eject` when it stops), and show its error (no file, unknown type, a type for a
+  later phase) in a message;
+- call `tpak_save` for every port wherever the native saves are written: the five
+  `saveMempak` call sites in `menu/` (MainFrame, MiniMenuFrame, CurrentRomFrame,
+  SaveGameFrame twice). Their `if (...Written)` checks do not see the cartridge RAM, so
+  check `transferPaks[i].cart.ram_dirty` too;
+- send `cart.rumble` (MBC5 rumble cartridges) to the controller's rumble.
+
+Phase 2 choices from the sources:
+- Status bits and the 0xB000 write (1 access on, 0 off) as libdragon; the reset bits
+  step as mupen64plus (3 to 2 after an access write; 2 to 1 to 0 without one).
+- A read with the pak off, or with no access, gives zeros.
 
 Phase 1 choices to check against the games in phase 4:
 - A write to a clock register changes the live counter only; the latched copy changes at
