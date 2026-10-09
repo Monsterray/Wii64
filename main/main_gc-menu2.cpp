@@ -402,10 +402,11 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           reads it all back. ,padsweep=<vi>
                                           runs the pad sweep (below) in that
                                           game only. ,input=<name> replays
-                                          sd:/wii64/input/<name>.txt on port
-                                          1 in that game: a pad recording by
-                                          guest VI, made from a Dolphin movie
-                                          by scripts/dtm2input.py.
+                                          sd:/wii64/input/<name>.txt in that
+                                          game: pad lines by guest VI, port 1
+                                          or the port each line names (a 7th
+                                          field), from a Dolphin movie by
+                                          scripts/dtm2input.py or by hand.
      --diag=<line>                       wiiload form of one diag.cfg line. If
                                           present, these lines replace the SD
                                           diag.cfg for this run.

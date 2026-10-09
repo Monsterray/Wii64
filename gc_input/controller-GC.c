@@ -137,14 +137,17 @@ static void padsweep(gc_raw_t* r)
 		r->btns = sweep_buttons[step / SWEEP_BTN];
 }
 
-/* chain=<vis>,input=<name> (main_gc-menu2.cpp): port 1 replays sd:/wii64/input/<name>.txt
-   instead of the pad -- a recording scripts/dtm2input.py made from a Dolphin movie. Each
-   line is "<guest VI> <PAD_BUTTON_* mask, hex> <sx> <sy> <cx> <cy>" and holds until the
-   next line; before the first line the pad is at rest. Keyed on the game's own VIs, not
-   host frames, so a replay stays in step on a Wii that runs slower than Dolphin did. */
-typedef struct { unsigned int vi; gc_raw_t r; } padrec_t;
+/* chain=<vis>,input=<name> (main_gc-menu2.cpp): sd:/wii64/input/<name>.txt replays pads
+   instead of the real ones -- a recording scripts/dtm2input.py made from a Dolphin movie,
+   or written by hand. Each line is "<guest VI> <PAD_BUTTON_* mask, hex> <sx> <sy> <cx> <cy>
+   [port 1-4, default 1]" and holds for its port until that port's next line; before its
+   first line a port is at rest. A port with lines stands in for a pad, plugged in or not
+   (two players: Mario Kart 64 split screen). Keyed on the game's own VIs, not host
+   frames, so a replay stays in step on a Wii that runs slower than Dolphin did. */
+typedef struct { unsigned int vi; gc_raw_t r; unsigned char port; } padrec_t;
 static padrec_t* replay_recs;
 static unsigned int replay_n;
+static unsigned int replay_ports; // bit n: the replay drives port n+1
 
 /* Load a replay for the next game, or clear it (path NULL). Returns the record count. */
 unsigned int padreplay_load(const char* path)
@@ -152,42 +155,51 @@ unsigned int padreplay_load(const char* path)
 	free(replay_recs);
 	replay_recs = NULL;
 	replay_n = 0;
+	replay_ports = 0;
 	FILE* f = path ? fopen(path, "r") : NULL;
 	if (!f) return 0;
 	unsigned int cap = 0, vi, b;
-	int sx, sy, cx, cy;
+	int sx, sy, cx, cy, port;
 	char line[80];
 	while (fgets(line, sizeof(line), f)) {
-		if (sscanf(line, "%u %x %d %d %d %d", &vi, &b, &sx, &sy, &cx, &cy) != 6) continue;
+		int fields = sscanf(line, "%u %x %d %d %d %d %d", &vi, &b, &sx, &sy, &cx, &cy, &port);
+		if (fields < 6) continue;
+		if (fields < 7 || port < 1 || port > 4) port = 1;
 		if (replay_n == cap) {
 			padrec_t* p = realloc(replay_recs, (cap = cap ? cap * 2 : 256) * sizeof(*p));
 			if (!p) break;
 			replay_recs = p;
 		}
-		replay_recs[replay_n++] = (padrec_t){ vi, { b, sx, sy, cx, cy } };
+		replay_recs[replay_n++] = (padrec_t){ vi, { b, sx, sy, cx, cy }, (unsigned char)(port - 1) };
+		replay_ports |= 1 << (port - 1);
 	}
 	fclose(f);
 	return replay_n;
 }
 
-static void padreplay(gc_raw_t* r)
+static void padreplay(int Control, gc_raw_t* r)
 {
-	static unsigned int i; // records are in VI order: walk forward, restart for a new game
+	// records are in VI order: walk forward from this port's last record, restart for a new game
+	static unsigned int at[4];
+	unsigned int i = at[Control];
 	if (i >= replay_n || replay_recs[i].vi > diag_vi_count) i = 0;
-	while (i + 1 < replay_n && replay_recs[i + 1].vi <= diag_vi_count) i++;
-	if (replay_recs[i].vi <= diag_vi_count) *r = replay_recs[i].r;
+	for (unsigned int j = i; j < replay_n && replay_recs[j].vi <= diag_vi_count; j++)
+		if (replay_recs[j].port == Control) i = j;
+	at[Control] = i;
+	if (replay_recs[i].port == Control && replay_recs[i].vi <= diag_vi_count) *r = replay_recs[i].r;
 	else memset(r, 0, sizeof(*r));
 }
 
 static int sweeping(int Control)
 {
-	return Control == 0 && (replay_n || (padsweep_vi && diag_vi_count >= padsweep_vi));
+	return (replay_ports & (1 << Control)) ||
+	       (Control == 0 && padsweep_vi && diag_vi_count >= padsweep_vi);
 }
 
 static void gc_read(int Control, gc_raw_t* r)
 {
 	if (sweeping(Control)) {
-		if (replay_n) padreplay(r);
+		if (replay_ports & (1 << Control)) padreplay(Control, r);
 		else padsweep(r);
 	} else {
 		r->btns = PAD_ButtonsHeld(Control);
@@ -330,6 +342,8 @@ static void refreshAvailable(void){
 	int i;
 	for(i=0; i<4; ++i)
 		controller_GC.available[i] = (gc_connected & (1<<i));
-	if(padsweep_vi || replay_n) // a sweep or replay stands in for a pad on port 1, plugged in or not
+	if(padsweep_vi) // a sweep stands in for a pad on port 1, plugged in or not
 		controller_GC.available[0] = 1;
+	for(i=0; i<4; ++i) // and a replay for a pad on each port it drives
+		if(replay_ports & (1<<i)) controller_GC.available[i] = 1;
 }

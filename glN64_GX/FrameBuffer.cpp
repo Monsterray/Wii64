@@ -1017,8 +1017,8 @@ void FrameBuffer_ActivateBufferTextureBG( s16 t, FrameBuffer *buffer )
 	if (buffer == NULL || buffer->texture == NULL)
 		return;
 
-	buffer->texture->scaleS = OGL.GXscaleX / (float)buffer->texture->realWidth;
-	buffer->texture->scaleT = OGL.GXscaleY / (float)buffer->texture->realHeight;
+	buffer->texture->scaleS = buffer->scaleX / (float)buffer->texture->realWidth; // the scale it was drawn at
+	buffer->texture->scaleT = buffer->scaleY / (float)buffer->texture->realHeight;
 
 	buffer->texture->shiftScaleS = 1.0f;
 	buffer->texture->shiftScaleT = 1.0f;
@@ -1036,8 +1036,8 @@ void FrameBuffer_ActivateBufferTexture( s16 t, FrameBuffer *buffer )
     buffer->texture->scaleS = OGL.scaleX / (float)buffer->texture->realWidth;
     buffer->texture->scaleT = OGL.scaleY / (float)buffer->texture->realHeight;
 #else //!__GX__
-    buffer->texture->scaleS = OGL.GXscaleX / (float)buffer->texture->realWidth;
-    buffer->texture->scaleT = OGL.GXscaleY / (float)buffer->texture->realHeight;
+    buffer->texture->scaleS = buffer->scaleX / (float)buffer->texture->realWidth; // the scale it was drawn at
+    buffer->texture->scaleT = buffer->scaleY / (float)buffer->texture->realHeight;
 #endif //__GX__
 
 	if (gSP.textureTile[t]->shifts > 10)

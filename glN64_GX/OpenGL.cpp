@@ -167,6 +167,24 @@ void OGL_UpdateScale()
 #endif //__GX__
 }
 
+#ifdef __GX__
+/* The EFB is OGL.GXwidth wide. An off-screen color image wider than that at the TV's scale
+   (Pokemon Stadium draws its Game Pak Check panels in a 538-pixel one: 1076 at 2x) is
+   drawn narrower, so that all of it is drawn and frame buffer textures get all of it. */
+void OGL_ScaleForColorImage( u32 width )
+{
+	const float oldX = OGL.GXscaleX, oldY = OGL.GXscaleY;
+	OGL_UpdateScale();
+	if (width * OGL.GXscaleX > OGL.GXwidth)
+		OGL.GXscaleX = (float)OGL.GXwidth / (float)width;
+	if (OGL.GXscaleX != oldX || OGL.GXscaleY != oldY)
+	{
+		gSP.changed |= CHANGED_VIEWPORT;
+		gDP.changed |= CHANGED_SCISSOR;
+	}
+}
+#endif //__GX__
+
 void OGL_ResizeWindow()
 {
 	// This is mainly initializing OGL.heightOffset because I don't think it's inited otherwise.

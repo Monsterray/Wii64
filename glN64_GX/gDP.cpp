@@ -361,8 +361,14 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 		if (!GLN64_COLOR_IMAGE_SKIP_DEPTH || RSP_SegmentToPhysical( address ) != gDP.depthImageAddress)
 			gDPUpdateColorImage();
 		//OGL_ClearDepthBuffer();
-		gDP.colorImage.changed = FALSE;
-		gDP.colorImage.height = 1;
+		// With framebuffer textures the save below still needs these: clearing them
+		// skipped it, and the restore after Mario Kart's mid-frame depth clear then
+		// erased what was drawn since (the bottom view in 2P split screen).
+		if (!OGL.frameBufferTextures)
+		{
+			gDP.colorImage.changed = FALSE;
+			gDP.colorImage.height = 1;
+		}
 	}
 /*
 	for (u32 i = 0; i < (gDP.colorImage.width * gDP.colorImage.height ) << gDP.colorImage.size >> 1; i++)
@@ -393,6 +399,11 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 		{
 			if (gDP.colorImage.changed)
 				FrameBuffer_SaveBuffer( gDP.colorImage.address, gDP.colorImage.size, gDP.colorImage.width, gDP.colorImage.height );
+
+#ifdef __GX__
+			// The old image is saved at its scale; the new one may need a narrower one
+			OGL_ScaleForColorImage( width );
+#endif
 
 			if (address != gDP.depthImageAddress)
 				FrameBuffer_RestoreBuffer( address, size, width );
