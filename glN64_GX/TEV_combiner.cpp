@@ -330,7 +330,7 @@ TEVCombiner *Compile_TEV_combine( Combiner *color, Combiner *alpha )
 						TEVArgs[alpha->stage[i].op[j+2].param1].TEV_TexCoordMap : TEVArgs[alpha->stage[i].op[j+1].param1].TEV_TexCoordMap;
 					alphaCONST = (TEVArgs[alpha->stage[i].op[j+1].param1].TEV_inpType <= TEV_MAX_CONST) ?
 						TEVArgs[alpha->stage[i].op[j+1].param1].TEV_inpType : TEVArgs[alpha->stage[i].op[j+2].param1].TEV_inpType;
-					SetAlphaTEV(currStageA, GX_CC_ZERO, GX_CA_A0, TEVArgs[alpha->stage[i].op[j+1].param1].TEV_alphaIn,
+					SetAlphaTEV(currStageA, GX_CA_ZERO, GX_CA_A0, TEVArgs[alpha->stage[i].op[j+1].param1].TEV_alphaIn,
 						TEVArgs[alpha->stage[i].op[j+2].param1].TEV_alphaIn,
 						GX_TEV_ADD, alphaTEX, alphaCONST, GX_TEVREG0);
 					if (currStageA) TEVcombiner->TEVstage[currStageA-1].alphaClamp = GX_ENABLE; //TEVPREV used in Mult!
@@ -340,7 +340,7 @@ TEVCombiner *Compile_TEV_combine( Combiner *color, Combiner *alpha )
 						TEVArgs[alpha->stage[i].op[j+1].param1].TEV_TexCoordMap : TEVArgs[alpha->stage[i].op[j].param1].TEV_TexCoordMap;
 					alphaCONST = (TEVArgs[alpha->stage[i].op[j].param1].TEV_inpType <= TEV_MAX_CONST) ?
 						TEVArgs[alpha->stage[i].op[j].param1].TEV_inpType : TEVArgs[alpha->stage[i].op[j+1].param1].TEV_inpType;
-					SetAlphaTEV(currStageA, GX_CC_ZERO, TEVArgs[alpha->stage[i].op[j].param1].TEV_alphaIn,
+					SetAlphaTEV(currStageA, GX_CA_ZERO, TEVArgs[alpha->stage[i].op[j].param1].TEV_alphaIn,
 						TEVArgs[alpha->stage[i].op[j+1].param1].TEV_alphaIn, GX_CA_A0,
 						GX_TEV_SUB, alphaTEX, alphaCONST, GX_TEVREG0);
 					currStageA++;
