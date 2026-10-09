@@ -1061,15 +1061,18 @@ int main(int argc, const char* argv[]) {
 		menu->setActiveFrame(MenuContext::FRAME_CONFIGUREPAKS);
 	else if(g_diagSettingsSubmenu != -1)
 		menu->setActiveFrame(MenuContext::FRAME_SETTINGS, g_diagSettingsSubmenu);
+#if !(defined(GC_BASIC)) // SelectRomFrame is empty in GC_BASIC builds
 	perfProf_mark(g_diagAutonavSelectRomSD ? "diag autonav: flag set" : "diag autonav: flag NOT set");
 	if(g_diagAutonavSelectRomSD)
 		DiagNav_SelectRomSD();
 	perfProf_mark("diag autonav: after DiagNav_SelectRomSD call");
+#endif
 	if(g_diagAutonavLoadFromSD == 1)
 		DiagNav_LoadFromSD();
 	else if(g_diagAutonavLoadFromSD == 2)
 		DiagNav_LoadFromSD_SelectFirst();
 	diagStressBrowser();
+#if !(defined(GC_BASIC))
 	if(g_diagTestSelectLoad) {
 		perfProf_mark("test_selectload: Func_SR_SD");
 		Func_SR_SD();
@@ -1079,6 +1082,7 @@ int main(int argc, const char* argv[]) {
 		menu::Gui::getInstance().draw();
 		perfProf_mark(hasLoadedROM ? "test_selectload: hasLoadedROM=1" : "test_selectload: hasLoadedROM=0");
 	}
+#endif
 	if(g_diagTestSaveLoad) {
 		char savedDevice = nativeSaveDevice;
 		nativeSaveDevice = NATIVESAVEDEVICE_SD;

@@ -164,9 +164,11 @@ static void tlbia(void)
  * it has to adjust the stack pointer and finish filling frame_context itself
  */
 void __exception_sethandler(u32 nExcept, void (*pHndl)(frame_context*));
-extern void default_exceptionhandler(frame_context*);
 // use our own exception stub because libogc stupidly requires it
 extern void dsi_handler(frame_context*);
+extern void (*_exceptionhandlertable[])(frame_context*);
+// dsihandler.s (shared with wii_vm.c) jumps here for faults VM does not own.
+void (*vm_dsi_fallback)(frame_context*);
 
 void* VM_Init(u32 VMSize, u32 MEMSize)
 {
@@ -251,6 +253,7 @@ void* VM_Init(u32 VMSize, u32 MEMSize)
 	// enable SR
 	asm volatile("mtsrin %0,%1" :: "r"(VM_VSID), "r"(VM_Base));
 	// hook DSI
+	vm_dsi_fallback = _exceptionhandlertable[EX_DSI];
 	__exception_sethandler(EX_DSI, dsi_handler);
 
 	atexit(VM_Deinit);
@@ -267,8 +270,8 @@ void VM_Deinit(void)
 
 	// disable SR
 	asm volatile("mtsrin %0,%1" :: "r"(0x80000000), "r"(VM_Base));
-	// restore default DSI handler
-	__exception_sethandler(EX_DSI, default_exceptionhandler);
+	// Restore the entry that was installed before VM.
+	__exception_sethandler(EX_DSI, vm_dsi_fallback);
 
 	free(MEM_Base);
 	MEM_Base = NULL;
