@@ -1,7 +1,15 @@
 # Transfer Pak plan
 
-Status: plan only (2026-10-08). Configure Paks cycles Controller Pak, Rumble Pak, Bio
-Sensor and None; Transfer Pak becomes a fifth choice in phase 3.
+Status (2026-10-08): phase 1 is done: `gc_memory/gb_cart.c`, tested by
+`tests/gb_cart_test.c` in `.dev/test_subsystems.sh`. It is not in the Wii build yet; phase 2
+adds it with the pak device. Configure Paks cycles Controller Pak, Rumble Pak, Bio Sensor
+and None; Transfer Pak becomes a fifth choice in phase 3.
+
+Phase 1 choices to check against the games in phase 4:
+- A write to a clock register changes the live counter only; the latched copy changes at
+  the next latch (as mGBA).
+- Unused clock register bits read 0.
+- New cartridge RAM reads 0xFF until a .sav loads.
 
 ## What a Transfer Pak is
 
