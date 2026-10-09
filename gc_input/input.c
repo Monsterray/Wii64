@@ -32,6 +32,7 @@
 #include "controller.h"
 #include "../main/wii64config.h"
 #include "../main/perf_subsystem.h"
+#include "../gc_memory/pif.h"
 
 #ifdef USE_GUI
 
@@ -366,8 +367,7 @@ void assign_controller(int wv, controller_t* type, int wp){
 	type->assign(wp,wv);
 
 	control_info.Controls[wv].Present = 1;
-	if (pakMode[wv] == PAKMODE_MEMPAK)	control_info.Controls[wv].Plugin  = PLUGIN_MEMPAK;
-	else								control_info.Controls[wv].Plugin  = PLUGIN_RAW;
+	control_info.Controls[wv].Plugin = pak_plugin(pakMode[wv]);
 }
 
 void unassign_controller(int wv){

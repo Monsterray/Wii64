@@ -58,6 +58,7 @@ void  plugin_exec_about(const char *name);
 #define PLUGIN_RUMBLE_PAK			3 // not implemeted for non raw data
 #define PLUGIN_TANSFER_PAK			4 // not implemeted for non raw data
 #define PLUGIN_RAW				5 // the controller plugin is passed in raw data
+#define PLUGIN_BIO_SENSOR			6 // Wii64: gc_memory/pif.c answers it (Tetris 64)
 
 /*** Audio plugin system types ***/
 #define SYSTEM_NTSC					0

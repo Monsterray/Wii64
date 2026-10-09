@@ -68,7 +68,7 @@
 	* Video Mode: The TV signal: Auto (the Wii's settings), 480i 60 Hz, 240p, 480p, 576i 50 Hz, 288p or 576p (applies at the next start)
 * Input
 	* Configure Input: Select controllers to use in game
-	* Configure Paks: Select which controller paks to use in which controllers
+	* Configure Paks: Press A to change the pak in each controller: Controller Pak (saves), Rumble Pak, Bio Sensor (Tetris 64) or None. The Transfer Pak is planned ([plan](doc/transfer-pak-plan.md))
 	* Configure Buttons: Enter the controller configuration screen described above
 	* Save Button Configs: Save all of the controller configuration slots to SD or USB
 	* Auto Load Slot: Select which slot to automatically be loaded for each type of controller

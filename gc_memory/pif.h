@@ -35,4 +35,6 @@ void update_pif_read();
 void format_mempacks();
 void init_eeprom();
 void pif_reset_state();
+/* Controls[].Plugin for a PAKMODE_* value (wii64config.h). */
+int pak_plugin(int pakMode);
 #endif

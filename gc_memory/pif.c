@@ -46,6 +46,7 @@
 #include "../main/plugin.h"
 #include "../main/guifuncs.h"
 #include "../main/rom.h"
+#include "../main/wii64config.h"
 #include "../fileBrowser/fileBrowser.h"
 #include "Saves.h"
 #include "../main/perf_prof.h"
@@ -262,6 +263,38 @@ int deleteMempak(fileBrowser_file* savepath){
 	return saveFile_deleteFile(&saveFile);
 }
 
+int pak_plugin(int pakMode)
+{
+	switch (pakMode)
+	{
+		case PAKMODE_MEMPAK:    return PLUGIN_MEMPAK;
+		case PAKMODE_NONE:      return PLUGIN_NONE;
+		case PAKMODE_BIOSENSOR: return PLUGIN_BIO_SENSOR;
+		default:                return PLUGIN_RAW; // Rumble Pak: gc_input/input.c
+	}
+}
+
+/* Bio Sensor (Tetris 64). 0xC000 reads the pulse: 0x00 for the first half of a
+   beat, 0x03 for the second (mupen64plus biopak.c), timed in game VIs so that it
+   follows the game's speed. Other addresses read zero; writes do nothing. */
+int bioSensorBPM = 70;
+extern unsigned int diag_vi_count;
+extern float VILimit;
+
+static void biosensor_read(BYTE *Command)
+{
+	int address = ((Command[3] << 8) | Command[4]) & 0xFFE0;
+	BYTE value = 0;
+	if (address == 0xC000)
+	{
+		unsigned int period = (unsigned int)(VILimit * 60) / bioSensorBPM;
+		if (period == 0) period = 1;
+		value = 2 * (diag_vi_count % period) < period ? 0x00 : 0x03;
+	}
+	memset(&Command[5], value, 0x20);
+	Command[0x25] = mempack_crc(&Command[5]);
+}
+
 void internal_ReadController(int Control, BYTE *Command)
 {
 	switch (Command[2])
@@ -317,6 +350,7 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 						Command[5] = 1;
 					break;
 					case PLUGIN_RAW:
+					case PLUGIN_BIO_SENSOR:
 						Command[5] = 1;
 					break;
 					default:
@@ -357,6 +391,9 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 					break;
 					case PLUGIN_RAW:
 						controllerCommand(Control, Command);
+					break;
+					case PLUGIN_BIO_SENSOR:
+						biosensor_read(Command);
 					break;
 					default:
 						memset(&Command[5], 0, 0x20);

@@ -127,6 +127,7 @@ char glN64_use2xSaiTextures;
 char renderCpuFramebuffer;
 #endif //!GLN64_GX
 char nativeOutput;
+extern "C" int bioSensorBPM; // gc_memory/pif.c
 extern timers Timers;
 char menuActive;
 char miniMenuActive;
@@ -224,10 +225,16 @@ static const struct setting SETTINGS[] =
   { "PadAssign3", C, 0, &padAssign[2], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT2, "Port 3 uses controller 0 to 3 (manual)." },
   { "PadType4", C, 0, &padType[3], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 4 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
   { "PadAssign4", C, 0, &padAssign[3], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT3, "Port 4 uses controller 0 to 3 (manual)." },
-  { "Pak1", C, G, &pakMode[0], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 1 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
-  { "Pak2", C, G, &pakMode[1], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 2 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
-  { "Pak3", C, G, &pakMode[2], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 3 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
-  { "Pak4", C, G, &pakMode[3], PAKMODE_MEMPAK, PAKMODE_RUMBLEPAK, PAKMODE_MEMPAK, "Port 4 pak: 0 = Controller Pak (saves), 1 = Rumble Pak." },
+  { "Pak1", C, G, &pakMode[0], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
+    "Port 1 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
+  { "Pak2", C, G, &pakMode[1], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
+    "Port 2 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
+  { "Pak3", C, G, &pakMode[2], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
+    "Port 3 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
+  { "Pak4", C, G, &pakMode[3], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
+    "Port 4 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
+  { "BioSensorBPM", I, G, &bioSensorBPM, 40, 200, 70,
+    "Bio Sensor heart rate, in beats a minute: 40 to 200." },
   { "LoadButtonSlot", C, 0, &loadButtonSlot, LOADBUTTON_SLOT0, LOADBUTTON_DEFAULT, LOADBUTTON_DEFAULT,
     "Button map loaded at start: 0 to 3 = slot 1 to 4, 4 = default." },
 };
@@ -335,7 +342,7 @@ static void ensure_wii64_dirs(const char *prefix) {
                                           dirty flags so Save doesn't no-op.
                                           Requires autoboot_rom= so a ROM is
                                           loaded first.
-     autonav=settings_general|settings_video|settings_saves  Jump straight to
+     autonav=settings_general|settings_video|settings_saves|configure_paks  Jump straight to
                                           that Settings tab at boot -- for
                                           screenshotting a menu layout
                                           without a controller.
@@ -723,6 +730,8 @@ static void apply_diag_line(char* line) {
 			g_diagSettingsSubmenu = 3;
 		} else if(strncmp(line, "autonav=advanced_audio", 22) == 0) {
 			g_diagSettingsSubmenu = 5;
+		} else if(strncmp(line, "autonav=configure_paks", 22) == 0) {
+			g_diagSettingsSubmenu = 6;
 		} else if(strncmp(line, "save_settings=1", 15) == 0) {
 			g_diagSaveSettings = true;
 		} else if(strncmp(line, "autonav=settings_saves", 22) == 0) {
@@ -1048,6 +1057,8 @@ int main(int argc, const char* argv[]) {
 	// frame was drawn.
 	if(g_diagSettingsSubmenu == 5)
 		menu->setActiveFrame(MenuContext::FRAME_ADVANCEDAUDIO);
+	else if(g_diagSettingsSubmenu == 6)
+		menu->setActiveFrame(MenuContext::FRAME_CONFIGUREPAKS);
 	else if(g_diagSettingsSubmenu != -1)
 		menu->setActiveFrame(MenuContext::FRAME_SETTINGS, g_diagSettingsSubmenu);
 	perfProf_mark(g_diagAutonavSelectRomSD ? "diag autonav: flag set" : "diag autonav: flag NOT set");

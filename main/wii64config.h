@@ -177,7 +177,9 @@ extern char pakMode[4];
 enum pakMode
 {
 	PAKMODE_MEMPAK=0,
-	PAKMODE_RUMBLEPAK
+	PAKMODE_RUMBLEPAK,
+	PAKMODE_NONE,
+	PAKMODE_BIOSENSOR
 };
 
 extern char loadButtonSlot;
