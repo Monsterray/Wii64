@@ -330,7 +330,13 @@ EXPORT void CALL WM_KeyDown( WPARAM wParam, LPARAM lParam )
 EXPORT void CALL WM_KeyUp( WPARAM wParam, LPARAM lParam )
 {
 }
-void pauseInput(void){
+/* The motor of a Transfer Pak's MBC5 rumble cartridge (gc_memory/pif.c) */
+void input_rumble(int Control, int on){
+	if (virtualControllers[Control].control)
+		DO_CONTROL(Control, rumble, on);
+}
+
+void pauseInput(void){
 	int i;
 	for(i=0; i<4; ++i)
 		if(virtualControllers[i].inUse) DO_CONTROL(i, pause);

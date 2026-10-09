@@ -271,6 +271,7 @@ int pak_plugin(int pakMode)
 		case PAKMODE_MEMPAK:    return PLUGIN_MEMPAK;
 		case PAKMODE_NONE:      return PLUGIN_NONE;
 		case PAKMODE_BIOSENSOR: return PLUGIN_BIO_SENSOR;
+		case PAKMODE_TRANSFERPAK: return PLUGIN_TANSFER_PAK;
 		default:                return PLUGIN_RAW; // Rumble Pak: gc_input/input.c
 	}
 }
@@ -297,8 +298,48 @@ static void biosensor_read(BYTE *Command)
 	Command[0x25] = mempack_crc(&Command[5]);
 }
 
-/* The Transfer Pak of each port (gc_memory/transfer_pak.c). */
+/* The Transfer Pak of each port (gc_memory/transfer_pak.c), and its cartridge file
+   (settings.ini TransferPak1-4). */
 struct transfer_pak transferPaks[4];
+char transferPakRom[4][256];
+static int tpakRumble[4];
+void input_rumble(int Control, int on); /* gc_input/input.c */
+void RecompCache_Init(void); /* r4300/Recomp-Cache-Heap.c */
+
+int transferpak_save_all(void)
+{
+	int failed = 0;
+	for (int i = 0; i < 4; i++)
+		if (tpak_save(&transferPaks[i]) < 0) failed++;
+	return failed;
+}
+
+const char *transferpak_insert(int port)
+{
+	tpakRumble[port] = 0;
+	if (tpak_save(&transferPaks[port]) < 0)
+		return "cannot write the save of the cartridge in it"; /* keep it in */
+	tpak_eject(&transferPaks[port]);
+	if (pakMode[port] != PAKMODE_TRANSFERPAK || !transferPakRom[port][0]) return NULL;
+	/* The recompiler's 9.5 MB block first: the cartridge's buffers must not take its
+	   place (a Game Boy ROM in MEM1 made RecompCache_Init fail). */
+	RecompCache_Init();
+	int err = tpak_insert(&transferPaks[port], transferPakRom[port]);
+	return err ? tpak_error(err) : NULL;
+}
+
+void paks_start_game(char *msg, int size)
+{
+	int n = 0;
+	msg[0] = 0;
+	for (int i = 0; i < 4; i++) {
+		/* a game's own settings can change its paks */
+		if (Controls[i].Present) Controls[i].Plugin = pak_plugin(pakMode[i]);
+		const char *why = transferpak_insert(i);
+		if (why && n < size)
+			n += snprintf(msg + n, size - n, "Controller %d Transfer Pak: %s\n", i + 1, why);
+	}
+}
 
 void internal_ReadController(int Control, BYTE *Command)
 {
@@ -439,8 +480,13 @@ void internal_ControllerCommand(int Control, BYTE *Command)
 						controllerCommand(Control, Command);
 					break;
 					case PLUGIN_TANSFER_PAK:
-						tpak_write(&transferPaks[Control], ((Command[3] << 8) | Command[4]) & 0xFFE0, &Command[5]);
+					{
+						struct transfer_pak *t = &transferPaks[Control];
+						tpak_write(t, ((Command[3] << 8) | Command[4]) & 0xFFE0, &Command[5]);
 						Command[0x25] = mempack_crc(&Command[5]);
+						if (t->file && (t->cart.flags & GB_RUMBLE) && t->cart.rumble != tpakRumble[Control])
+							input_rumble(Control, tpakRumble[Control] = t->cart.rumble); /* MBC5 rumble cartridge */
+					}
 					break;
 					default:
 						Command[0x25] = mempack_crc(&Command[5]);

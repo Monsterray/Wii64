@@ -11,6 +11,7 @@
 
 /* While a game's file is in effect: which rows it set, and their global values. */
 static int gameValue[SETTINGS_MAX];
+static char* gameText[SETTINGS_MAX]; /* SETTING_TEXT rows: a copy of the global text */
 static unsigned char gameSet[SETTINGS_MAX];
 
 static int get(const struct setting* s)
@@ -87,9 +88,10 @@ void settings_write(const struct setting* t, int n, FILE* f)
 			continue;
 		}
 		fprintf(f, "\n; %s%s\n", s->note, s->flags & SETTING_GAME ? " (per game)" : "");
+		/* the global value, also while a game's file is in effect */
 		if (s->type == SETTING_TEXT)
-			fprintf(f, "%s = \"%s\"\n", s->key, (const char*)s->value);
-		else /* the global value, also while a game's file is in effect */
+			fprintf(f, "%s = \"%s\"\n", s->key, i < SETTINGS_MAX && gameText[i] ? gameText[i] : (const char*)s->value);
+		else
 			fprintf(f, "%s = %d\n", s->key, i < SETTINGS_MAX && gameSet[i] ? gameValue[i] : get(s));
 	}
 }
@@ -100,12 +102,21 @@ void settings_game_begin(const struct setting* t, int n, FILE* f)
 	settings_game_end(t, n);
 	while (fgets(line, sizeof(line), f)) {
 		int i = find(t, n, line, 1, &v);
-		if (i < 0 || i >= SETTINGS_MAX || t[i].type == SETTING_TEXT) continue;
-		int global = get(&t[i]);
+		if (i < 0 || i >= SETTINGS_MAX) continue;
+		int text = t[i].type == SETTING_TEXT;
+		int global = text ? 0 : get(&t[i]);
+		char* saved = NULL;
+		if (text && !gameSet[i]) { /* keep the global text to put back */
+			if (!(saved = malloc(t[i].max))) continue;
+			memcpy(saved, t[i].value, t[i].max);
+		}
 		if (apply(&t[i], v) && !gameSet[i]) {
 			gameValue[i] = global;
+			gameText[i] = saved;
+			saved = NULL;
 			gameSet[i] = 1;
 		}
+		free(saved);
 	}
 }
 
@@ -119,7 +130,12 @@ int settings_game_count(void)
 void settings_game_end(const struct setting* t, int n)
 {
 	for (int i = 0; i < n && i < SETTINGS_MAX; i++) {
-		if (gameSet[i]) put(&t[i], gameValue[i]);
+		if (gameText[i]) {
+			memcpy(t[i].value, gameText[i], t[i].max);
+			free(gameText[i]);
+			gameText[i] = NULL;
+		}
+		else if (gameSet[i]) put(&t[i], gameValue[i]);
 		gameSet[i] = 0;
 	}
 }

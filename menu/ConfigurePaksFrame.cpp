@@ -34,17 +34,27 @@ extern "C" {
 #include "../main/rom.h"
 #include "../gc_memory/pif.h"
 }
+#include <stdio.h>
+#include <string.h>
 
-/* One button for each controller port. A port holds one pak, so A cycles it:
-   Controller Pak, Rumble Pak, Bio Sensor, None. */
+const char* wii64Dir(void); // main/main_gc-menu2.cpp
+
+/* Two buttons for each controller port. The first cycles the pak (a port holds one):
+   Controller Pak, Rumble Pak, Transfer Pak, Bio Sensor, None. With a Transfer Pak, the
+   second steps through the Game Boy cartridges (.gb, .gbc) in wii64/gb. */
 static void cyclePak(int port);
+static void nextCartridge(int port);
 static void Func_Controller1Pak() { cyclePak(0); }
 static void Func_Controller2Pak() { cyclePak(1); }
 static void Func_Controller3Pak() { cyclePak(2); }
 static void Func_Controller4Pak() { cyclePak(3); }
+static void Func_Controller1Cart() { nextCartridge(0); }
+static void Func_Controller2Cart() { nextCartridge(1); }
+static void Func_Controller3Cart() { nextCartridge(2); }
+static void Func_Controller4Cart() { nextCartridge(3); }
 void Func_ReturnFromConfigurePaksFrame();
 
-#define NUM_FRAME_BUTTONS 4
+#define NUM_FRAME_BUTTONS 8
 #define FRAME_BUTTONS configurePaksFrameButtons
 #define FRAME_STRINGS configurePaksFrameStrings
 #define NUM_FRAME_TEXTBOXES 8
@@ -59,25 +69,34 @@ static char FRAME_STRINGS[5][13] =
 };
 
 /* In PAKMODE_* order */
-static const char* PakLabels[4] = { "Controller Pak", "Rumble Pak", "None", "Bio Sensor" };
+static const char* PakLabels[5] = { "Controller Pak", "Rumble Pak", "None", "Bio Sensor", "Transfer Pak" };
+/* The cartridge buttons' text: the file name, shortened */
+static char cartLabel[4][24];
+static char* cartText[4] = { cartLabel[0], cartLabel[1], cartLabel[2], cartLabel[3] };
+static char* noText = (char*)"";
 
 struct ButtonInfo
 {
 	menu::Button	*button;
 	int				buttonStyle;
-	char*			buttonString;
+	char**			buttonString;
 	float			x;
 	float			y;
 	float			width;
 	float			height;
+	float			fontSize;
 	ButtonFunc		clickedFunc;
 	ButtonFunc		returnFunc;
 } FRAME_BUTTONS[NUM_FRAME_BUTTONS] =
-{ //	button	buttonStyle	buttonString		x		y		width	height	clickFunc				returnFunc
-	{	NULL,	BTN_A_NRM,	(char*)"None",		330.0,	100.0,	230.0,	50.0,	Func_Controller1Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 1
-	{	NULL,	BTN_A_NRM,	(char*)"None",		330.0,	170.0,	230.0,	50.0,	Func_Controller2Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 2
-	{	NULL,	BTN_A_NRM,	(char*)"None",		330.0,	240.0,	230.0,	50.0,	Func_Controller3Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 3
-	{	NULL,	BTN_A_NRM,	(char*)"None",		330.0,	310.0,	230.0,	50.0,	Func_Controller4Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 4
+{ //	button	buttonStyle	buttonString	x		y		width	height	font	clickFunc				returnFunc
+	{	NULL,	BTN_A_NRM,	&noText,		215.0,	100.0,	205.0,	50.0,	0.9,	Func_Controller1Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: pak
+	{	NULL,	BTN_A_NRM,	&noText,		215.0,	170.0,	205.0,	50.0,	0.9,	Func_Controller2Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: pak
+	{	NULL,	BTN_A_NRM,	&noText,		215.0,	240.0,	205.0,	50.0,	0.9,	Func_Controller3Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: pak
+	{	NULL,	BTN_A_NRM,	&noText,		215.0,	310.0,	205.0,	50.0,	0.9,	Func_Controller4Pak,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: pak
+	{	NULL,	BTN_A_NRM,	&cartText[0],	430.0,	100.0,	200.0,	50.0,	0.75,	Func_Controller1Cart,	Func_ReturnFromConfigurePaksFrame }, // Controller 1: cartridge
+	{	NULL,	BTN_A_NRM,	&cartText[1],	430.0,	170.0,	200.0,	50.0,	0.75,	Func_Controller2Cart,	Func_ReturnFromConfigurePaksFrame }, // Controller 2: cartridge
+	{	NULL,	BTN_A_NRM,	&cartText[2],	430.0,	240.0,	200.0,	50.0,	0.75,	Func_Controller3Cart,	Func_ReturnFromConfigurePaksFrame }, // Controller 3: cartridge
+	{	NULL,	BTN_A_NRM,	&cartText[3],	430.0,	310.0,	200.0,	50.0,	0.75,	Func_Controller4Cart,	Func_ReturnFromConfigurePaksFrame }, // Controller 4: cartridge
 };
 
 struct TextBoxInfo
@@ -90,23 +109,27 @@ struct TextBoxInfo
 	bool			centered;
 } FRAME_TEXTBOXES[NUM_FRAME_TEXTBOXES] =
 { //	textBox	textBoxString		x		y		scale	centered
-	{	NULL,	FRAME_STRINGS[0],	180.0,	125.0,	 1.0,	true }, // Controller 1
-	{	NULL,	FRAME_STRINGS[1],	180.0,	195.0,	 1.0,	true }, // Controller 2
-	{	NULL,	FRAME_STRINGS[2],	180.0,	265.0,	 1.0,	true }, // Controller 3
-	{	NULL,	FRAME_STRINGS[3],	180.0,	335.0,	 1.0,	true }, // Controller 4
-	{	NULL,	FRAME_STRINGS[4],	445.0,	125.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[4],	445.0,	195.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[4],	445.0,	265.0,	 1.0,	true }, // Unavailable
-	{	NULL,	FRAME_STRINGS[4],	445.0,	335.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[0],	115.0,	125.0,	 1.0,	true }, // Controller 1
+	{	NULL,	FRAME_STRINGS[1],	115.0,	195.0,	 1.0,	true }, // Controller 2
+	{	NULL,	FRAME_STRINGS[2],	115.0,	265.0,	 1.0,	true }, // Controller 3
+	{	NULL,	FRAME_STRINGS[3],	115.0,	335.0,	 1.0,	true }, // Controller 4
+	{	NULL,	FRAME_STRINGS[4],	317.0,	125.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[4],	317.0,	195.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[4],	317.0,	265.0,	 1.0,	true }, // Unavailable
+	{	NULL,	FRAME_STRINGS[4],	317.0,	335.0,	 1.0,	true }, // Unavailable
 };
+
+static menu::Frame* thisFrame;
 
 ConfigurePaksFrame::ConfigurePaksFrame()
 {
+	thisFrame = this;
 	for (int i = 0; i < NUM_FRAME_BUTTONS; i++)
 	{
-		FRAME_BUTTONS[i].button = new menu::Button(FRAME_BUTTONS[i].buttonStyle, &FRAME_BUTTONS[i].buttonString,
+		FRAME_BUTTONS[i].button = new menu::Button(FRAME_BUTTONS[i].buttonStyle, FRAME_BUTTONS[i].buttonString,
 										FRAME_BUTTONS[i].x, FRAME_BUTTONS[i].y,
 										FRAME_BUTTONS[i].width, FRAME_BUTTONS[i].height);
+		FRAME_BUTTONS[i].button->setFontSize(FRAME_BUTTONS[i].fontSize);
 		FRAME_BUTTONS[i].button->setActive(true);
 		FRAME_BUTTONS[i].button->setClicked(FRAME_BUTTONS[i].clickedFunc);
 		FRAME_BUTTONS[i].button->setReturn(FRAME_BUTTONS[i].returnFunc);
@@ -141,40 +164,94 @@ ConfigurePaksFrame::~ConfigurePaksFrame()
 	}
 }
 
+/* The cartridge button's text: the file name without folder and extension */
+static void setCartLabel(int port)
+{
+	const char *path = transferPakRom[port];
+	if (!path[0]) { snprintf(cartLabel[port], sizeof(cartLabel[port]), "No cartridge"); return; }
+	const char *slash = strrchr(path, '/');
+	const char *name = slash ? slash + 1 : path;
+	const char *dot = strrchr(name, '.');
+	int len = dot ? (int)(dot - name) : (int)strlen(name);
+	if (len > 17) snprintf(cartLabel[port], sizeof(cartLabel[port]), "%.15s..", name);
+	else snprintf(cartLabel[port], sizeof(cartLabel[port]), "%.*s", len, name);
+}
+
 void ConfigurePaksFrame::activateSubmenu(int submenu)
 {
 	Component* defaultFocus = this;
-	menu::Button* present[4];
-	int count = 0;
+	int rows[4], count = 0;
 
-	// A button for each port with a controller, "Unavailable" for the others
+	// Buttons for each port with a controller, "Unavailable" for the others
 	for (int i = 0; i < 4; i++)
 	{
 		bool on = Controls[i].Present;
+		bool cart = on && pakMode[i] == PAKMODE_TRANSFERPAK;
 		FRAME_BUTTONS[i].button->setVisible(on);
 		FRAME_BUTTONS[i].button->setActive(on);
+		FRAME_BUTTONS[i+4].button->setVisible(cart);
+		FRAME_BUTTONS[i+4].button->setActive(cart);
 		FRAME_TEXTBOXES[i+4].textBox->setVisible(!on);
 		if (!on) continue;
-		FRAME_BUTTONS[i].button->setText((char**)&PakLabels[(int)pakMode[i] & 3]);
-		present[count++] = FRAME_BUTTONS[i].button;
+		FRAME_BUTTONS[i].button->setText((char**)&PakLabels[(int)pakMode[i] % 5]);
+		setCartLabel(i);
+		rows[count++] = i;
 	}
-	// Up and down go round the buttons that are there
-	for (int i = 0; i < count; i++)
+	// Up and down go round the rows that are there; right and left between a row's buttons
+	for (int k = 0; k < count; k++)
 	{
-		present[i]->setNextFocus(menu::Focus::DIRECTION_UP, count > 1 ? present[(i + count - 1) % count] : NULL);
-		present[i]->setNextFocus(menu::Focus::DIRECTION_DOWN, count > 1 ? present[(i + 1) % count] : NULL);
+		int i = rows[k];
+		menu::Button *up = count > 1 ? FRAME_BUTTONS[rows[(k + count - 1) % count]].button : NULL;
+		menu::Button *down = count > 1 ? FRAME_BUTTONS[rows[(k + 1) % count]].button : NULL;
+		menu::Button *pak = FRAME_BUTTONS[i].button, *cart = FRAME_BUTTONS[i+4].button;
+		pak->setNextFocus(menu::Focus::DIRECTION_UP, up);
+		pak->setNextFocus(menu::Focus::DIRECTION_DOWN, down);
+		pak->setNextFocus(menu::Focus::DIRECTION_RIGHT, pakMode[i] == PAKMODE_TRANSFERPAK ? cart : NULL);
+		cart->setNextFocus(menu::Focus::DIRECTION_LEFT, pak);
+		cart->setNextFocus(menu::Focus::DIRECTION_UP, up);
+		cart->setNextFocus(menu::Focus::DIRECTION_DOWN, down);
 	}
-	if (count) defaultFocus = present[0];
+	if (count) defaultFocus = FRAME_BUTTONS[rows[0]].button;
 	setDefaultFocus(defaultFocus);
+}
+
+/* Put the port's cartridge in (or take it out), and say why when it does not load. */
+static void insertCartridge(int port)
+{
+	const char *why = transferpak_insert(port);
+	if (!why) return;
+	char msg[160];
+	snprintf(msg, sizeof(msg), "Controller %d Transfer Pak:\n%s", port + 1, why);
+	menu::MessageBox::getInstance().setMessage(msg);
 }
 
 static void cyclePak(int port)
 {
-	// Controller Pak -> Rumble Pak -> Bio Sensor -> None -> Controller Pak (PAKMODE_* order)
-	static const char next[4] = { PAKMODE_RUMBLEPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK, PAKMODE_NONE };
-	pakMode[port] = next[pakMode[port] & 3];
+	// Controller Pak -> Rumble Pak -> Transfer Pak -> Bio Sensor -> None -> Controller Pak
+	// (indexed in PAKMODE_* order)
+	static const char next[5] = { PAKMODE_RUMBLEPAK, PAKMODE_TRANSFERPAK, PAKMODE_MEMPAK,
+	                              PAKMODE_NONE, PAKMODE_BIOSENSOR };
+	bool transfer = pakMode[port] == PAKMODE_TRANSFERPAK;
+	pakMode[port] = next[pakMode[port] % 5];
 	Controls[port].Plugin = pak_plugin(pakMode[port]);
-	FRAME_BUTTONS[port].button->setText((char**)&PakLabels[(int)pakMode[port]]);
+	if (transfer || pakMode[port] == PAKMODE_TRANSFERPAK) insertCartridge(port);
+	thisFrame->activateSubmenu(ConfigurePaksFrame::SUBMENU_NONE);
+}
+
+static void nextCartridge(int port)
+{
+	char dir[32], path[256];
+	snprintf(dir, sizeof(dir), "%sgb", wii64Dir());
+	if (!tpak_next_rom(dir, transferPakRom[port], path, sizeof(path)))
+	{
+		char msg[96];
+		snprintf(msg, sizeof(msg), "Put Game Boy cartridges (.gb, .gbc)\nin %s", dir);
+		menu::MessageBox::getInstance().setMessage(msg);
+		return;
+	}
+	snprintf(transferPakRom[port], sizeof(transferPakRom[port]), "%s", path);
+	setCartLabel(port);
+	insertCartridge(port);
 }
 
 extern MenuContext *pMenuContext;

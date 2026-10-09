@@ -15,6 +15,7 @@
 #ifndef TRANSFER_PAK_H
 #define TRANSFER_PAK_H
 
+#include <stdio.h>
 #include "gb_cart.h"
 
 #ifdef __cplusplus
@@ -36,9 +37,16 @@ extern "C" {
 #define TPAK_PULLED  0x40   /* no cartridge */
 #define TPAK_POWERED 0x80
 
+/* The ROM stays in its file: a Wii has no room for a 1-8 MB cartridge in memory
+   (doc/rom-paging-and-agent.md). This many 16 KB banks are kept. */
+#define TPAK_BANKS 4
+
 struct transfer_pak {
 	struct gb_cart cart;
-	uint8_t *rom;           /* NULL: no cartridge */
+	FILE *file;             /* the ROM; NULL: no cartridge */
+	uint8_t *page[TPAK_BANKS];       /* the kept ROM banks */
+	int32_t page_bank[TPAK_BANKS];
+	uint32_t page_used[TPAK_BANKS], tick;
 	char sav[256];          /* the cartridge's save file */
 	uint8_t powered, access, bank;
 	uint8_t reset;          /* status bits 2-3 */
@@ -57,6 +65,11 @@ int tpak_insert(struct transfer_pak *tpak, const char *rom_path);
    Returns 1 written, 0 nothing to write, -1 error. */
 int tpak_save(struct transfer_pak *tpak);
 void tpak_eject(struct transfer_pak *tpak);
+/* Why tpak_insert() failed, for a message */
+const char *tpak_error(int err);
+/* The Game Boy ROM (.gb, .gbc) in folder dir that comes after current in name order,
+   or the first one when current is not there; wraps round. Returns 0 when dir has none. */
+int tpak_next_rom(const char *dir, const char *current, char *out, size_t size);
 
 #ifdef __cplusplus
 }

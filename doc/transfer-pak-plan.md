@@ -1,22 +1,29 @@
 # Transfer Pak plan
 
-Status (2026-10-08): phases 1 and 2 are done. `gc_memory/gb_cart.c` (the cartridge) and
-`gc_memory/transfer_pak.c` (the pak: protocol, `tpak_insert`, `tpak_save`) are in the Wii
-build, tested by `tests/gb_cart_test.c` and `tests/transfer_pak_test.c` in
-`.dev/test_subsystems.sh`. `gc_memory/pif.c` answers `PLUGIN_TANSFER_PAK` with
-`transferPaks[4]`, but nothing selects that plugin until phase 3. Configure Paks cycles
-Controller Pak, Rumble Pak, Bio Sensor and None; Transfer Pak becomes a fifth choice in
-phase 3.
+Status (2026-10-08): phases 1 to 3 are done.
+- `gc_memory/gb_cart.c`: the cartridge. `gc_memory/transfer_pak.c`: the pak protocol,
+  the ROM paged from its file, `tpak_insert`, `tpak_save`, `tpak_next_rom`. Tested by
+  `tests/gb_cart_test.c` and `tests/transfer_pak_test.c` in `.dev/test_subsystems.sh`.
+- `gc_memory/pif.c`: `PLUGIN_TANSFER_PAK`, `transferPaks[4]`, `transferPakRom[4]`;
+  `paks_start_game` (each port's plugin from its pak mode, then the cartridges) runs in
+  `loadROM` after the game's own settings; `transferpak_save_all` runs when emulation
+  returns to the menu (MainFrame, MiniMenuFrame), with or without Auto Save, as a
+  cartridge battery would; MBC5 rumble goes to the controller's rumble.
+- Configure Paks: Controller Pak, Rumble Pak, Transfer Pak, Bio Sensor, None; with a
+  Transfer Pak, a cartridge button steps through `wii64/gb/*.gb, *.gbc`.
+- settings.ini: `Pak1`-`Pak4` = 4, `TransferPak1`-`TransferPak4` (text, per game). The
+  settings engine now keeps per-game text (`settings.c` gameText).
+- Also fixed: a game's own `Pak1`-`Pak4` did not reach the controller plugin.
 
-Phase 3 also has to:
-- call `tpak_insert` for each port with a Transfer Pak when a game starts (and
-  `tpak_eject` when it stops), and show its error (no file, unknown type, a type for a
-  later phase) in a message;
-- call `tpak_save` for every port wherever the native saves are written: the five
-  `saveMempak` call sites in `menu/` (MainFrame, MiniMenuFrame, CurrentRomFrame,
-  SaveGameFrame twice). Their `if (...Written)` checks do not see the cartridge RAM, so
-  check `transferPaks[i].cart.ram_dirty` too;
-- send `cart.rumble` (MBC5 rumble cartridges) to the controller's rumble.
+Memory: a Wii has about 0.4 MB of MEM1 and 0.3 MB of MEM2 free in a game, so the
+cartridge ROM stays in its file and four 16 KB banks are kept (64 KB), plus the
+cartridge RAM (up to 128 KB). `transferpak_insert` calls `RecompCache_Init` first: with
+the whole 1 MB Pokemon Yellow in MEM1, the recompiler's 9.5 MB block did not fit and
+Wii64 crashed (DSI in `__lwp_heap_init`).
+
+Phase 4 (games) needs Pokemon Stadium 1 or 2, Mario Golf, Mario Tennis or Perfect Dark;
+none of them is on the bench Wii yet. Real cartridges checked: Pokemon Yellow (MBC5,
+32 KB RAM) and Pocket Monsters Gold (MBC3 with clock) load through `tpak_insert`.
 
 Phase 2 choices from the sources:
 - Status bits and the 0xB000 write (1 access on, 0 off) as libdragon; the reset bits
@@ -137,8 +144,9 @@ Rules from the accurate emulators to keep:
    save round trip with each footer, and a cartridge size that disagrees with its header.
 2. **Pak device** (`gc_memory/pif.c`, `PLUGIN_TRANSFER_PAK`): the protocol table above, with
    a host test that replays the command sequence Pokemon Stadium sends.
-3. **Menu and settings**: Transfer Pak in the Configure Paks cycle; a "Cartridge" button
-   for that port opens the file browser on `wii64/gb` (.gb, .gbc only).
+3. **Menu and settings** (done): Transfer Pak in the Configure Paks cycle; a "Cartridge" button
+   for that port steps through `wii64/gb` (.gb, .gbc only). A file browser with folders
+   can replace it when a cartridge folder gets long.
 4. **Game tests** in Dolphin, then on the bench Wii: Pokemon Stadium (Red save import,
    GB Tower), Stadium 2 (Crystal, clock), Mario Golf, Mario Tennis, Perfect Dark cheats.
    Compare the .sav files with the same steps in mupen64plus.

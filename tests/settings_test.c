@@ -6,7 +6,7 @@
 
 static char limit, audio, pak;
 static int core;
-static char dir[32];
+static char dir[32], cart[32];
 
 static const struct setting T[] = {
 	{ "General", SETTING_SECTION, 0, 0, 0, 0, 0, "The emulator." },
@@ -15,6 +15,7 @@ static const struct setting T[] = {
 	{ "Audio", SETTING_CHAR, 0, &audio, 0, 1, 1, "0 = off, 1 = on." },
 	{ "Pak1", SETTING_CHAR, SETTING_GAME, &pak, 0, 1, 0, "0 = Memory Pak, 1 = Rumble Pak." },
 	{ "RomDir", SETTING_TEXT, 0, dir, 0, sizeof(dir), 0, "A folder." },
+	{ "Cart", SETTING_TEXT, SETTING_GAME, cart, 0, sizeof(cart), 0, "A cartridge file." },
 };
 #define N ((int)(sizeof(T) / sizeof(T[0])))
 
@@ -72,6 +73,20 @@ int main(void)
 	assert(core == 2 && limit == 1);
 	settings_game_end(T, N);
 	assert(core == 2 && limit == 2);
+
+	/* a game's text: in effect for the game; the global text in the file and after */
+	lines("Cart = \"sd:/a.gb\"\n", 0);
+	lines("Cart = \"sd:/game.gb\"\nCart = \"sd:/game2.gb\"\nRomDir = \"x\"\n", 1);
+	assert(!strcmp(cart, "sd:/game2.gb") && strcmp(dir, "x") && settings_game_count() == 1);
+	f = tmpfile();
+	settings_write(T, N, f);
+	rewind(f);
+	memset(text, 0, sizeof(text));
+	got = fread(text, 1, sizeof(text) - 1, f);
+	fclose(f);
+	assert(got > 0 && strstr(text, "Cart = \"sd:/a.gb\"\n"));
+	settings_game_end(T, N);
+	assert(!strcmp(cart, "sd:/a.gb") && settings_game_count() == 0);
 
 	puts("settings: defaults, cfg/ini lines, ranges, text, round trip, per-game apply and restore: ok");
 	return 0;

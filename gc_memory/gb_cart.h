@@ -38,8 +38,13 @@ enum gb_cart_error {
 	GB_CART_TOO_SMALL,   /* smaller than 32 KB */
 	GB_CART_UNKNOWN,     /* header 0x147 is no cartridge type */
 	GB_CART_UNSUPPORTED, /* a real type that is not done yet (MBC6, MBC7, HuC1, ...) */
-	GB_CART_NO_MEMORY
+	GB_CART_NO_MEMORY,
+	GB_CART_READ_ERROR   /* the bank hook could not read the header */
 };
+
+/* A 16 KB ROM bank, or NULL when it cannot be read. The cartridge reads its ROM only
+   through this, so a large ROM can stay in its file (transfer_pak.c). */
+typedef const uint8_t *(*gb_bank_fn)(void *ctx, uint32_t bank);
 
 /* MBC3 clock registers: seconds, minutes, hours, day low, day high (bit 0 day 8,
    bit 6 halt, bit 7 day carry). */
@@ -48,7 +53,8 @@ enum { GB_RTC_S, GB_RTC_M, GB_RTC_H, GB_RTC_DL, GB_RTC_DH, GB_RTC_REGS };
 #define GB_RTC_CARRY 0x80
 
 struct gb_cart {
-	const uint8_t *rom;      /* the caller's; not copied */
+	gb_bank_fn bank;         /* the ROM, 16 KB at a time */
+	void *bank_ctx;
 	uint32_t rom_size;
 	uint8_t *ram;            /* gb_cart_init() allocates it */
 	uint32_t ram_size;
@@ -72,6 +78,8 @@ struct gb_cart {
 
 /* Parse the header and set up the mapper. rom stays the caller's. */
 int gb_cart_init(struct gb_cart *cart, const uint8_t *rom, uint32_t rom_size);
+/* The same, with the ROM read a bank at a time through bank(ctx, n). */
+int gb_cart_init_banked(struct gb_cart *cart, uint32_t rom_size, gb_bank_fn bank, void *ctx);
 void gb_cart_free(struct gb_cart *cart);
 
 /* The cartridge bus, 0x0000-0xFFFF: ROM 0x0000-0x7FFF, RAM or clock 0xA000-0xBFFF.

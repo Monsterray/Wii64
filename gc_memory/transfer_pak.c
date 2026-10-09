@@ -9,6 +9,9 @@
  * version 2 of the Licence, or any later version.
 **/
 
+#define _POSIX_C_SOURCE 200809L /* dirent on the host test */
+#include <ctype.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +25,29 @@ static uint16_t cart_address(const struct transfer_pak *t, uint16_t address)
 
 static int cart_on(const struct transfer_pak *t)
 {
-	return t->powered && t->access && t->rom;
+	return t->powered && t->access && t->file;
+}
+
+/* A 16 KB ROM bank from the file, through the kept banks (the least recently used goes). */
+static const uint8_t *file_bank(void *ctx, uint32_t number)
+{
+	struct transfer_pak *t = ctx;
+	int old = 0;
+	for (int i = 0; i < TPAK_BANKS; i++) {
+		if (t->page_bank[i] == (int32_t)number) {
+			t->page_used[i] = ++t->tick;
+			return t->page[i];
+		}
+		if (t->page_used[i] < t->page_used[old]) old = i;
+	}
+	t->page_bank[old] = -1;
+	if (fseek(t->file, (long)number * 0x4000, SEEK_SET)) return NULL;
+	size_t n = fread(t->page[old], 1, 0x4000, t->file);
+	if (!n) return NULL;
+	memset(t->page[old] + n, 0xFF, 0x4000 - n);
+	t->page_bank[old] = number;
+	t->page_used[old] = ++t->tick;
+	return t->page[old];
 }
 
 void tpak_read(struct transfer_pak *t, uint16_t address, uint8_t *data)
@@ -34,7 +59,7 @@ void tpak_read(struct transfer_pak *t, uint16_t address, uint8_t *data)
 		break;
 	case 0xB:
 		value = (cart_on(t) ? TPAK_ACCESS : 0) | (t->reset & 3) << 2 |
-		        (t->rom ? 0 : TPAK_PULLED) | (t->powered ? TPAK_POWERED : 0);
+		        (t->file ? 0 : TPAK_PULLED) | (t->powered ? TPAK_POWERED : 0);
 		/* The reset bits step on status reads exactly as in mupen64plus, which the
 		   games are tested with: 3 to 2 after an access write, else 2 to 1 to 0. */
 		if (t->written && t->reset == 3) t->reset = 2;
@@ -97,11 +122,15 @@ int tpak_insert(struct transfer_pak *t, const char *rom_path)
 {
 	tpak_eject(t);
 	long size;
-	uint8_t *rom = read_file(rom_path, &size);
-	if (!rom) return -1;
-	int err = gb_cart_init(&t->cart, rom, (uint32_t)size);
-	if (err) { free(rom); return err; }
-	t->rom = rom;
+	if (!(t->file = fopen(rom_path, "rb"))) return -1;
+	size = fseek(t->file, 0, SEEK_END) ? -1 : ftell(t->file);
+	int err = size < 0 ? -1 : GB_CART_OK;
+	for (int i = 0; i < TPAK_BANKS && !err; i++) {
+		t->page_bank[i] = -1;
+		if (!(t->page[i] = malloc(0x4000))) err = GB_CART_NO_MEMORY;
+	}
+	if (!err) err = gb_cart_init_banked(&t->cart, (uint32_t)size, file_bank, t);
+	if (err) { tpak_eject(t); return err; }
 
 	/* the save: the ROM's path with .sav for its extension */
 	snprintf(t->sav, sizeof(t->sav), "%s", rom_path);
@@ -120,7 +149,7 @@ int tpak_insert(struct transfer_pak *t, const char *rom_path)
 
 int tpak_save(struct transfer_pak *t)
 {
-	if (!t->rom || !(t->cart.flags & GB_BATTERY) || !t->cart.ram_dirty) return 0;
+	if (!t->file || !(t->cart.flags & GB_BATTERY) || !t->cart.ram_dirty) return 0;
 	size_t size = gb_cart_save_size(&t->cart);
 	uint8_t *buf = malloc(size);
 	if (!buf) return -1;
@@ -139,11 +168,58 @@ int tpak_save(struct transfer_pak *t)
 	return 1;
 }
 
+const char *tpak_error(int err)
+{
+	switch (err) {
+	case -1:                  return "cannot read the file";
+	case GB_CART_TOO_SMALL:   return "the file is too small for a cartridge";
+	case GB_CART_UNKNOWN:     return "not a Game Boy cartridge";
+	case GB_CART_UNSUPPORTED: return "this cartridge type is not supported yet";
+	case GB_CART_NO_MEMORY:   return "not enough memory";
+	case GB_CART_READ_ERROR:  return "cannot read the file";
+	default:                  return "";
+	}
+}
+
+static int name_cmp(const char *a, const char *b)
+{
+	for (; *a && tolower((unsigned char)*a) == tolower((unsigned char)*b); a++, b++);
+	return tolower((unsigned char)*a) - tolower((unsigned char)*b);
+}
+
+static int is_gb_rom(const char *name)
+{
+	const char *dot = strrchr(name, '.');
+	return dot && (!name_cmp(dot, ".gb") || !name_cmp(dot, ".gbc"));
+}
+
+int tpak_next_rom(const char *dir, const char *current, char *out, size_t size)
+{
+	DIR *d = opendir(dir);
+	if (!d) return 0;
+	const char *slash = strrchr(current, '/');
+	const char *cur = slash ? slash + 1 : current;
+	/* the first name, and the first name after cur, in name order */
+	char first[256] = "", next[256] = "";
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		const char *n = e->d_name;
+		if (n[0] == '.' || !is_gb_rom(n) || strlen(n) >= sizeof(first)) continue;
+		if (!first[0] || name_cmp(n, first) < 0) strcpy(first, n);
+		if (name_cmp(n, cur) > 0 && (!next[0] || name_cmp(n, next) < 0)) strcpy(next, n);
+	}
+	closedir(d);
+	if (!first[0]) return 0;
+	snprintf(out, size, "%s/%s", dir, next[0] ? next : first);
+	return 1;
+}
+
 void tpak_eject(struct transfer_pak *t)
 {
 	gb_cart_free(&t->cart);
-	free(t->rom);
-	t->rom = NULL;
+	for (int i = 0; i < TPAK_BANKS; i++) { free(t->page[i]); t->page[i] = NULL; }
+	if (t->file) fclose(t->file);
+	t->file = NULL;
 	t->sav[0] = 0;
 	t->powered = t->access = t->bank = t->written = t->reset = 0;
 }

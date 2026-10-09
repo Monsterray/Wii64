@@ -40,4 +40,13 @@ int pak_plugin(int pakMode);
 /* The Transfer Pak of each port */
 #include "transfer_pak.h"
 extern struct transfer_pak transferPaks[4];
+extern char transferPakRom[4][256];
+/* Before a game starts: each port's plugin from its pak mode, and the Transfer Pak
+   cartridges; msg gets a line for each cartridge that does not load. */
+void paks_start_game(char *msg, int size);
+/* Put the cartridge of transferPakRom[port] in the port's Transfer Pak (after the old
+   one's save). NULL when done, else why not. */
+const char *transferpak_insert(int port);
+/* Write the changed cartridge saves; returns how many failed. */
+int transferpak_save_all(void);
 #endif

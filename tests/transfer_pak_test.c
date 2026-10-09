@@ -58,11 +58,11 @@ int main(int argc, char **argv)
 
 	/* Errors */
 	snprintf(path, sizeof(path), "%s/missing.gb", dir);
-	assert(tpak_insert(&t, path) == -1 && !t.rom);
+	assert(tpak_insert(&t, path) == -1 && !t.file);
 	rom[0x147] = 0xFC; /* Pocket Camera: later phase */
 	snprintf(path, sizeof(path), "%s/camera.gb", dir);
 	write_file(path, rom, 0x8000);
-	assert(tpak_insert(&t, path) == GB_CART_UNSUPPORTED && !t.rom);
+	assert(tpak_insert(&t, path) == GB_CART_UNSUPPORTED && !t.file);
 	rom[0x147] = 0x10;
 
 	/* Insert: the pak starts off, the .sav (same name) is loaded */
@@ -98,6 +98,13 @@ int main(int argc, char **argv)
 	/* MBC3 ROM bank 5 at Game Boy 0x4000 */
 	gb_put(&t, 0x2000, 5);
 	assert(gb_get(&t, 0x4100) == 5);
+	/* every bank, twice: 8 banks through the 4 kept from the file */
+	for (int pass = 0; pass < 2; pass++)
+		for (int b = 1; b < 8; b++) {
+			gb_put(&t, 0x2000, b);
+			assert(gb_get(&t, 0x4100) == b && gb_get(&t, 0x0100) == 0);
+		}
+	gb_put(&t, 0x2000, 5);
 
 	/* RAM: enable, bank 0, read the save, write, then the save file */
 	assert(gb_get(&t, 0xA000) == 0xFF);              /* RAM still off */
@@ -144,6 +151,18 @@ int main(int argc, char **argv)
 	assert(tpak_insert(&u, path) == GB_CART_OK);
 	snprintf(path, sizeof(path), "%s/norom.sav", dir);
 	assert(!strcmp(u.sav, path));
+
+	/* Picking a cartridge: .gb and .gbc in name order, round and round */
+	char pick[512];
+	assert(tpak_next_rom(dir, "", pick, sizeof(pick)));
+	snprintf(path, sizeof(path), "%s/camera.gb", dir);
+	assert(!strcmp(pick, path));
+	assert(tpak_next_rom(dir, pick, pick, sizeof(pick)) && !strcmp(pick, rom_path));
+	assert(tpak_next_rom(dir, pick, pick, sizeof(pick)));
+	assert(!strcmp(pick, path));                    /* back to the first; norom and .sav skipped */
+	snprintf(path, sizeof(path), "%s/no such folder", dir);
+	assert(!tpak_next_rom(path, "", pick, sizeof(pick)));
+	assert(!strcmp(tpak_error(GB_CART_UNSUPPORTED), "this cartridge type is not supported yet"));
 
 	tpak_eject(&t);
 	tpak_eject(&u);

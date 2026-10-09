@@ -45,17 +45,30 @@ static const uint8_t RTC_MASK[GB_RTC_REGS] = { 0x3F, 0x3F, 0x1F, 0xFF, 0xC1 };
 
 static int64_t clock_time(void) { return (int64_t)time(NULL); }
 
+static const uint8_t *flat_bank(void *rom, uint32_t bank)
+{
+	return (const uint8_t *)rom + bank * 0x4000;
+}
+
 int gb_cart_init(struct gb_cart *c, const uint8_t *rom, uint32_t rom_size)
+{
+	return gb_cart_init_banked(c, rom_size, flat_bank, (void *)rom);
+}
+
+int gb_cart_init_banked(struct gb_cart *c, uint32_t rom_size, gb_bank_fn bank, void *ctx)
 {
 	memset(c, 0, sizeof(*c));
 	if (rom_size < 0x8000) return GB_CART_TOO_SMALL;
+	const uint8_t *rom = bank(ctx, 0);
+	if (!rom) return GB_CART_READ_ERROR;
 	uint8_t type = rom[0x147];
 	unsigned i;
 	for (i = 0; i < sizeof(TYPES) / sizeof(TYPES[0]) && TYPES[i].type != type; i++);
 	if (i == sizeof(TYPES) / sizeof(TYPES[0]))
 		return memchr(LATER, type, sizeof(LATER)) ? GB_CART_UNSUPPORTED : GB_CART_UNKNOWN;
 
-	c->rom = rom;
+	c->bank = bank;
+	c->bank_ctx = ctx;
 	c->rom_size = rom_size;
 	c->type = type;
 	c->mbc = TYPES[i].mbc;
@@ -65,11 +78,15 @@ int gb_cart_init(struct gb_cart *c, const uint8_t *rom, uint32_t rom_size)
 
 	if (c->mbc == GB_MBC2) c->ram_size = 512; /* 512 x 4 bits, one byte each */
 	else if (c->flags & GB_RAM && rom[0x149] < 6) c->ram_size = RAM_SIZES[rom[0x149]];
+	uint8_t logo[48];
+	memcpy(logo, rom + 0x104, sizeof(logo)); /* rom can go when the hook reads bank 0x10 */
 	/* MBC30 (Japanese Pokemon Crystal): 64 KB RAM or more than 2 MB ROM */
 	if (c->mbc == GB_MBC3 && (c->ram_size > 0x8000 || rom_size > 0x200000)) c->flags |= GB_MBC30;
 	/* MBC1 multicart: 1 MB, and a second Nintendo logo at the start of game 2 (bank 0x10) */
-	if (c->mbc == GB_MBC1 && rom_size == 0x100000 && !memcmp(rom + 0x104, rom + 0x40104, 48))
-		c->flags |= GB_MBC1M;
+	if (c->mbc == GB_MBC1 && rom_size == 0x100000) {
+		const uint8_t *game2 = bank(ctx, 0x10);
+		if (game2 && !memcmp(logo, game2 + 0x104, sizeof(logo))) c->flags |= GB_MBC1M;
+	}
 	if (c->ram_size) {
 		if (!(c->ram = malloc(c->ram_size))) return GB_CART_NO_MEMORY;
 		memset(c->ram, 0xFF, c->ram_size);
@@ -104,7 +121,9 @@ static uint8_t rom_byte(const struct gb_cart *c, uint32_t bank, uint16_t offset)
 	uint32_t banks = 1;
 	while (banks * 0x4000 < c->rom_size) banks <<= 1;
 	uint32_t a = (bank & (banks - 1)) * 0x4000 + (offset & 0x3FFF);
-	return a < c->rom_size ? c->rom[a] : 0xFF;
+	if (a >= c->rom_size) return 0xFF;
+	const uint8_t *p = c->bank(c->bank_ctx, a / 0x4000);
+	return p ? p[a % 0x4000] : 0xFF;
 }
 
 /* The RAM byte for bank and address, or NULL; RAM sizes are powers of two, so the

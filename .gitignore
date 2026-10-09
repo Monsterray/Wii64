@@ -11,6 +11,8 @@
 *.[rR][oO][mM]
 /roms/
 /temp-roms/
+# Quarantine: local files (ROMs, saves, downloads) that never go into git.
+/quarantine/
 /perf.log
 
 # Local macOS metadata

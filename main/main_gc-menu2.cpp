@@ -128,6 +128,8 @@ char renderCpuFramebuffer;
 #endif //!GLN64_GX
 char nativeOutput;
 extern "C" int bioSensorBPM; // gc_memory/pif.c
+extern "C" char transferPakRom[4][256];
+extern "C" void paks_start_game(char *msg, int size);
 extern timers Timers;
 char menuActive;
 char miniMenuActive;
@@ -163,6 +165,7 @@ char miniMenuActive;
 #endif
 #define C SETTING_CHAR
 #define I SETTING_INT
+#define T SETTING_TEXT
 #define G SETTING_GAME
 static const struct setting SETTINGS[] =
 {
@@ -225,14 +228,22 @@ static const struct setting SETTINGS[] =
   { "PadAssign3", C, 0, &padAssign[2], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT2, "Port 3 uses controller 0 to 3 (manual)." },
   { "PadType4", C, 0, &padType[3], PADTYPE_NONE, PADTYPE_WII, PADTYPE_NONE, "Port 4 controller (manual): 0 = none, 1 = GameCube, 2 = Wii." },
   { "PadAssign4", C, 0, &padAssign[3], PADASSIGN_INPUT0, PADASSIGN_INPUT3, PADASSIGN_INPUT3, "Port 4 uses controller 0 to 3 (manual)." },
-  { "Pak1", C, G, &pakMode[0], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
-    "Port 1 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
-  { "Pak2", C, G, &pakMode[1], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
-    "Port 2 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
-  { "Pak3", C, G, &pakMode[2], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
-    "Port 3 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
-  { "Pak4", C, G, &pakMode[3], PAKMODE_MEMPAK, PAKMODE_BIOSENSOR, PAKMODE_MEMPAK,
-    "Port 4 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64)." },
+  { "Pak1", C, G, &pakMode[0], PAKMODE_MEMPAK, PAKMODE_TRANSFERPAK, PAKMODE_MEMPAK,
+    "Port 1 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64), 4 = Transfer Pak." },
+  { "Pak2", C, G, &pakMode[1], PAKMODE_MEMPAK, PAKMODE_TRANSFERPAK, PAKMODE_MEMPAK,
+    "Port 2 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64), 4 = Transfer Pak." },
+  { "Pak3", C, G, &pakMode[2], PAKMODE_MEMPAK, PAKMODE_TRANSFERPAK, PAKMODE_MEMPAK,
+    "Port 3 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64), 4 = Transfer Pak." },
+  { "Pak4", C, G, &pakMode[3], PAKMODE_MEMPAK, PAKMODE_TRANSFERPAK, PAKMODE_MEMPAK,
+    "Port 4 pak: 0 = Controller Pak (saves), 1 = Rumble Pak, 2 = none, 3 = Bio Sensor (Tetris 64), 4 = Transfer Pak." },
+  { "TransferPak1", T, G, transferPakRom[0], 0, sizeof(transferPakRom[0]), 0,
+    "Port 1 Transfer Pak: the Game Boy cartridge file (.gb, .gbc). Its save is the same name with .sav." },
+  { "TransferPak2", T, G, transferPakRom[1], 0, sizeof(transferPakRom[1]), 0,
+    "Port 2 Transfer Pak: the Game Boy cartridge file (.gb, .gbc). Its save is the same name with .sav." },
+  { "TransferPak3", T, G, transferPakRom[2], 0, sizeof(transferPakRom[2]), 0,
+    "Port 3 Transfer Pak: the Game Boy cartridge file (.gb, .gbc). Its save is the same name with .sav." },
+  { "TransferPak4", T, G, transferPakRom[3], 0, sizeof(transferPakRom[3]), 0,
+    "Port 4 Transfer Pak: the Game Boy cartridge file (.gb, .gbc). Its save is the same name with .sav." },
   { "BioSensorBPM", I, G, &bioSensorBPM, 40, 200, 70,
     "Bio Sensor heart rate, in beats a minute: 40 to 200." },
   { "LoadButtonSlot", C, 0, &loadButtonSlot, LOADBUTTON_SLOT0, LOADBUTTON_DEFAULT, LOADBUTTON_DEFAULT,
@@ -240,6 +251,7 @@ static const struct setting SETTINGS[] =
 };
 #undef C
 #undef I
+#undef T
 #undef G
 #define NUM_SETTINGS ((int)(sizeof(SETTINGS) / sizeof(SETTINGS[0])))
 
@@ -277,6 +289,8 @@ static void ensure_wii64_dirs(const char *prefix) {
 	snprintf(path, sizeof(path), "%ssaves", prefix);
 	mkdir(path, 0777);
 	snprintf(path, sizeof(path), "%ssettings", prefix);
+	mkdir(path, 0777);
+	snprintf(path, sizeof(path), "%sgb", prefix); // Transfer Pak cartridges
 	mkdir(path, 0777);
 }
 
@@ -838,6 +852,8 @@ static void apply_diag_automation(void) {
 
 /* The folder of settings.ini, and of settings/<game code>.ini. */
 static char settingsDir[16];
+/* The Wii64 folder: sd:/wii64/ or usb:/wii64/ */
+const char* wii64Dir(void){ return settingsDir[0] ? settingsDir : "sd:/wii64/"; }
 int settings_save(const char* path);
 
 /* The settings of the game in settings/<game code>.ini, over the global ones. */
@@ -1210,6 +1226,11 @@ static int loadROM_unheld(fileBrowser_file* rom){
 		return ret;
 	}
 	loadGameSettings(); // before the plugins and the CPU read the settings
+	{
+		char msg[256];
+		paks_start_game(msg, sizeof(msg)); // the game's paks and Transfer Pak cartridges
+		if(msg[0]) menu::MessageBox::getInstance().fadeMessage(msg);
+	}
 
 	// Init everything for this ROM
 	perfProf_mark("loadROM: before init_memory");

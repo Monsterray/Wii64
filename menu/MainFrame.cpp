@@ -228,6 +228,7 @@ extern "C" {
 void pauseAudio(void);  void pauseInput(void);
 void resumeAudio(void); void resumeInput(void);
 void go(void); 
+int transferpak_save_all(void); // gc_memory/pif.c
 }
 
 extern char menuActive;
@@ -295,6 +296,10 @@ resume_after_home:
 	menuActive = 1;
 	pauseInput();
 	pauseAudio();
+
+	// A Game Boy cartridge keeps its save like a real one: always, not only with Auto Save
+	if(transferpak_save_all())
+		menu::MessageBox::getInstance().setMessage("Error saving a Transfer Pak cartridge (wii64/gb)");
 	
   if(autoSave==AUTOSAVE_ENABLE) {
     if(flashramWritten || sramWritten || eepromWritten || mempakWritten) {  //something needs saving
